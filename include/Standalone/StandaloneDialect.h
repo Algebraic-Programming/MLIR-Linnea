@@ -10,7 +10,12 @@
 #define STANDALONE_STANDALONEDIALECT_H
 
 #include "mlir/IR/Dialect.h"
-
 #include "Standalone/StandaloneOpsDialect.h.inc"
+#include "llvm/ADT/TypeSwitch.h"
+#include "mlir/IR/BuiltinTypes.h"
+
+#define GET_TYPEDEF_CLASSES
+#include "Standalone/StandaloneTypeBase.h.inc"
+
 
 #endif // STANDALONE_STANDALONEDIALECT_H

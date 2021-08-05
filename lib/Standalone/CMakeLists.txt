@@ -7,6 +7,7 @@ add_mlir_dialect_library(MLIRStandalone
 
         DEPENDS
         MLIRStandaloneOpsIncGen
+        MLIRStandaloneTypeDefIncGen
 
 	LINK_LIBS PUBLIC
 	MLIRIR
