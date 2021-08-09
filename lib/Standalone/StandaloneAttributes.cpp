@@ -13,5 +13,37 @@ LogicalResult StandaloneMatrixEncodingAttr::verify(
 }
 
 void StandaloneMatrixEncodingAttr::print(DialectAsmPrinter &printer) const {
-  printer << "matrix.encoding";
+  printer << "matrix_encoding<{encodingType = [";
+
+  for (size_t i = 0, e = getEncodingType().size(); i < e; i++) {
+    switch (getEncodingType()[i]) {
+    case MatrixType::Diagonal:
+      printer << "diagonal";
+      break;
+    case MatrixType::UnitDiagonal:
+      printer << "unitdiagonal";
+      break;
+    case MatrixType::LowerTriangular:
+      printer << "lowertriangular";
+      break;
+    case MatrixType::UpperTriangular:
+      printer << "uppertriangular";
+      break;
+    case MatrixType::Symmetric:
+      printer << "symmetric";
+      break;
+    case MatrixType::SPD:
+      printer << "spd";
+      break;
+    case MatrixType::SPSD:
+      printer << "spsd";
+      break;
+    case MatrixType::Identity:
+      printer << "\"identity\"";
+      break;
+    }
+    if (i != e - 1)
+      printer << ", ";
+  }
+  printer << "]}>";
 }

@@ -10,7 +10,7 @@ class Standalone_Attr<string name,
 
 // Standalone encoding attribute.
 def StandaloneMatrixEncodingAttr : Standalone_Attr<"StandaloneMatrixEncoding"> {
-  let mnemonic = "matrix";
+  let mnemonic = "matrix_encoding";
   let description = [{ TODO:add }];
   let parameters = (
     ins
@@ -48,9 +48,23 @@ def StandaloneMatrixEncodingAttr : Standalone_Attr<"StandaloneMatrixEncoding"> {
           auto strVal = strAttr.getValue();
           if (strVal == "diagonal")
             mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::Diagonal);
+          else if (strVal == "unitdiagonal")
+            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::UnitDiagonal);
+          else if (strVal == "lowertriangular")
+            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::LowerTriangular);
+          else if (strVal == "uppertriangular")
+            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::UpperTriangular);
+          else if (strVal == "symmetric")
+            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::Symmetric);
+          else if (strVal == "spd")
+            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::SPD);
+          else if (strVal == "spds")
+            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::SPSD);
+          else if (strVal == "identity")
+            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::Identity);
           else {
             $_parser.emitError($_parser.getNameLoc(),
-                               "unexpected matrix type");
+                               "unexpected matrix type") << strVal;
             return {};
           }
         }
@@ -70,7 +84,7 @@ def StandaloneMatrixEncodingAttr : Standalone_Attr<"StandaloneMatrixEncoding"> {
       Diagonal,
       UnitDiagonal,
       LowerTriangular,
-      UpperTrinagular,
+      UpperTriangular,
       Symmetric,
       SPD,
       SPSD,

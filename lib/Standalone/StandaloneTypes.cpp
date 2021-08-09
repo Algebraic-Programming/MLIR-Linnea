@@ -12,3 +12,11 @@ LogicalResult MatrixType::verify(function_ref<InFlightDiagnostic()> emitError,
     return emitError() << "non ranked-tensor type passed to 'matrixType'";
   return success();
 }
+
+void MatrixType::print(DialectAsmPrinter &printer) const {
+  printer << "matrix[ ";
+  printer.printType(getParam());
+  printer << ",";
+  printer.printAttribute(getEncoding());
+  printer << " ]";
+}

@@ -22,10 +22,6 @@ def Standalone_Matrix : Standalone_Type<"Matrix", []> {
     "Attribute":$encoding
   );
 
-  let printer = [{
-    $_printer << "matrix";
-  }];
-
   let parser = [{
     if ($_parser.parseLess())
       return Type();
