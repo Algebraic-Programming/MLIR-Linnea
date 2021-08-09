@@ -6,12 +6,12 @@
 using namespace mlir;
 using namespace mlir::standalone;
 
-Attribute StandaloneMatrixEncodingAttr::parse(MLIRContext *context,
-                                              DialectAsmParser &parser,
-                                              Type type) {
-  return {};
+LogicalResult StandaloneMatrixEncodingAttr::verify(
+    function_ref<InFlightDiagnostic()> emitError,
+    ArrayRef<StandaloneMatrixEncodingAttr::MatrixType>) {
+  return success();
 }
 
 void StandaloneMatrixEncodingAttr::print(DialectAsmPrinter &printer) const {
-  printer << "encoding-matrix";
+  printer << "matrix.encoding";
 }

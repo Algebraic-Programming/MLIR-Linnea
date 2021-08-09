@@ -61,14 +61,13 @@ Attribute StandaloneDialect::parseAttribute(DialectAsmParser &parser,
   StringRef attrTag;
   if (failed(parser.parseKeyword(&attrTag)))
     return Attribute();
-  {
-    Attribute attr;
-    auto parseResult =
-        generatedAttributeParser(getContext(), parser, attrTag, type, attr);
-    if (parseResult.hasValue())
-      return attr;
-  }
-  parser.emitError(parser.getNameLoc(), "unknown standalone attribute");
+  Attribute attr;
+  auto parseResult =
+      generatedAttributeParser(getContext(), parser, attrTag, type, attr);
+  if (parseResult.hasValue())
+    return attr;
+  parser.emitError(parser.getNameLoc(), "unknown standalone attribute: ")
+      << attrTag;
   return Attribute();
 }
 
