@@ -3,42 +3,51 @@
 
 include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinDialect.td"
-include "mlir/IR/BuiltinTypeInterfaces.td"
-include "mlir/IR/SubElementInterfaces.td"
 include "StandaloneDialect.td"
 
-class Standalone_Type<string name, list<Trait> traits = []/*,
-                      string baseCppClass = "::mlir::Type"*/>
-  : TypeDef<Standalone_Dialect, name, traits/*, baseCppClass*/>;
+class Standalone_Type<string name, list<Trait> traits>
+  : TypeDef<Standalone_Dialect, name, traits>;
 
 def Standalone_Matrix : Standalone_Type<"Matrix", []> {
   let mnemonic = "matrix";
-  let summary = "2-dimensional tensor";
+  let summary = "A 2-dimensional tensor";
   let description = [{
-    A multiset type. Similar to List Type, but without ordering and indexing.
+    A 2-dimensional tensor.
   }];
 
   let parameters = (ins
-    //ArrayRefParameter<"int64_t">:$shape,
-    //"Type":$elementType,
+    // TODO: here I would like a ranked tensor.
     "TensorType":$param,
     "Attribute":$encoding
   );
-  
-  
-/*
-  let builders = [
-    TypeBuilderWithInferredContext<(ins
-      //"ArrayRef<int64_t>":$shape,
-      //"Type":$elementType,
-      "TensorType":$param,
-      CArg<"Attribute", "{}">:$encoding
-    ), [{
-      return $_get(param.getContext(), shape, elementType, encoding);
-    }]>
-  ];
-*/
-  //let genVerifyDecl = 1;
+
+  let printer = [{
+    $_printer << "matrix";
+  }];
+
+  let parser = [{
+    if ($_parser.parseLess())
+      return Type();
+    Type tensor;
+    if ($_parser.parseType(tensor))
+      return Type();
+    if ($_parser.parseComma())
+      return Type();
+    Attribute attribute;
+    if ($_parser.parseAttribute(attribute))
+      return Type();
+    if ($_parser.parseGreater())
+      return Type();
+    auto tensorType = tensor.dyn_cast<TensorType>();
+    if (!tensorType)
+      return Type();
+    if (!tensorType.isa<RankedTensorType>())
+      return Type();
+    return MatrixType::getChecked([&$_parser] { 
+      return $_parser.emitError($_parser.getCurrentLocation()); }, 
+             $_ctxt, tensorType, attribute);
+  }];
+      
 }
 
 #endif // STANDALONE_TYPE_BASE 

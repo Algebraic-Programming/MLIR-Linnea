@@ -31,36 +31,15 @@ void StandaloneDialect::initialize() {
     >();
 }
 
-Type MatrixType::parse(MLIRContext *ctx, DialectAsmParser &parser) {
-
-  Type tensor;
-  Attribute attribute;
-  if (parser.parseLess() || parser.parseType(tensor) || parser.parseComma() 
-      || parser.parseAttribute(attribute) || parser.parseGreater())
-    return {};
-  auto tensorType = tensor.dyn_cast<TensorType>();
-  if (!tensorType) {
-    return {};
-  }
-  
-  return MatrixType::getChecked([&parser]() { return parser.emitError(parser.getCurrentLocation()); }, 
-                                ctx, tensorType, attribute);
-}
-
-void MatrixType::print(DialectAsmPrinter &printer) const {
-  printer << "my-matrix";
-}
-
 mlir::Type StandaloneDialect::parseType(mlir::DialectAsmParser &parser) const {
   llvm::StringRef ref;
-  if (parser.parseKeyword(&ref)) {
-    return {};
-  }
+  if (parser.parseKeyword(&ref))
+    return Type();
   Type res;
   auto parsed = generatedTypeParser(getContext(), parser, ref, res);
   if (parsed.hasValue() && succeeded(parsed.getValue()))
     return res;
-  return {};
+  return Type();
 }
 
 void StandaloneDialect::printType(mlir::Type type, mlir::DialectAsmPrinter &printer) const {
