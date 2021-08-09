@@ -14,8 +14,7 @@
 #include "llvm/ADT/TypeSwitch.h"
 #include "mlir/IR/BuiltinTypes.h"
 
-#define GET_TYPEDEF_CLASSES
-#include "Standalone/StandaloneTypeBase.h.inc"
-
+//#define GET_TYPEDEF_CLASSES
+//#include "Standalone/StandaloneTypeBase.h.inc"
 
 #endif // STANDALONE_STANDALONEDIALECT_H

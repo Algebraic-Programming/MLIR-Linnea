@@ -14,6 +14,7 @@ def Standalone_Matrix : Standalone_Type<"Matrix", []> {
   let description = [{
     A 2-dimensional tensor.
   }];
+  let genVerifyDecl = 1;
 
   let parameters = (ins
     // TODO: here I would like a ranked tensor.
@@ -40,8 +41,6 @@ def Standalone_Matrix : Standalone_Type<"Matrix", []> {
       return Type();
     auto tensorType = tensor.dyn_cast<TensorType>();
     if (!tensorType)
-      return Type();
-    if (!tensorType.isa<RankedTensorType>())
       return Type();
     return MatrixType::getChecked([&$_parser] { 
       return $_parser.emitError($_parser.getCurrentLocation()); }, 

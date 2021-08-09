@@ -6,3 +6,8 @@ set(LLVM_TARGET_DEFINITIONS StandaloneTypeBase.td)
 mlir_tablegen(StandaloneTypeBase.h.inc -gen-typedef-decls -typedefs-dialect=standalone)
 mlir_tablegen(StandaloneTypeBase.cpp.inc -gen-typedef-defs -typedefs-dialect=standalone)
 add_public_tablegen_target(MLIRStandaloneTypeDefIncGen)
+
+set(LLVM_TARGET_DEFINITIONS StandaloneAttrBase.td)
+mlir_tablegen(StandaloneAttrBase.h.inc -gen-attrdef-decls)
+mlir_tablegen(StandaloneAttrBase.cpp.inc -gen-attrdef-defs)
+add_public_tablegen_target(MLIRStandaloneAttrDefIncGen)
