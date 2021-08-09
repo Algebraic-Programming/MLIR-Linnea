@@ -1,7 +1,7 @@
 #ifndef STANDALONE_ATTRDEFS
 #define STANDALONE_ATTRDEFS
 
-#include "StandaloneDialect.td"
+include "StandaloneDialect.td"
 
 // All of the Standalone attributes will extend this class.
 class Standalone_Attr<string name,
@@ -9,19 +9,24 @@ class Standalone_Attr<string name,
         : AttrDef<Standalone_Dialect, name, traits>;
 
 // Standalone encoding attribute.
-def StandaloneEncodingAttr : Standalone_Attr<"StandaloneMatrixEncoding" {
+def StandaloneMatrixEncodingAttr : Standalone_Attr<"StandaloneMatrixEncoding"> {
   let mnemonic = "matrix-encoding";
   let description = [{ TODO:add }];
   let parameters = (
     ins
-    ArrayRefParameter<"StandaloneMatrixEncoding::Type",
+    ArrayRefParameter<"StandaloneMatrixEncodingAttr::MatrixType",
                       "type of matrix encoding"
                       >: $encodingType
   );
-  let genVerifyDecl = 1;
   let extraClassDeclaration = [{
-    enum class Type {
+    enum class MatrixType {
       Diagonal,
+      UnitDiagonal,
+      LowerTriangular,
+      UpperTrinagular,
+      Symmetric,
+      SPD,
+      SPSD,
       Identity
     };
   }];

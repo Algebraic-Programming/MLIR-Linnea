@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Standalone/StandaloneDialect.h"
+#include "Standalone/StandaloneAttributes.h"
 #include "Standalone/StandaloneOps.h"
 #include "Standalone/StandaloneTypes.h"
 #include "mlir/IR/DialectImplementation.h"
@@ -21,6 +22,9 @@ using namespace mlir::standalone;
 #define GET_TYPEDEF_CLASSES
 #include "Standalone/StandaloneTypeBase.cpp.inc"
 
+#define GET_ATTRDEF_CLASSES
+#include "Standalone/StandaloneAttrBase.cpp.inc"
+
 void StandaloneDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
@@ -30,9 +34,13 @@ void StandaloneDialect::initialize() {
 #define GET_TYPEDEF_LIST
 #include "Standalone/StandaloneTypeBase.cpp.inc"
     >();
+  addAttributes<
+#define GET_ATTRDEF_LIST
+#include "Standalone/StandaloneAttrBase.cpp.inc"
+      >();
 }
 
-mlir::Type StandaloneDialect::parseType(mlir::DialectAsmParser &parser) const {
+Type StandaloneDialect::parseType(mlir::DialectAsmParser &parser) const {
   llvm::StringRef ref;
   if (parser.parseKeyword(&ref))
     return Type();
@@ -46,4 +54,26 @@ mlir::Type StandaloneDialect::parseType(mlir::DialectAsmParser &parser) const {
 void StandaloneDialect::printType(mlir::Type type, mlir::DialectAsmPrinter &printer) const {
   auto wasPrinted = generatedTypePrinter(type, printer);
   assert(succeeded(wasPrinted));
+}
+
+Attribute StandaloneDialect::parseAttribute(DialectAsmParser &parser,
+                                            Type type) const {
+  StringRef attrTag;
+  if (failed(parser.parseKeyword(&attrTag)))
+    return Attribute();
+  {
+    Attribute attr;
+    auto parseResult =
+        generatedAttributeParser(getContext(), parser, attrTag, type, attr);
+    if (parseResult.hasValue())
+      return attr;
+  }
+  parser.emitError(parser.getNameLoc(), "unknown standalone attribute");
+  return Attribute();
+}
+
+void StandaloneDialect::printAttribute(Attribute attr,
+                                       DialectAsmPrinter &printer) const {
+  if (succeeded(generatedAttributePrinter(attr, printer)))
+    return;
 }

@@ -26,8 +26,10 @@ def Standalone_Dialect : Dialect {
     let cppNamespace = "::mlir::standalone";
 
      let extraClassDeclaration = [{
-        mlir::Type parseType(mlir::DialectAsmParser& parser) const override;
-        void printType(mlir::Type type, mlir::DialectAsmPrinter& printer) const override;
+        Type parseType(DialectAsmParser& parser) const override;
+        void printType(Type type, DialectAsmPrinter& printer) const override;
+        Attribute parseAttribute(DialectAsmParser &parser, Type type) const override;
+        void printAttribute(Attribute attr, DialectAsmPrinter &printer) const override;
     }];
 }
 
