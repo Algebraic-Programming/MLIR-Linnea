@@ -1,8 +1,8 @@
-#include "Standalone/StandaloneTypes.h"
-#include "Standalone/StandaloneDialect.h"
+#include "Standalone/LinneaTypes.h"
+#include "Standalone/LinneaDialect.h"
 
 using namespace mlir;
-using namespace mlir::standalone;
+using namespace mlir::linnea;
 
 LogicalResult MatrixType::verify(function_ref<InFlightDiagnostic()> emitError,
                                  TensorType tensor, Attribute attribute) {

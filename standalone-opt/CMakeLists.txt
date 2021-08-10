@@ -4,7 +4,7 @@ set(LIBS
         ${dialect_libs}
         ${conversion_libs}
         MLIROptLib
-        MLIRStandalone
+        MLIRLinnea
         )
 add_llvm_executable(standalone-opt standalone-opt.cpp)
 

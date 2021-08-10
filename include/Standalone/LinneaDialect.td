@@ -1,4 +1,4 @@
-//===- StandaloneDialect.td - Standalone dialect -----------*- tablegen -*-===//
+//===- LinneaDialect.td - Linnea dialect -----------*- tablegen -*-===//
 //
 // This file is licensed under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,24 +6,24 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef STANDALONE_DIALECT
-#define STANDALONE_DIALECT
+#ifndef LINNEA_DIALECT
+#define LINNEA_DIALECT
 
 include "mlir/IR/OpBase.td"
 
 //===----------------------------------------------------------------------===//
-// Standalone dialect definition.
+// Linnea dialect definition.
 //===----------------------------------------------------------------------===//
 
-def Standalone_Dialect : Dialect {
-    let name = "standalone";
-    let summary = "A standalone out-of-tree MLIR dialect.";
+def Linnea_Dialect : Dialect {
+    let name = "linnea";
+    let summary = "A linnea out-of-tree MLIR dialect.";
     let description = [{
         This dialect is an example of an out-of-tree MLIR dialect designed to
         illustrate the basic setup required to develop MLIR-based tools without
         working inside of the LLVM source tree.
     }];
-    let cppNamespace = "::mlir::standalone";
+    let cppNamespace = "::mlir::linnea";
 
      let extraClassDeclaration = [{
         Type parseType(DialectAsmParser& parser) const override;
@@ -34,10 +34,10 @@ def Standalone_Dialect : Dialect {
 }
 
 //===----------------------------------------------------------------------===//
-// Base standalone operation definition.
+// Base linnea operation definition.
 //===----------------------------------------------------------------------===//
 
-class Standalone_Op<string mnemonic, list<OpTrait> traits = []> :
-        Op<Standalone_Dialect, mnemonic, traits>;
+class Linnea_Op<string mnemonic, list<OpTrait> traits = []> :
+        Op<Linnea_Dialect, mnemonic, traits>;
 
-#endif // STANDALONE_DIALECT
+#endif // LINNEA_DIALECT

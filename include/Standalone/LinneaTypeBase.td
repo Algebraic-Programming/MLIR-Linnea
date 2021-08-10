@@ -1,14 +1,14 @@
-#ifndef STANDALONE_TYPE_BASE
-#define STANDALONE_TYPE_BASE
+#ifndef LINNEA_TYPE_BASE
+#define LINNEA_TYPE_BASE
 
 include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinDialect.td"
-include "StandaloneDialect.td"
+include "LinneaDialect.td"
 
-class Standalone_Type<string name>
-  : TypeDef<Standalone_Dialect, name>;
+class Linnea_Type<string name>
+  : TypeDef<Linnea_Dialect, name>;
 
-def Standalone_Matrix : Standalone_Type<"Matrix"> {
+def Linnea_Matrix : Linnea_Type<"Matrix"> {
   let mnemonic = "matrix";
 
   let summary = "A 2-dimensional tensor";
@@ -50,4 +50,4 @@ def Standalone_Matrix : Standalone_Type<"Matrix"> {
       
 }
 
-#endif // STANDALONE_TYPE_BASE 
+#endif // LINNEA_TYPE_BASE 

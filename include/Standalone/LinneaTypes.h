@@ -1,5 +1,5 @@
-#ifndef STANDALONE_TYPES_H
-#define STANDALONE_TYPES_H
+#ifndef LINNEA_TYPES_H
+#define LINNEA_TYPES_H
 
 #include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/Dialect.h"
@@ -9,6 +9,6 @@
 #include "mlir/Interfaces/DataLayoutInterfaces.h"
 
 #define GET_TYPEDEF_CLASSES
-#include "Standalone/StandaloneTypeBase.h.inc"
+#include "Standalone/LinneaTypeBase.h.inc"
 
-#endif // STANDALONE_TYPES_H
+#endif // LINNEA_TYPES_H

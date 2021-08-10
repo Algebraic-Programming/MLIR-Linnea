@@ -1,20 +1,20 @@
-#ifndef STANDALONE_ATTRDEFS
-#define STANDALONE_ATTRDEFS
+#ifndef LINNEA_ATTRDEFS
+#define LINNEA_ATTRDEFS
 
-include "StandaloneDialect.td"
+include "LinneaDialect.td"
 
-// All of the Standalone attributes will extend this class.
-class Standalone_Attr<string name,
+// All of the Linnea attributes will extend this class.
+class Linnea_Attr<string name,
                       list<Trait> traits = []>
-        : AttrDef<Standalone_Dialect, name, traits>;
+        : AttrDef<Linnea_Dialect, name, traits>;
 
-// Standalone encoding attribute.
-def StandaloneMatrixEncodingAttr : Standalone_Attr<"StandaloneMatrixEncoding"> {
+// Linnea encoding attribute.
+def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
   let mnemonic = "matrix_encoding";
   let description = [{ TODO:add }];
   let parameters = (
     ins
-    ArrayRefParameter<"StandaloneMatrixEncodingAttr::MatrixType",
+    ArrayRefParameter<"LinneaMatrixEncodingAttr::MatrixType",
                       "type of matrix encoding"
                       >: $encodingType
   );
@@ -47,21 +47,21 @@ def StandaloneMatrixEncodingAttr : Standalone_Attr<"StandaloneMatrixEncoding"> {
           }
           auto strVal = strAttr.getValue();
           if (strVal == "diagonal")
-            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::Diagonal);
+            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::Diagonal);
           else if (strVal == "unitdiagonal")
-            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::UnitDiagonal);
+            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::UnitDiagonal);
           else if (strVal == "lowertriangular")
-            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::LowerTriangular);
+            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::LowerTriangular);
           else if (strVal == "uppertriangular")
-            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::UpperTriangular);
+            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::UpperTriangular);
           else if (strVal == "symmetric")
-            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::Symmetric);
+            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::Symmetric);
           else if (strVal == "spd")
-            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::SPD);
+            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::SPD);
           else if (strVal == "spds")
-            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::SPSD);
+            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::SPSD);
           else if (strVal == "identity")
-            mt.push_back(StandaloneMatrixEncodingAttr::MatrixType::Identity);
+            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::Identity);
           else {
             $_parser.emitError($_parser.getNameLoc(),
                                "unexpected matrix type") << strVal;
@@ -70,7 +70,7 @@ def StandaloneMatrixEncodingAttr : Standalone_Attr<"StandaloneMatrixEncoding"> {
         }
       }
     }
-    return StandaloneMatrixEncodingAttr::getChecked([&$_parser] {
+    return LinneaMatrixEncodingAttr::getChecked([&$_parser] {
       return $_parser.emitError($_parser.getCurrentLocation()); },
       $_ctxt, mt);
   }];
@@ -94,4 +94,4 @@ def StandaloneMatrixEncodingAttr : Standalone_Attr<"StandaloneMatrixEncoding"> {
 }
 
 
-#endif // STANDALONE_ATTRDEFS
+#endif // LINNEA_ATTRDEFS

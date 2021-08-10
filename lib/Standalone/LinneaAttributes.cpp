@@ -1,18 +1,18 @@
-#include "Standalone/StandaloneAttributes.h"
-#include "Standalone/StandaloneDialect.h"
+#include "Standalone/LinneaAttributes.h"
+#include "Standalone/LinneaDialect.h"
 
 #include "llvm/ADT/TypeSwitch.h"
 
 using namespace mlir;
-using namespace mlir::standalone;
+using namespace mlir::linnea;
 
-LogicalResult StandaloneMatrixEncodingAttr::verify(
+LogicalResult LinneaMatrixEncodingAttr::verify(
     function_ref<InFlightDiagnostic()> emitError,
-    ArrayRef<StandaloneMatrixEncodingAttr::MatrixType>) {
+    ArrayRef<LinneaMatrixEncodingAttr::MatrixType>) {
   return success();
 }
 
-void StandaloneMatrixEncodingAttr::print(DialectAsmPrinter &printer) const {
+void LinneaMatrixEncodingAttr::print(DialectAsmPrinter &printer) const {
   printer << "matrix_encoding<{encodingType = [";
 
   for (size_t i = 0, e = getEncodingType().size(); i < e; i++) {

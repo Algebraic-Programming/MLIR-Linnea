@@ -1,5 +1,5 @@
-#ifndef STANDALONE_ATTRIBUTES_H
-#define STANDALONE_ATTRIBUTES_H
+#ifndef LINNEA_ATTRIBUTES_H
+#define LINNEA_ATTRIBUTES_H
 
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/Diagnostics.h"
@@ -7,6 +7,6 @@
 #include "mlir/IR/DialectImplementation.h"
 
 #define GET_ATTRDEF_CLASSES
-#include "Standalone/StandaloneAttrBase.h.inc"
+#include "Standalone/LinneaAttrBase.h.inc"
 
-#endif // STANDALONE_ATTRIBUTES_H
+#endif // LINNEA_ATTRIBUTES_H

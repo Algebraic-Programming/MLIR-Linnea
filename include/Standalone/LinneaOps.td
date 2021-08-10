@@ -1,4 +1,4 @@
-//===- StandaloneOps.td - Standalone dialect ops -----------*- tablegen -*-===//
+//===- LinneaOps.td - Linnea dialect ops -----------*- tablegen -*-===//
 //
 // This file is licensed under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,14 +6,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef STANDALONE_OPS
-#define STANDALONE_OPS
+#ifndef LINNEA_OPS
+#define LINNEA_OPS
 
-include "StandaloneDialect.td"
+include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
-def Standalone_FooOp : Standalone_Op<"foo", [NoSideEffect,
-                                             SameOperandsAndResultType]> {
+def Linnea_FooOp : Linnea_Op<"foo", [NoSideEffect,
+                                     SameOperandsAndResultType]> {
     let summary = "Illustrates how to define an operation.";
     let description = [{
         The `standalone.foo` operation illustrates how to define a new
@@ -39,4 +39,4 @@ def Standalone_FooOp : Standalone_Op<"foo", [NoSideEffect,
     }];
 }
 
-#endif // STANDALONE_OPS
+#endif // LINNEA_OPS

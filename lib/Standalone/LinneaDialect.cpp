@@ -1,4 +1,4 @@
-//===- StandaloneDialect.cpp - Standalone dialect ---------------*- C++ -*-===//
+//===- LinneaDialect.cpp - Linnea dialect ---------------*- C++ -*-===//
 //
 // This file is licensed under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,41 +6,41 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Standalone/StandaloneDialect.h"
-#include "Standalone/StandaloneAttributes.h"
-#include "Standalone/StandaloneOps.h"
-#include "Standalone/StandaloneTypes.h"
+#include "Standalone/LinneaDialect.h"
+#include "Standalone/LinneaAttributes.h"
+#include "Standalone/LinneaOps.h"
+#include "Standalone/LinneaTypes.h"
 #include "mlir/IR/DialectImplementation.h"
 
 using namespace mlir;
-using namespace mlir::standalone;
+using namespace mlir::linnea;
 
 //===----------------------------------------------------------------------===//
-// Standalone dialect.
+// Linnea dialect.
 //===----------------------------------------------------------------------===//
 
 #define GET_TYPEDEF_CLASSES
-#include "Standalone/StandaloneTypeBase.cpp.inc"
+#include "Standalone/LinneaTypeBase.cpp.inc"
 
 #define GET_ATTRDEF_CLASSES
-#include "Standalone/StandaloneAttrBase.cpp.inc"
+#include "Standalone/LinneaAttrBase.cpp.inc"
 
-void StandaloneDialect::initialize() {
+void LinneaDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
-#include "Standalone/StandaloneOps.cpp.inc"
+#include "Standalone/LinneaOps.cpp.inc"
       >();
   addTypes<
 #define GET_TYPEDEF_LIST
-#include "Standalone/StandaloneTypeBase.cpp.inc"
+#include "Standalone/LinneaTypeBase.cpp.inc"
       >();
   addAttributes<
 #define GET_ATTRDEF_LIST
-#include "Standalone/StandaloneAttrBase.cpp.inc"
+#include "Standalone/LinneaAttrBase.cpp.inc"
       >();
 }
 
-Type StandaloneDialect::parseType(mlir::DialectAsmParser &parser) const {
+Type LinneaDialect::parseType(DialectAsmParser &parser) const {
   llvm::StringRef ref;
   if (parser.parseKeyword(&ref))
     return Type();
@@ -51,14 +51,13 @@ Type StandaloneDialect::parseType(mlir::DialectAsmParser &parser) const {
   return Type();
 }
 
-void StandaloneDialect::printType(mlir::Type type,
-                                  mlir::DialectAsmPrinter &printer) const {
+void LinneaDialect::printType(Type type, DialectAsmPrinter &printer) const {
   auto wasPrinted = generatedTypePrinter(type, printer);
   assert(succeeded(wasPrinted));
 }
 
-Attribute StandaloneDialect::parseAttribute(DialectAsmParser &parser,
-                                            Type type) const {
+Attribute LinneaDialect::parseAttribute(DialectAsmParser &parser,
+                                        Type type) const {
   StringRef attrTag;
   if (failed(parser.parseKeyword(&attrTag)))
     return Attribute();
@@ -67,13 +66,13 @@ Attribute StandaloneDialect::parseAttribute(DialectAsmParser &parser,
       generatedAttributeParser(getContext(), parser, attrTag, type, attr);
   if (parseResult.hasValue())
     return attr;
-  parser.emitError(parser.getNameLoc(), "unknown standalone attribute: ")
+  parser.emitError(parser.getNameLoc(), "unknown linnea attribute: ")
       << attrTag;
   return Attribute();
 }
 
-void StandaloneDialect::printAttribute(Attribute attr,
-                                       DialectAsmPrinter &printer) const {
+void LinneaDialect::printAttribute(Attribute attr,
+                                   DialectAsmPrinter &printer) const {
   if (succeeded(generatedAttributePrinter(attr, printer)))
     return;
 }
