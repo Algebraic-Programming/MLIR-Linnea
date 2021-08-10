@@ -33,7 +33,7 @@ void StandaloneDialect::initialize() {
   addTypes<
 #define GET_TYPEDEF_LIST
 #include "Standalone/StandaloneTypeBase.cpp.inc"
-    >();
+      >();
   addAttributes<
 #define GET_ATTRDEF_LIST
 #include "Standalone/StandaloneAttrBase.cpp.inc"
@@ -51,7 +51,8 @@ Type StandaloneDialect::parseType(mlir::DialectAsmParser &parser) const {
   return Type();
 }
 
-void StandaloneDialect::printType(mlir::Type type, mlir::DialectAsmPrinter &printer) const {
+void StandaloneDialect::printType(mlir::Type type,
+                                  mlir::DialectAsmPrinter &printer) const {
   auto wasPrinted = generatedTypePrinter(type, printer);
   assert(succeeded(wasPrinted));
 }
