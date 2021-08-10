@@ -5,11 +5,12 @@ include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinDialect.td"
 include "StandaloneDialect.td"
 
-class Standalone_Type<string name, list<Trait> traits>
-  : TypeDef<Standalone_Dialect, name, traits>;
+class Standalone_Type<string name>
+  : TypeDef<Standalone_Dialect, name>;
 
-def Standalone_Matrix : Standalone_Type<"Matrix", []> {
+def Standalone_Matrix : Standalone_Type<"Matrix"> {
   let mnemonic = "matrix";
+
   let summary = "A 2-dimensional tensor";
   let description = [{
     A 2-dimensional tensor.
@@ -42,6 +43,10 @@ def Standalone_Matrix : Standalone_Type<"Matrix", []> {
       return $_parser.emitError($_parser.getCurrentLocation()); }, 
              $_ctxt, tensorType, attribute);
   }];
+
+  //let printer = [{
+  //
+  //}];
       
 }
 

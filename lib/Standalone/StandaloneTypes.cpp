@@ -14,9 +14,10 @@ LogicalResult MatrixType::verify(function_ref<InFlightDiagnostic()> emitError,
 }
 
 void MatrixType::print(DialectAsmPrinter &printer) const {
-  printer << "matrix[ ";
+  printer << MatrixType::getMnemonic();
+  printer << "<";
   printer.printType(getParam());
   printer << ",";
   printer.printAttribute(getEncoding());
-  printer << " ]";
+  printer << ">";
 }
