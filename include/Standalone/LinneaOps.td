@@ -34,6 +34,8 @@ def Linnea_InverseOp : Linnea_Op<"inverse", [NoSideEffect,
     let assemblyFormat = [{
       $input attr-dict `:` type($input)
     }];
+
+    let hasCanonicalizeMethod = 1;
 }
 
 #endif // LINNEA_OPS

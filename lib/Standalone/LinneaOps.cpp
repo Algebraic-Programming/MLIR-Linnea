@@ -16,3 +16,16 @@ using namespace mlir::linnea;
 #define GET_OP_CLASSES
 #include "Standalone/LinneaOps.cpp.inc"
 
+LogicalResult InverseOp::canonicalize(InverseOp op, PatternRewriter &rewriter) {
+  // Look the input chain of the current inverseOp.
+  Value inverseInput = op.getOperand();
+  InverseOp inverseInputOp = inverseInput.getDefiningOp<InverseOp>();
+
+  // If the input comes from another transposeOp
+  // simplify otherwise return.
+  if (!inverseInputOp)
+    return failure();
+
+  rewriter.replaceOp(op, {inverseInputOp.getOperand()});
+  return success();
+}
