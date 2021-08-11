@@ -11,31 +11,28 @@
 
 include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "LinneaTypeBase.td" 
 
-def Linnea_FooOp : Linnea_Op<"foo", [NoSideEffect,
-                                     SameOperandsAndResultType]> {
-    let summary = "Illustrates how to define an operation.";
+def Linnea_InverseOp : Linnea_Op<"inverse", [NoSideEffect,
+                                             SameOperandsAndResultType]> {
+    let summary = "Add doc.";
     let description = [{
-        The `standalone.foo` operation illustrates how to define a new
-        operation in a dialect. It uses an operation trait to declare that it
-        has no side effects.
-
-        This operation takes an integer argument and returns an integer.
+        The `standalone.inverse` (add doc)
 
         Example:
 
         ```mlir
         %0 = constant 2 : i32
         // Apply the foo operation to %0
-        %1 = standalone.foo %0 : i32
+        %1 = linnea.inverse %0 : i32
         ```
     }];
 
-    let arguments = (ins I32:$input);
-    let results = (outs I32:$res);
+    let arguments = (ins Linnea_Matrix:$input);
+    let results = (outs Linnea_Matrix:$output);
 
     let assemblyFormat = [{
-        $input attr-dict `:` type($input)
+      $input attr-dict `:` type($input)
     }];
 }
 

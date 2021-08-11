@@ -10,5 +10,9 @@
 #include "Standalone/LinneaDialect.h"
 #include "mlir/IR/OpImplementation.h"
 
+using namespace mlir;
+using namespace mlir::linnea;
+
 #define GET_OP_CLASSES
 #include "Standalone/LinneaOps.cpp.inc"
+

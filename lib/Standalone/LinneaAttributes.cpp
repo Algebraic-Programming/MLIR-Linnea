@@ -17,26 +17,29 @@ void LinneaMatrixEncodingAttr::print(DialectAsmPrinter &printer) const {
 
   for (size_t i = 0, e = getEncodingType().size(); i < e; i++) {
     switch (getEncodingType()[i]) {
+    case MatrixType::FullRank:
+      printer << "\"fullrank\"";
+      break;
     case MatrixType::Diagonal:
-      printer << "diagonal";
+      printer << "\"diagonal\"";
       break;
     case MatrixType::UnitDiagonal:
-      printer << "unitdiagonal";
+      printer << "\"unitdiagonal\"";
       break;
     case MatrixType::LowerTriangular:
-      printer << "lowertriangular";
+      printer << "\"lowertriangular\"";
       break;
     case MatrixType::UpperTriangular:
-      printer << "uppertriangular";
+      printer << "\"uppertriangular\"";
       break;
     case MatrixType::Symmetric:
-      printer << "symmetric";
+      printer << "\"symmetric\"";
       break;
     case MatrixType::SPD:
-      printer << "spd";
+      printer << "\"spd\"";
       break;
     case MatrixType::SPSD:
-      printer << "spsd";
+      printer << "\"spsd\"";
       break;
     case MatrixType::Identity:
       printer << "\"identity\"";

@@ -46,7 +46,9 @@ def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
             return {};
           }
           auto strVal = strAttr.getValue();
-          if (strVal == "diagonal")
+          if (strVal == "fullrank")
+            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::FullRank);
+          else if (strVal == "diagonal")
             mt.push_back(LinneaMatrixEncodingAttr::MatrixType::Diagonal);
           else if (strVal == "unitdiagonal")
             mt.push_back(LinneaMatrixEncodingAttr::MatrixType::UnitDiagonal);
@@ -64,7 +66,7 @@ def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
             mt.push_back(LinneaMatrixEncodingAttr::MatrixType::Identity);
           else {
             $_parser.emitError($_parser.getNameLoc(),
-                               "unexpected matrix type") << strVal;
+                               "unexpected matrix type: ") << strVal;
             return {};
           }
         }
@@ -81,6 +83,7 @@ def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
 
   let extraClassDeclaration = [{
     enum class MatrixType {
+      FullRank,
       Diagonal,
       UnitDiagonal,
       LowerTriangular,
