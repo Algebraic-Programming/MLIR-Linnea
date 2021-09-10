@@ -1,5 +1,5 @@
 // RUN: standalone-opt %s | standalone-opt | FileCheck %s
-
+// XFAIL: *
 #I = #linnea.matrix_encoding<{encodingType = ["identity"]}>
 
 // CHECK: func private @check_type(

@@ -11,10 +11,27 @@
 
 include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
-include "LinneaTypeBase.td" 
+
+def Linnea_Matrix : 2DTensorOf<[AnyType]>;
 
 def Linnea_InverseOp : Linnea_Op<"inverse", [NoSideEffect,
                                              SameOperandsAndResultType]> {
+    let summary = "Add doc.";
+    let description = [{
+    
+    }];
+
+    let arguments = (ins Linnea_Matrix:$input);
+    let results = (outs Linnea_Matrix:$output);
+
+    let assemblyFormat = [{
+      $input attr-dict `:` type($input)
+    }];
+
+    let hasCanonicalizeMethod = 1;
+}
+
+def Linnea_MulOp : Linnea_Op<"mul", [NoSideEffect]> {
     let summary = "Add doc.";
     let description = [{
         The `standalone.inverse` (add doc)
@@ -28,14 +45,12 @@ def Linnea_InverseOp : Linnea_Op<"inverse", [NoSideEffect,
         ```
     }];
 
-    let arguments = (ins Linnea_Matrix:$input);
+    let arguments = (ins Variadic<Linnea_Matrix>:$input);
     let results = (outs Linnea_Matrix:$output);
 
     let assemblyFormat = [{
-      $input attr-dict `:` type($input)
+      $input attr-dict `:` type($input) `->` type($output)
     }];
-
-    let hasCanonicalizeMethod = 1;
 }
 
 #endif // LINNEA_OPS

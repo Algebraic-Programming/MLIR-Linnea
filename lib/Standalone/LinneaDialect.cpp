@@ -40,6 +40,7 @@ void LinneaDialect::initialize() {
       >();
 }
 
+/*
 Type LinneaDialect::parseType(DialectAsmParser &parser) const {
   llvm::StringRef ref;
   if (parser.parseKeyword(&ref))
@@ -55,6 +56,7 @@ void LinneaDialect::printType(Type type, DialectAsmPrinter &printer) const {
   auto wasPrinted = generatedTypePrinter(type, printer);
   assert(succeeded(wasPrinted));
 }
+*/
 
 Attribute LinneaDialect::parseAttribute(DialectAsmParser &parser,
                                         Type type) const {
