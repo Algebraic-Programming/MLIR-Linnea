@@ -11,3 +11,8 @@ set(LLVM_TARGET_DEFINITIONS LinneaAttrBase.td)
 mlir_tablegen(LinneaAttrBase.h.inc -gen-attrdef-decls -typedefs-dialect=linnea)
 mlir_tablegen(LinneaAttrBase.cpp.inc -gen-attrdef-defs -typedefs-dialect=linnea)
 add_public_tablegen_target(MLIRLinneaAttrDefIncGen)
+
+set(LLVM_TARGET_DEFINITIONS LinneaPasses.td)
+mlir_tablegen(LinneaPasses.h.inc -gen-pass-decls -name Linnea)
+add_public_tablegen_target(MLIRLinneaPassIncGen)
+add_mlir_doc(LinneaPasses LinneaPasses ./ -gen-pass-doc)

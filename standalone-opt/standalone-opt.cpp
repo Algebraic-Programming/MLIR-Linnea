@@ -21,10 +21,11 @@
 
 #include "Standalone/LinneaDialect.h"
 #include "Standalone/LinneaOpsDialect.cpp.inc"
+#include "Standalone/LinneaPasses.h"
 
 int main(int argc, char **argv) {
   mlir::registerAllPasses();
-  // TODO: Register standalone passes here.
+  registerLinneaPasses();
 
   mlir::DialectRegistry registry;
   registry.insert<mlir::linnea::LinneaDialect>();

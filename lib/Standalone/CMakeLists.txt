@@ -3,6 +3,7 @@ add_mlir_dialect_library(MLIRLinnea
         LinneaOps.cpp
         LinneaTypes.cpp
         LinneaAttributes.cpp
+        LinneaPasses.cpp
 
         ADDITIONAL_HEADER_DIRS
         ${PROJECT_SOURCE_DIR}/include/Standalone
@@ -11,6 +12,7 @@ add_mlir_dialect_library(MLIRLinnea
         MLIRLinneaOpsIncGen
         MLIRLinneaTypeDefIncGen
         MLIRLinneaAttrDefIncGen
+        MLIRLinneaPassIncGen
 
 	LINK_LIBS PUBLIC
 	MLIRIR
