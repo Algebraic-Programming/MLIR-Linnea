@@ -9,4 +9,6 @@
 #define GET_ATTRDEF_CLASSES
 #include "Standalone/LinneaAttrBase.h.inc"
 
+bool isSPD(mlir::Type type);
+
 #endif // LINNEA_ATTRIBUTES_H

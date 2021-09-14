@@ -12,8 +12,24 @@ LogicalResult LinneaMatrixEncodingAttr::verify(
   return success();
 }
 
+LinneaMatrixEncodingAttr getMatrixEncodingAttr(Type type) {
+  if (auto ttp = type.dyn_cast<RankedTensorType>())
+    return ttp.getEncoding().dyn_cast_or_null<LinneaMatrixEncodingAttr>();
+  return nullptr;
+}
+
+bool isSPD(Type type) {
+  auto encoding = getMatrixEncodingAttr(type);
+  if (!encoding)
+    return false;
+  if (llvm::is_contained(encoding.getEncodingType(),
+                         LinneaMatrixEncodingAttr::MatrixType::SPD))
+    return true;
+  return false;
+}
+
 void LinneaMatrixEncodingAttr::print(DialectAsmPrinter &printer) const {
-  printer << "matrix_encoding<{encodingType = [";
+  printer << "matrix<{p = [";
 
   for (size_t i = 0, e = getEncodingType().size(); i < e; i++) {
     switch (getEncodingType()[i]) {
@@ -30,13 +46,13 @@ void LinneaMatrixEncodingAttr::print(DialectAsmPrinter &printer) const {
       printer << "\"unitdiagonal\"";
       break;
     case MatrixType::LowerTriangular:
-      printer << "\"lowertriangular\"";
+      printer << "\"lowerTri\"";
       break;
     case MatrixType::UpperTriangular:
-      printer << "\"uppertriangular\"";
+      printer << "\"upperTri\"";
       break;
     case MatrixType::Symmetric:
-      printer << "\"symmetric\"";
+      printer << "\"symm\"";
       break;
     case MatrixType::SPD:
       printer << "\"spd\"";

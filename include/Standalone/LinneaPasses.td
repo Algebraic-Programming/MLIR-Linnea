@@ -6,7 +6,7 @@ include "mlir/Pass/PassBase.td"
 def LinneaLowerToLinalg : FunctionPass<"convert-linnea-to-linalg"> {
   let summary = "Lower linnea operations to linalg";
   let constructor = "mlir::createConvertLinneaToLinalgPass()";
-  let dependentDialects = ["linalg::LinalgDialect"];
+  let dependentDialects = ["linalg::LinalgDialect", "tensor::TensorDialect"];
 }
 
 #endif

@@ -28,7 +28,7 @@ def Linnea_InverseOp : Linnea_Op<"inverse", [NoSideEffect,
       $input attr-dict `:` type($input)
     }];
 
-    let hasCanonicalizeMethod = 1;
+    let hasCanonicalizer = 1;
 }
 
 def Linnea_TransOp : Linnea_Op<"transpose", [NoSideEffect, 

@@ -10,7 +10,7 @@ class Linnea_Attr<string name,
 
 // Linnea encoding attribute.
 def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
-  let mnemonic = "matrix_encoding";
+  let mnemonic = "matrix";
   let description = [{ TODO:add }];
   let parameters = (
     ins
@@ -31,7 +31,7 @@ def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
     SmallVector<MatrixType, 4> mt;
 
     for (const NamedAttribute &attr : dict) {
-      if (attr.first == "encodingType") {
+      if (attr.first == "p") {
         auto arrayAttr = attr.second.dyn_cast<ArrayAttr>();
         if (!arrayAttr) {
           $_parser.emitError($_parser.getNameLoc(), 
