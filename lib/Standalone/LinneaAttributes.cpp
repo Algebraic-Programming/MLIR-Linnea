@@ -17,6 +17,9 @@ void LinneaMatrixEncodingAttr::print(DialectAsmPrinter &printer) const {
 
   for (size_t i = 0, e = getEncodingType().size(); i < e; i++) {
     switch (getEncodingType()[i]) {
+    case MatrixType::General:
+      printer << "\"general\"";
+      break;
     case MatrixType::FullRank:
       printer << "\"fullrank\"";
       break;

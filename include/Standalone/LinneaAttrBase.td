@@ -46,7 +46,9 @@ def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
             return {};
           }
           auto strVal = strAttr.getValue();
-          if (strVal == "fullrank")
+          if (strVal == "general")
+            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::General);
+          else if (strVal == "fullrank")
             mt.push_back(LinneaMatrixEncodingAttr::MatrixType::FullRank);
           else if (strVal == "diagonal")
             mt.push_back(LinneaMatrixEncodingAttr::MatrixType::Diagonal);
@@ -77,12 +79,9 @@ def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
       $_ctxt, mt);
   }];
 
-  //let printer = [{
-  //  $_printer << "ecoding matrix";  
-  //]};
-
   let extraClassDeclaration = [{
     enum class MatrixType {
+      General,
       FullRank,
       Diagonal,
       UnitDiagonal,

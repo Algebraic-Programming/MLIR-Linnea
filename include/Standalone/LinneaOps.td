@@ -31,6 +31,36 @@ def Linnea_InverseOp : Linnea_Op<"inverse", [NoSideEffect,
     let hasCanonicalizeMethod = 1;
 }
 
+def Linnea_TransOp : Linnea_Op<"transpose", [NoSideEffect, 
+                                             SameOperandsAndResultType]> {
+    let summary = "Add doc.";
+    let description = [{
+    
+    }];
+
+    let arguments = (ins Linnea_Matrix:$input);
+    let results = (outs Linnea_Matrix:$output);
+
+    let assemblyFormat = [{
+      $input attr-dict `:` type($input)
+    }];
+}
+
+def Linnea_CholeskyOp : Linnea_Op<"cholesky", [NoSideEffect, 
+                                               SameOperandsAndResultType]> {
+    let summary = "Add doc.";
+    let description = [{
+    
+    }];
+
+    let arguments = (ins Linnea_Matrix:$input);
+    let results = (outs Linnea_Matrix:$output);
+
+    let assemblyFormat = [{
+      $input attr-dict `:` type($input)
+    }];
+}
+
 def Linnea_MulOp : Linnea_Op<"mul", [NoSideEffect]> {
     let summary = "Add doc.";
     let description = [{
