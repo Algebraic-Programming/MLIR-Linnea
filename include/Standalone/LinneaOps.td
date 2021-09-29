@@ -32,18 +32,20 @@ def Linnea_InverseOp : Linnea_Op<"inverse", [NoSideEffect,
     let hasCanonicalizer = 1;
 }
 
-def Linnea_SymbolicTransposeOp : Linnea_Op<"symbolicTranspose", [NoSideEffect]> {
+def Linnea_SymbolicTransposeOp : Linnea_Op<"symtrans", [NoSideEffect]> {
   let summary = "Add doc";
   let description = [{
 
-  ]};
+  }];
 
-  let arguments = (ins Linnea_SymbolicMatrix:$input);
-  let results = (outs Linnea_SymbolicMatrix:$output);
+  let arguments = (ins LinneaSymbolicMatrix:$input);
+  let results = (outs LinneaSymbolicMatrix:$output);
   
   let assemblyFormat = [{
-    $input attr-dict `:` type($input)
+    $input attr-dict `:` type($input) `->` type($output) 
   }];
+
+  let verifier = [{ return ::verifySymbolicTransposeOp(*this); }];
 }
 
 def Linnea_TransOp : Linnea_Op<"transpose", [NoSideEffect, 

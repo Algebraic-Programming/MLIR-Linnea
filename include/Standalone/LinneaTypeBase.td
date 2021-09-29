@@ -55,9 +55,9 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
         mt.push_back(MatrixType::MatrixProperty::Diagonal);
       else if (strVal == "unitdiagonal")
         mt.push_back(MatrixType::MatrixProperty::UnitDiagonal);
-      else if (strVal == "lowertriangular")
+      else if (strVal == "lowerTri")
         mt.push_back(MatrixType::MatrixProperty::LowerTriangular);
-      else if (strVal == "uppertriangular")
+      else if (strVal == "upperTri")
         mt.push_back(MatrixType::MatrixProperty::UpperTriangular);
       else if (strVal == "symmetric")
         mt.push_back(MatrixType::MatrixProperty::Symmetric);

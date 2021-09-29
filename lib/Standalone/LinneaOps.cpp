@@ -16,6 +16,29 @@
 using namespace mlir;
 using namespace mlir::linnea;
 
+/// verify transpose properties (i.e., if input lower tri. output must be upper
+/// tri.).
+static LogicalResult verifySymbolicTransposeOp(SymbolicTransposeOp op) {
+  Value input = op.getOperand();
+  Value output = op.getResult();
+
+  ArrayRef<MatrixType::MatrixProperty> propertiesInput =
+      input.getType().cast<MatrixType>().getProperty();
+  ArrayRef<MatrixType::MatrixProperty> propertiesOutput =
+      output.getType().cast<MatrixType>().getProperty();
+
+  if ((propertiesInput.size() == 1) &&
+      (propertiesInput[0] == MatrixType::MatrixProperty::LowerTriangular) &&
+      (propertiesOutput.size() != 1 ||
+       propertiesOutput[0] != MatrixType::MatrixProperty::LowerTriangular)) {
+    op.emitError(
+        "input is lowerTriangular then output must be lowerTriangular");
+    return failure();
+  }
+
+  return success();
+}
+
 #define GET_OP_CLASSES
 #include "Standalone/LinneaOps.cpp.inc"
 
