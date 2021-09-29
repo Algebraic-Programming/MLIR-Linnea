@@ -11,6 +11,7 @@
 
 include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "LinneaTypeBase.td" 
 
 def Linnea_Matrix : 2DTensorOf<[AnyType]>;
 
@@ -29,6 +30,20 @@ def Linnea_InverseOp : Linnea_Op<"inverse", [NoSideEffect,
     }];
 
     let hasCanonicalizer = 1;
+}
+
+def Linnea_SymbolicTransposeOp : Linnea_Op<"symbolicTranspose", [NoSideEffect]> {
+  let summary = "Add doc";
+  let description = [{
+
+  ]};
+
+  let arguments = (ins Linnea_SymbolicMatrix:$input);
+  let results = (outs Linnea_SymbolicMatrix:$output);
+  
+  let assemblyFormat = [{
+    $input attr-dict `:` type($input)
+  }];
 }
 
 def Linnea_TransOp : Linnea_Op<"transpose", [NoSideEffect, 
