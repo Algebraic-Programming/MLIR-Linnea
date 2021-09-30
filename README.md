@@ -36,3 +36,64 @@ func private @check_type(%arg0: !linnea.matrix<#S>, %arg1: !linnea.matrix<#A>) {
 	return %1
 }
 ```
+
+## 30th of Sept
+
+- Rule propagation scale?
+- Choice of rule to fire?
+
+- Assumption "f" factorized flag does not get propagate by a mul.
+
+```
+C = A^T * S^(-1) * A
+C = A^(T) * (L L^T)^(-1) * A
+C = A^(T) * L^(-T) * L^(-1) * A
+
+func(%A : matrix<["frank, sq"]>, %S : matrix<["spd"]>) {
+  %0 = trans(%A) : matrix<["frank, sq"]> -> matrix<["frank,sq"]>
+  %1 = inv(%S) : matrix<["spd"]> -> matrix<["spd"]>
+  %2 = mul(%0, %1, %A) : matrix<["frank, sq"]>, matrix<["spd"]>, matrix<["frank, sq"]> -> matrix<["spd"]>
+}
+
+Rule 1. factorization: operand mul comes from inverse
+
+func(%A : matrix<["frank, sq"]>, %S : matrix<["spd"]>) {
+  %0 = trans(%A) : matrix<["frank, sq"]> -> matrix<["frank, sq"]>
+	
+  %1 = chol(%S) : matrix<["spd"]> -> matrix<["lt", "f"]>
+  %2 = trans(%1) : matrix<["lt", "f"]> -> matrix<["ut", "f"]>
+  %3 = mul(%1, %2) : matrix<["lt", "f"]>, matrix<["ut", "f"]> -> matrix<["spd"]>
+  %4 = inv(%3) : matrix<["spd"]> -> matrix<["spd"]>
+  
+  %5 = mul(%0, %4, %A) : matrix<["frank, sq"]>, matrix<["spd"]>, matrix<["frank, sq"]> -> matrix<["spd"]>
+}
+
+Rule 2. inverse of a product
+
+func(%A : matrix<["frank, sq"]>, %S : matrix<["spd"]>) {
+  %0 = trans(%A) : matrix<["frank, sq"]> -> matrix<["frank, sq"]>
+	
+  %1 = chol(%S) : matrix<["spd"]> -> matrix<["lt", "f"]>
+  %2 = trans(%1) : matrix<["lt", "f"]> -> matrix<["ut", "f"]>
+  
+  %3 = inv(%2) : matrix<["ut", "f"]> -> matrix<["lt", "f"]>
+  %4 = inv(%1) : matrix<["lt", "f"]> -> matrix<["ut", "f"]>
+  %5 = mul(%3, %4) : matrix<["lt", "f"]>, matrix<["ut", "f"]> -> matrix<["spd"]> 
+  
+  %6 = mul(%0, %5, %A) : matrix<["frank, sq"]>, matrix<["spd"]>, matrix<["frank, sq"]> -> matrix<["spd"]>
+}
+
+Rule 3. collapse mul together
+
+func(%A : matrix<["frank, sq"], %S : matrix<["spd"]) {
+  %0 = trans(%A) : matrix<["frank, sq"]> -> matrix<["frank, sq"]>
+	
+  %1 = chol(%S) : matrix<["spd"]> -> matrix<["lt", "f"]>
+  %2 = trans(%1) : matrix<["lt", "f"]> -> matrix<["ut", "f"]>
+  
+  %3 = inv(%2) : matrix<["ut", "f"]> -> matrix<["lt", "f"]>
+  %4 = inv(%1) : matrix<["lt", "f"]> -> matrix<["ut", "f"]>
+  %5 = mul(%0, %3, %4, %A) : matrix<["frank, sq"]>, matrix<["lt", "f"]>, matrix<["ut", "f"]>,
+  			                     matrix<["frank, sq"]> -> matrix<["spd"]>
+}
+```
