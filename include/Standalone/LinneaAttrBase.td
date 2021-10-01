@@ -66,6 +66,10 @@ def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
             mt.push_back(LinneaMatrixEncodingAttr::MatrixType::SPSD);
           else if (strVal == "identity")
             mt.push_back(LinneaMatrixEncodingAttr::MatrixType::Identity);
+          else if (strVal == "square")
+            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::Square);
+          else if (strVal == "factored")
+            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::Factored);
           else {
             $_parser.emitError($_parser.getNameLoc(),
                                "unexpected matrix type: ") << strVal;
@@ -83,11 +87,13 @@ def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
     enum class MatrixType {
       General,
       FullRank,
+      Factored,
       Diagonal,
       UnitDiagonal,
       LowerTriangular,
       UpperTriangular,
       Symmetric,
+      Square,
       SPD,
       SPSD,
       Identity

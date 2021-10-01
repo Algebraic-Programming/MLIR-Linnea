@@ -26,7 +26,7 @@ def Linnea_InverseOp : Linnea_Op<"inverse", [NoSideEffect,
     let results = (outs Linnea_Matrix:$output);
 
     let assemblyFormat = [{
-      $input attr-dict `:` type($input)
+      $input attr-dict `:` type($input) `->` type($output)
     }];
 
     let hasCanonicalizer = 1;
@@ -59,7 +59,7 @@ def Linnea_TransOp : Linnea_Op<"transpose", [NoSideEffect,
     let results = (outs Linnea_Matrix:$output);
 
     let assemblyFormat = [{
-      $input attr-dict `:` type($input)
+      $input attr-dict `:` type($input) `->` type($output)
     }];
 }
 
@@ -74,7 +74,7 @@ def Linnea_CholeskyOp : Linnea_Op<"cholesky", [NoSideEffect,
     let results = (outs Linnea_Matrix:$output);
 
     let assemblyFormat = [{
-      $input attr-dict `:` type($input)
+      $input attr-dict `:` type($input) `->` type($output)
     }];
 }
 

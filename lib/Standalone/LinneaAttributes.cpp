@@ -39,6 +39,9 @@ void LinneaMatrixEncodingAttr::print(DialectAsmPrinter &printer) const {
     case MatrixType::FullRank:
       printer << "\"fullrank\"";
       break;
+    case MatrixType::Factored:
+      printer << "\"factored\"";
+      break;
     case MatrixType::Diagonal:
       printer << "\"diagonal\"";
       break;
@@ -59,6 +62,9 @@ void LinneaMatrixEncodingAttr::print(DialectAsmPrinter &printer) const {
       break;
     case MatrixType::SPSD:
       printer << "\"spsd\"";
+      break;
+    case MatrixType::Square:
+      printer << "\"square\"";
       break;
     case MatrixType::Identity:
       printer << "\"identity\"";

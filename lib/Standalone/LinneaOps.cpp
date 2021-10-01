@@ -74,37 +74,53 @@ struct CholeskyFact : public OpRewritePattern<InverseOp> {
   }
 
   // Assume we are dealing with ranked 2d tensor type.
-  Value createBufferOpFor(Value u, Value v, Location loc,
-                          PatternRewriter &rewriter) const {
+  Value createBufferOpWithAttr(Value u, Value v, Location loc,
+                               LinneaMatrixEncodingAttr attr,
+                               PatternRewriter &rewriter) const {
     // static shape.
+    mlir::Value buffer;
     RankedTensorType uT = u.getType().cast<RankedTensorType>();
     RankedTensorType vT = v.getType().cast<RankedTensorType>();
     if ((uT.hasStaticShape()) && (vT.hasStaticShape())) {
       auto shapeU = uT.getShape();
       auto shapeV = vT.getShape();
       SmallVector<int64_t, 2> outShape{shapeU[0], shapeV[1]};
-      Value buffer = rewriter.create<linalg::InitTensorOp>(loc, outShape,
-                                                           getElementType(u));
-      return buffer;
+      buffer = rewriter.create<linalg::InitTensorOp>(loc, outShape,
+                                                     getElementType(u));
     }
     // dynamic shape.
-    Value left = rewriter.createOrFold<tensor::DimOp>(loc, u, 0);
-    Value right = rewriter.createOrFold<tensor::DimOp>(loc, v, 1);
-    SmallVector<Value, 2> outShape{left, right};
-    Value buffer =
-        rewriter.create<linalg::InitTensorOp>(loc, outShape, getElementType(u));
-    return buffer;
+    else {
+      Value left = rewriter.createOrFold<tensor::DimOp>(loc, u, 0);
+      Value right = rewriter.createOrFold<tensor::DimOp>(loc, v, 1);
+      SmallVector<Value, 2> outShape{left, right};
+      buffer = rewriter.create<linalg::InitTensorOp>(loc, outShape,
+                                                     getElementType(u));
+    }
+    // cast
+    RankedTensorType bufferType = buffer.getType().cast<RankedTensorType>();
+    RankedTensorType castType = RankedTensorType::get(
+        bufferType.getShape(), bufferType.getElementType(), attr);
+    Value cast = rewriter.create<tensor::CastOp>(loc, castType, buffer);
+    return cast;
   }
 
   LogicalResult matchAndRewrite(InverseOp op,
                                 PatternRewriter &rewriter) const override {
     Value operand = op.getOperand();
     Value result = op.getResult();
-
+    PatternRewriter::InsertionGuard insertGuard(rewriter);
     // if SPD and is used in a mul -> introduce cholesky fact.
-    // 1. build matrix u
-    // 2. build matrix trans(u)
-    // 3. multiply the two.
+    // 1. build matrix U
+    // 2. build matrix trans(U)
+    // 3. multiply the two : U(t) * U
+    // 4. keep the inverse on their product
+
+    // if the operand comes from another mul bail out.
+    if (isa_and_nonnull<MulOp>(operand.getDefiningOp<MulOp>()))
+      return failure();
+
+    // check if we have SPD property and the users of the result
+    // is a mul operation.
     if (isSPD(operand.getType()) &&
         llvm::any_of(result.getUsers(), [](Operation *user) {
           if (isa<MulOp>(user))
@@ -117,24 +133,30 @@ struct CholeskyFact : public OpRewritePattern<InverseOp> {
           opType.getShape(), opType.getElementType(),
           LinneaMatrixEncodingAttr::get(
               op->getContext(),
-              LinneaMatrixEncodingAttr::MatrixType::UpperTriangular));
+              {LinneaMatrixEncodingAttr::MatrixType::UpperTriangular,
+               LinneaMatrixEncodingAttr::MatrixType::Factored}));
+      // U is upper trinagular.
       Value u = rewriter.create<CholeskyOp>(op.getLoc(), uType, operand)
                     ->getResult(0);
       RankedTensorType uTType = RankedTensorType::get(
           opType.getShape(), opType.getElementType(),
           LinneaMatrixEncodingAttr::get(
               op->getContext(),
-              LinneaMatrixEncodingAttr::MatrixType::LowerTriangular));
+              {LinneaMatrixEncodingAttr::MatrixType::LowerTriangular,
+               LinneaMatrixEncodingAttr::MatrixType::Factored}));
+      // U(T) is lower trinagular.
       Value uT = rewriter.create<TransOp>(op.getLoc(), uTType, u)->getResult(0);
-      // create a static buffer if possible.
-      Value buffer = createBufferOpFor(u, uT, op.getLoc(), rewriter);
+      // The mul between U(t) and U is SPD, thus adjust the buffer type.
+      LinneaMatrixEncodingAttr mulAttr = LinneaMatrixEncodingAttr::get(
+          op->getContext(), LinneaMatrixEncodingAttr::MatrixType::SPD);
+      Value buffer =
+          createBufferOpWithAttr(uT, u, op.getLoc(), mulAttr, rewriter);
       Value mul =
           rewriter
-              .create<MulOp>(op.getLoc(), buffer.getType(), ValueRange{u, uT})
+              .create<MulOp>(op.getLoc(), buffer.getType(), ValueRange{uT, u})
               ->getResult(0);
-      Value iMul = rewriter.create<InverseOp>(op.getLoc(), mul.getType(), mul)
-                       ->getResult(0);
-      rewriter.replaceOp(op, iMul);
+
+      rewriter.updateRootInPlace(op, [&]() { op->setOperand(0, mul); });
       return success();
     }
     return failure();

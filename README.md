@@ -62,8 +62,8 @@ func(%A : matrix<["frank, sq"]>, %S : matrix<["spd"]>) {
 	
   %1 = chol(%S) : matrix<["spd"]> -> matrix<["lt", "f"]>
   %2 = trans(%1) : matrix<["lt", "f"]> -> matrix<["ut", "f"]>
-  %3 = mul(%1, %2) : matrix<["lt", "f"]>, matrix<["ut", "f"]> -> matrix<["spd"]>
-  %4 = inv(%3) : matrix<["spd"]> -> matrix<["spd"]>
+  %3 = mul(%1, %2) : matrix<["lt", "f"]>, matrix<["ut", "f"]> -> matrix<["spd", "f"]>
+  %4 = inv(%3) : matrix<["spd", "f"]> -> matrix<["spd", "f"]>
   
   %5 = mul(%0, %4, %A) : matrix<["frank, sq"]>, matrix<["spd"]>, matrix<["frank, sq"]> -> matrix<["spd"]>
 }
