@@ -10,5 +10,7 @@
 #include "Standalone/LinneaAttrBase.h.inc"
 
 bool isSPD(mlir::Type type);
+bool isLowerTriangular(mlir::Type type);
+bool isUpperTriangular(mlir::Type type);
 
 #endif // LINNEA_ATTRIBUTES_H

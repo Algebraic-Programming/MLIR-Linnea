@@ -18,14 +18,26 @@ LinneaMatrixEncodingAttr getMatrixEncodingAttr(Type type) {
   return nullptr;
 }
 
-bool isSPD(Type type) {
+template <LinneaMatrixEncodingAttr::MatrixType T>
+bool isT(Type type) {
   auto encoding = getMatrixEncodingAttr(type);
   if (!encoding)
     return false;
-  if (llvm::is_contained(encoding.getEncodingType(),
-                         LinneaMatrixEncodingAttr::MatrixType::SPD))
+  if (llvm::is_contained(encoding.getEncodingType(), T))
     return true;
   return false;
+}
+
+bool isSPD(Type type) {
+  return isT<LinneaMatrixEncodingAttr::MatrixType::SPD>(type);
+}
+
+bool isLowerTriangular(Type type) {
+  return isT<LinneaMatrixEncodingAttr::MatrixType::LowerTriangular>(type);
+}
+
+bool isUpperTriangular(Type type) {
+  return isT<LinneaMatrixEncodingAttr::MatrixType::UpperTriangular>(type);
 }
 
 void LinneaMatrixEncodingAttr::print(DialectAsmPrinter &printer) const {

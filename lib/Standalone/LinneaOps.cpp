@@ -42,7 +42,103 @@ static LogicalResult verifySymbolicTransposeOp(SymbolicTransposeOp op) {
 #define GET_OP_CLASSES
 #include "Standalone/LinneaOps.cpp.inc"
 
+// Assume we are dealing with ranked 2d tensor type.
+static Type getElementType(Value v) {
+  RankedTensorType t = v.getType().cast<RankedTensorType>();
+  return t.getElementType();
+}
+
+// Assume we are dealing with ranked 2d tensor type.
+static Value createBufferOpWithAttr(Value u, Value v, Location loc,
+                                    LinneaMatrixEncodingAttr attr,
+                                    PatternRewriter &rewriter) {
+  // static shape.
+  mlir::Value buffer;
+  RankedTensorType uT = u.getType().cast<RankedTensorType>();
+  RankedTensorType vT = v.getType().cast<RankedTensorType>();
+  if ((uT.hasStaticShape()) && (vT.hasStaticShape())) {
+    auto shapeU = uT.getShape();
+    auto shapeV = vT.getShape();
+    SmallVector<int64_t, 2> outShape{shapeU[0], shapeV[1]};
+    buffer =
+        rewriter.create<linalg::InitTensorOp>(loc, outShape, getElementType(u));
+  }
+  // dynamic shape.
+  else {
+    Value left = rewriter.createOrFold<tensor::DimOp>(loc, u, 0);
+    Value right = rewriter.createOrFold<tensor::DimOp>(loc, v, 1);
+    SmallVector<Value, 2> outShape{left, right};
+    buffer =
+        rewriter.create<linalg::InitTensorOp>(loc, outShape, getElementType(u));
+  }
+  // cast
+  RankedTensorType bufferType = buffer.getType().cast<RankedTensorType>();
+  RankedTensorType castType = RankedTensorType::get(
+      bufferType.getShape(), bufferType.getElementType(), attr);
+  Value cast = rewriter.create<tensor::CastOp>(loc, castType, buffer);
+  return cast;
+}
+
 namespace {
+
+struct InverseOfMul : public OpRewritePattern<InverseOp> {
+  using OpRewritePattern<InverseOp>::OpRewritePattern;
+
+  Type invertType(Type inputType) const {
+    RankedTensorType inputTensorType = inputType.cast<RankedTensorType>();
+    auto encoding = inputTensorType.getEncoding()
+                        .dyn_cast_or_null<LinneaMatrixEncodingAttr>();
+    if (!encoding)
+      return inputType;
+    SmallVector<LinneaMatrixEncodingAttr::MatrixType, 4> properties;
+    for (size_t i = 0, e = encoding.getEncodingType().size(); i < e; i++) {
+      if (encoding.getEncodingType()[i] ==
+          LinneaMatrixEncodingAttr::MatrixType::LowerTriangular)
+        properties.push_back(
+            LinneaMatrixEncodingAttr::MatrixType::UpperTriangular);
+      else if (encoding.getEncodingType()[i] ==
+               LinneaMatrixEncodingAttr::MatrixType::UpperTriangular)
+        properties.push_back(
+            LinneaMatrixEncodingAttr::MatrixType::LowerTriangular);
+      else
+        properties.push_back(encoding.getEncodingType()[i]);
+    }
+    return RankedTensorType::get(inputTensorType.getShape(),
+                                 inputTensorType.getElementType(),
+                                 LinneaMatrixEncodingAttr::get(
+                                     inputTensorType.getContext(), properties));
+  }
+
+  LogicalResult matchAndRewrite(InverseOp op,
+                                PatternRewriter &rewriter) const override {
+    Value operand = op.getOperand();
+    if (MulOp mul = operand.getDefiningOp<MulOp>()) {
+      // expect a mul to have only two operands.
+      if (mul.getOperands().size() != 2)
+        return failure();
+      SmallVector<Value, 4> resultInverse;
+      for (auto operandMul : mul.getOperands()) {
+        if (!isLowerTriangular(operandMul.getType()) &&
+            !isUpperTriangular(operandMul.getType()))
+          return failure();
+        Type newType = invertType(operandMul.getType());
+        resultInverse.push_back(
+            rewriter.create<InverseOp>(op.getLoc(), newType, operandMul)
+                ->getResult(0));
+      }
+      LinneaMatrixEncodingAttr mulAttr = LinneaMatrixEncodingAttr::get(
+          op->getContext(), LinneaMatrixEncodingAttr::MatrixType::SPD);
+      Value buffer = createBufferOpWithAttr(resultInverse[0], resultInverse[1],
+                                            op.getLoc(), mulAttr, rewriter);
+      Value mulVal =
+          rewriter.create<MulOp>(op.getLoc(), buffer.getType(), resultInverse)
+              ->getResult(0);
+      rewriter.replaceOp(op, mulVal);
+      return success();
+    }
+    return failure();
+  }
+};
 
 struct DoubleInverse : public OpRewritePattern<InverseOp> {
   using OpRewritePattern<InverseOp>::OpRewritePattern;
@@ -66,43 +162,6 @@ struct DoubleInverse : public OpRewritePattern<InverseOp> {
 
 struct CholeskyFact : public OpRewritePattern<InverseOp> {
   using OpRewritePattern<InverseOp>::OpRewritePattern;
-
-  // Assume we are dealing with ranked 2d tensor type.
-  Type getElementType(Value v) const {
-    RankedTensorType t = v.getType().cast<RankedTensorType>();
-    return t.getElementType();
-  }
-
-  // Assume we are dealing with ranked 2d tensor type.
-  Value createBufferOpWithAttr(Value u, Value v, Location loc,
-                               LinneaMatrixEncodingAttr attr,
-                               PatternRewriter &rewriter) const {
-    // static shape.
-    mlir::Value buffer;
-    RankedTensorType uT = u.getType().cast<RankedTensorType>();
-    RankedTensorType vT = v.getType().cast<RankedTensorType>();
-    if ((uT.hasStaticShape()) && (vT.hasStaticShape())) {
-      auto shapeU = uT.getShape();
-      auto shapeV = vT.getShape();
-      SmallVector<int64_t, 2> outShape{shapeU[0], shapeV[1]};
-      buffer = rewriter.create<linalg::InitTensorOp>(loc, outShape,
-                                                     getElementType(u));
-    }
-    // dynamic shape.
-    else {
-      Value left = rewriter.createOrFold<tensor::DimOp>(loc, u, 0);
-      Value right = rewriter.createOrFold<tensor::DimOp>(loc, v, 1);
-      SmallVector<Value, 2> outShape{left, right};
-      buffer = rewriter.create<linalg::InitTensorOp>(loc, outShape,
-                                                     getElementType(u));
-    }
-    // cast
-    RankedTensorType bufferType = buffer.getType().cast<RankedTensorType>();
-    RankedTensorType castType = RankedTensorType::get(
-        bufferType.getShape(), bufferType.getElementType(), attr);
-    Value cast = rewriter.create<tensor::CastOp>(loc, castType, buffer);
-    return cast;
-  }
 
   LogicalResult matchAndRewrite(InverseOp op,
                                 PatternRewriter &rewriter) const override {
@@ -167,5 +226,5 @@ struct CholeskyFact : public OpRewritePattern<InverseOp> {
 
 void InverseOp::getCanonicalizationPatterns(OwningRewritePatternList &results,
                                             MLIRContext *context) {
-  results.insert<DoubleInverse, CholeskyFact>(context);
+  results.insert<DoubleInverse, CholeskyFact, InverseOfMul>(context);
 }
