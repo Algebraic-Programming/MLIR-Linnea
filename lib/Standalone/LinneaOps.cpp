@@ -233,7 +233,26 @@ struct CollapseMul : public OpRewritePattern<MulOp> {
 
   LogicalResult matchAndRewrite(MulOp op,
                                 PatternRewriter &rewriter) const override {
-    return failure();
+    SmallVector<Value, 4> candidates;
+    for (auto operand : op.getOperands()) {
+      if (MulOp parent = operand.getDefiningOp<MulOp>()) {
+        Value parentResult = parent.getResult();
+        if (!parentResult.hasOneUse())
+          continue;
+        Operation *childOp = *parentResult.getUsers().begin();
+        if (childOp != op)
+          continue;
+        candidates.append(parent.getOperands().begin(),
+                          parent.getOperands().end());
+
+      } else {
+        candidates.push_back(operand);
+      }
+    }
+    if (candidates.size() == op.getOperands().size())
+      return failure();
+    rewriter.updateRootInPlace(op, [&]() { op->setOperands(candidates); });
+    return success();
   }
 };
 
