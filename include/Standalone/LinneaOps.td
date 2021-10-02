@@ -39,11 +39,15 @@ def Linnea_SymbolicTransposeOp : Linnea_Op<"symtrans", [NoSideEffect]> {
   }];
 
   let arguments = (ins LinneaSymbolicMatrix:$input);
-  let results = (outs LinneaSymbolicMatrix:$output);
+  let results = (outs AnyType:$output);
   
   let assemblyFormat = [{
     $input attr-dict `:` type($input) `->` type($output) 
   }];
+
+  let builders = [
+    OpBuilder<(ins "Value":$input)>
+  ];
 
   let verifier = [{ return ::verifySymbolicTransposeOp(*this); }];
 }

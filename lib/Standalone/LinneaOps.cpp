@@ -39,6 +39,11 @@ static LogicalResult verifySymbolicTransposeOp(SymbolicTransposeOp op) {
   return success();
 }
 
+void SymbolicTransposeOp::build(OpBuilder &builder, OperationState &result, Value input) {
+  
+  build(builder, result, input.getType(), input);
+}
+
 #define GET_OP_CLASSES
 #include "Standalone/LinneaOps.cpp.inc"
 
@@ -84,6 +89,7 @@ namespace {
 struct InverseOfMul : public OpRewritePattern<InverseOp> {
   using OpRewritePattern<InverseOp>::OpRewritePattern;
 
+  // TODO: move all this logic in the custom builder.
   Type invertType(Type inputType) const {
     RankedTensorType inputTensorType = inputType.cast<RankedTensorType>();
     auto encoding = inputTensorType.getEncoding()
@@ -227,10 +233,6 @@ struct CollapseMul : public OpRewritePattern<MulOp> {
 
   LogicalResult matchAndRewrite(MulOp op,
                                 PatternRewriter &rewriter) const override {
-    for (auto operand : op.getOperands()) {
-      if (auto mulOp = operand.getDefiningOp<MulOp>()) {
-      }
-    }
     return failure();
   }
 };
