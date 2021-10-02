@@ -9,8 +9,8 @@
 #define GET_ATTRDEF_CLASSES
 #include "Standalone/LinneaAttrBase.h.inc"
 
-bool isSPD(mlir::Type type);
-bool isLowerTriangular(mlir::Type type);
-bool isUpperTriangular(mlir::Type type);
+bool hasSPDAttr(mlir::Type type);
+bool hasLowerTriangularAttr(mlir::Type type);
+bool hasUpperTriangularAttr(mlir::Type type);
 
 #endif // LINNEA_ATTRIBUTES_H

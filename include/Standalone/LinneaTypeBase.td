@@ -11,7 +11,7 @@ class Linnea_Type<string name>
 def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
   let mnemonic = "matrix";
 
-  let summary = "A 2-dimensional tensor";
+  let summary = "A symbolic tensor";
   let description = [{
     A 2-dimensional tensor.
   }];
@@ -61,6 +61,10 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
         mt.push_back(MatrixType::MatrixProperty::SPSD);
       else if (strVal == "identity")
         mt.push_back(MatrixType::MatrixProperty::Identity);
+      else if (strVal == "square")
+        mt.push_back(MatrixType::MatrixProperty::Square);
+      else if (strVal == "factored")
+        mt.push_back(MatrixType::MatrixProperty::Factored);
       else {
         $_parser.emitError($_parser.getNameLoc(),
                            "unexpected matrix type: ") << strVal;
@@ -96,6 +100,7 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
     enum class MatrixProperty {
       General,
       FullRank,
+      Factored,
       Diagonal,
       UnitDiagonal,
       LowerTriangular,
@@ -103,6 +108,7 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
       Symmetric,
       SPD,
       SPSD,
+      Square,
       Identity
     };
   }]; 

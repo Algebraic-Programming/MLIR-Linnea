@@ -11,4 +11,8 @@
 #define GET_TYPEDEF_CLASSES
 #include "Standalone/LinneaTypeBase.h.inc"
 
+bool isSPD(mlir::linnea::MatrixType type);
+bool isLowerTriangular(mlir::linnea::MatrixType type);
+bool isUpperTriangular(mlir::linnea::MatrixType type);
+
 #endif // LINNEA_TYPES_H

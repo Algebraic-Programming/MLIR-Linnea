@@ -4,11 +4,31 @@
 using namespace mlir;
 using namespace mlir::linnea;
 
-LogicalResult
-MatrixType::verify(function_ref<InFlightDiagnostic()> emitError,
-                   llvm::ArrayRef<MatrixType::MatrixProperty> property,
-                   llvm::ArrayRef<int64_t> dims) {
+LogicalResult MatrixType::verify(function_ref<InFlightDiagnostic()> emitError,
+                                 ArrayRef<MatrixType::MatrixProperty> property,
+                                 ArrayRef<int64_t> dims) {
   return success();
+}
+
+template <MatrixType::MatrixProperty T>
+bool isT(MatrixType type) {
+  assert(type && "must be valid");
+  ArrayRef<MatrixType::MatrixProperty> properties = type.getProperty();
+  if (llvm::is_contained(properties, T))
+    return true;
+  return false;
+}
+
+bool isSPD(MatrixType type) {
+  return isT<MatrixType::MatrixProperty::SPD>(type);
+}
+
+bool isLowerTriangular(MatrixType type) {
+  return isT<MatrixType::MatrixProperty::LowerTriangular>(type);
+}
+
+bool isUpperTriangular(MatrixType type) {
+  return isT<MatrixType::MatrixProperty::UpperTriangular>(type);
 }
 
 void MatrixType::print(DialectAsmPrinter &printer) const {
@@ -46,6 +66,12 @@ void MatrixType::print(DialectAsmPrinter &printer) const {
       break;
     case MatrixProperty::Identity:
       printer << "\"identity\"";
+      break;
+    case MatrixProperty::Square:
+      printer << "\"square\"";
+      break;
+    case MatrixProperty::Factored:
+      printer << "\"factored\"";
       break;
     }
     if (i != e - 1)

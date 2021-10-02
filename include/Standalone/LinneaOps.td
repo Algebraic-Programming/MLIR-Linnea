@@ -13,73 +13,66 @@ include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "LinneaTypeBase.td" 
 
-def Linnea_Matrix : 2DTensorOf<[AnyType]>;
-
-def Linnea_InverseOp : Linnea_Op<"inverse", [NoSideEffect,
-                                             SameOperandsAndResultType]> {
+def Linnea_InverseOp : Linnea_Op<"inverse", [NoSideEffect]> {
     let summary = "Add doc.";
     let description = [{
     
     }];
 
-    let arguments = (ins Linnea_Matrix:$input);
-    let results = (outs Linnea_Matrix:$output);
+    let arguments = (ins LinneaSymbolicMatrix:$input);
+    let results = (outs AnyType:$output);
 
     let assemblyFormat = [{
       $input attr-dict `:` type($input) `->` type($output)
     }];
+
+    let builders = [
+      OpBuilder<(ins "Value":$input)>
+    ];
+
+    let verifier = [{ return ::verifyInverseOp(*this); }];
 
     let hasCanonicalizer = 1;
 }
 
-def Linnea_SymbolicTransposeOp : Linnea_Op<"symtrans", [NoSideEffect]> {
-  let summary = "Add doc";
-  let description = [{
-
-  }];
-
-  let arguments = (ins LinneaSymbolicMatrix:$input);
-  let results = (outs AnyType:$output);
-  
-  let assemblyFormat = [{
-    $input attr-dict `:` type($input) `->` type($output) 
-  }];
-
-  let builders = [
-    OpBuilder<(ins "Value":$input)>
-  ];
-
-  let verifier = [{ return ::verifySymbolicTransposeOp(*this); }];
-}
-
-def Linnea_TransOp : Linnea_Op<"transpose", [NoSideEffect, 
-                                             SameOperandsAndResultType]> {
+def Linnea_TransposeOp : Linnea_Op<"transpose", [NoSideEffect]> {
     let summary = "Add doc.";
     let description = [{
     
     }];
 
-    let arguments = (ins Linnea_Matrix:$input);
-    let results = (outs Linnea_Matrix:$output);
+    let arguments = (ins LinneaSymbolicMatrix:$input);
+    let results = (outs AnyType:$output);
 
     let assemblyFormat = [{
       $input attr-dict `:` type($input) `->` type($output)
     }];
+
+    let builders = [
+      OpBuilder<(ins "Value":$input)>
+    ];
+
+    let verifier = [{ return ::verifyTransposeOp(*this); }];
 }
 
-def Linnea_CholeskyOp : Linnea_Op<"cholesky", [NoSideEffect, 
-                                               SameOperandsAndResultType]> {
+def Linnea_CholeskyOp : Linnea_Op<"cholesky", [NoSideEffect]> {
     let summary = "Add doc.";
     let description = [{
     
     }];
 
-    let arguments = (ins Linnea_Matrix:$input);
-    let results = (outs Linnea_Matrix:$output);
+    let arguments = (ins LinneaSymbolicMatrix:$input);
+    let results = (outs AnyType:$output);
 
     let assemblyFormat = [{
       $input attr-dict `:` type($input) `->` type($output)
     }];
+
+    let builders = [
+      OpBuilder<(ins "Value":$input)>
+    ];
+
+    let verifier = [{ return ::verifyCholeskyOp(*this); }];
 }
 
 def Linnea_MulOp : Linnea_Op<"mul", [NoSideEffect]> {
@@ -96,8 +89,8 @@ def Linnea_MulOp : Linnea_Op<"mul", [NoSideEffect]> {
         ```
     }];
 
-    let arguments = (ins Variadic<Linnea_Matrix>:$input);
-    let results = (outs Linnea_Matrix:$output);
+    let arguments = (ins Variadic<LinneaSymbolicMatrix>:$input);
+    let results = (outs AnyType:$output);
 
     let assemblyFormat = [{
       $input attr-dict `:` type($input) `->` type($output)
@@ -105,6 +98,11 @@ def Linnea_MulOp : Linnea_Op<"mul", [NoSideEffect]> {
 
     let hasCanonicalizer = 1;
 
+    let builders = [
+      OpBuilder<(ins "ValueRange":$input)>
+    ];
+
+    let verifier = [{ return ::verifyMulOp(*this); }];
 }
 
 #endif // LINNEA_OPS

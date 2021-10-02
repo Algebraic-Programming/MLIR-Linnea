@@ -7,8 +7,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "Standalone/LinneaOps.h"
-#include "Standalone/LinneaAttributes.h"
 #include "Standalone/LinneaDialect.h"
+#include "Standalone/LinneaTypes.h"
 
 #include "mlir/Dialect/Linalg/IR/LinalgOps.h"
 #include "mlir/IR/OpImplementation.h"
@@ -16,37 +16,92 @@
 using namespace mlir;
 using namespace mlir::linnea;
 
-/// verify transpose properties (i.e., if input lower tri. output must be upper
-/// tri.).
-static LogicalResult verifySymbolicTransposeOp(SymbolicTransposeOp op) {
-  Value input = op.getOperand();
-  Value output = op.getResult();
+MatrixType getToggledType(MatrixType type,
+                          MatrixType::MatrixProperty property) {
+  ArrayRef<MatrixType::MatrixProperty> properties = type.getProperty();
+  ArrayRef<MatrixType::MatrixProperty> newProperties = properties.drop_while(
+      [&](MatrixType::MatrixProperty p) { return p == property; });
+  assert(properties.size() == newProperties.size() + 1 && "property not found");
 
-  ArrayRef<MatrixType::MatrixProperty> propertiesInput =
-      input.getType().cast<MatrixType>().getProperty();
-  ArrayRef<MatrixType::MatrixProperty> propertiesOutput =
-      output.getType().cast<MatrixType>().getProperty();
+  SmallVector<MatrixType::MatrixProperty> newPropertiesVec = {
+      newProperties.begin(), newProperties.end()};
+  if (property == MatrixType::MatrixProperty::LowerTriangular)
+    newPropertiesVec.push_back(MatrixType::MatrixProperty::UpperTriangular);
+  else
+    newPropertiesVec.push_back(MatrixType::MatrixProperty::LowerTriangular);
 
-  if ((propertiesInput.size() == 1) &&
-      (propertiesInput[0] == MatrixType::MatrixProperty::LowerTriangular) &&
-      (propertiesOutput.size() != 1 ||
-       propertiesOutput[0] != MatrixType::MatrixProperty::LowerTriangular)) {
-    op.emitError(
-        "input is lowerTriangular then output must be lowerTriangular");
-    return failure();
-  }
+  SmallVector<int64_t, 2> dims = {type.getDims().begin(), type.getDims().end()};
+  std::swap(dims[0], dims[1]);
 
-  return success();
+  return MatrixType::get(type.getContext(), newPropertiesVec, dims);
 }
 
-void SymbolicTransposeOp::build(OpBuilder &builder, OperationState &result, Value input) {
-  
+void TransposeOp::build(OpBuilder &builder, OperationState &result,
+                        Value input) {
+  MatrixType inputType = input.getType().cast<MatrixType>();
+  assert(inputType && "must be valid");
+
+  Type outputType;
+  if (isLowerTriangular(inputType)) {
+    outputType =
+        getToggledType(inputType, MatrixType::MatrixProperty::LowerTriangular);
+  } else if (isUpperTriangular(inputType)) {
+    outputType =
+        getToggledType(inputType, MatrixType::MatrixProperty::UpperTriangular);
+  } else {
+    outputType = inputType;
+  }
+  build(builder, result, outputType, input);
+}
+
+// FIXME
+void InverseOp::build(OpBuilder &builder, OperationState &result, Value input) {
   build(builder, result, input.getType(), input);
 }
 
+// FIXME
+void CholeskyOp::build(OpBuilder &builder, OperationState &result,
+                       Value input) {
+  MatrixType inputType = input.getType().cast<MatrixType>();
+  assert(inputType && "must be valid");
+  assert(isSPD(inputType) && "expect SPD");
+  ArrayRef<MatrixType::MatrixProperty> properties = inputType.getProperty();
+
+  // preserve all properties but SPD.
+  ArrayRef<MatrixType::MatrixProperty> newProperties =
+      properties.drop_while([](MatrixType::MatrixProperty p) {
+        return p == MatrixType::MatrixProperty::SPD;
+      });
+
+  // add new properties.
+  SmallVector<MatrixType::MatrixProperty> newPropertiesVec = {
+      newProperties.begin(), newProperties.end()};
+  newPropertiesVec.push_back(MatrixType::MatrixProperty::UpperTriangular);
+  newPropertiesVec.push_back(MatrixType::MatrixProperty::Factored);
+
+  MatrixType newType = MatrixType::get(input.getContext(), newPropertiesVec,
+                                       inputType.getDims());
+
+  build(builder, result, newType, input);
+}
+
+// FIXME
+void MulOp::build(OpBuilder &builder, OperationState &result,
+                  ValueRange inputs) {
+  build(builder, result, Type(), inputs);
+}
+
+static LogicalResult verifyCholeskyOp(CholeskyOp op) { return success(); }
+
+static LogicalResult verifyInverseOp(InverseOp op) { return success(); }
+
+static LogicalResult verifyTransposeOp(TransposeOp op) { return success(); }
+
+static LogicalResult verifyMulOp(MulOp op) { return success(); }
+
 #define GET_OP_CLASSES
 #include "Standalone/LinneaOps.cpp.inc"
-
+/*
 // Assume we are dealing with ranked 2d tensor type.
 static Type getElementType(Value v) {
   RankedTensorType t = v.getType().cast<RankedTensorType>();
@@ -83,37 +138,11 @@ static Value createBufferOpWithAttr(Value u, Value v, Location loc,
   Value cast = rewriter.create<tensor::CastOp>(loc, castType, buffer);
   return cast;
 }
-
+*/
 namespace {
 
 struct InverseOfMul : public OpRewritePattern<InverseOp> {
   using OpRewritePattern<InverseOp>::OpRewritePattern;
-
-  // TODO: move all this logic in the custom builder.
-  Type invertType(Type inputType) const {
-    RankedTensorType inputTensorType = inputType.cast<RankedTensorType>();
-    auto encoding = inputTensorType.getEncoding()
-                        .dyn_cast_or_null<LinneaMatrixEncodingAttr>();
-    if (!encoding)
-      return inputType;
-    SmallVector<LinneaMatrixEncodingAttr::MatrixType, 4> properties;
-    for (size_t i = 0, e = encoding.getEncodingType().size(); i < e; i++) {
-      if (encoding.getEncodingType()[i] ==
-          LinneaMatrixEncodingAttr::MatrixType::LowerTriangular)
-        properties.push_back(
-            LinneaMatrixEncodingAttr::MatrixType::UpperTriangular);
-      else if (encoding.getEncodingType()[i] ==
-               LinneaMatrixEncodingAttr::MatrixType::UpperTriangular)
-        properties.push_back(
-            LinneaMatrixEncodingAttr::MatrixType::LowerTriangular);
-      else
-        properties.push_back(encoding.getEncodingType()[i]);
-    }
-    return RankedTensorType::get(inputTensorType.getShape(),
-                                 inputTensorType.getElementType(),
-                                 LinneaMatrixEncodingAttr::get(
-                                     inputTensorType.getContext(), properties));
-  }
 
   LogicalResult matchAndRewrite(InverseOp op,
                                 PatternRewriter &rewriter) const override {
@@ -124,20 +153,26 @@ struct InverseOfMul : public OpRewritePattern<InverseOp> {
         return failure();
       SmallVector<Value, 4> resultInverse;
       for (auto operandMul : mul.getOperands()) {
-        if (!isLowerTriangular(operandMul.getType()) &&
-            !isUpperTriangular(operandMul.getType()))
+        // only lower or upper triangular.
+        if (!isLowerTriangular(operandMul.getType().cast<MatrixType>()) &&
+            !isUpperTriangular(operandMul.getType().cast<MatrixType>()))
           return failure();
-        Type newType = invertType(operandMul.getType());
         resultInverse.push_back(
-            rewriter.create<InverseOp>(op.getLoc(), newType, operandMul)
-                ->getResult(0));
+            rewriter.create<InverseOp>(op.getLoc(), operandMul)->getResult(0));
       }
-      LinneaMatrixEncodingAttr mulAttr = LinneaMatrixEncodingAttr::get(
-          op->getContext(), LinneaMatrixEncodingAttr::MatrixType::SPD);
-      Value buffer = createBufferOpWithAttr(resultInverse[0], resultInverse[1],
-                                            op.getLoc(), mulAttr, rewriter);
+      if (resultInverse.size() != 2)
+        return failure();
+      ArrayRef<int64_t> dimInverseOp1 =
+          resultInverse[0].getType().cast<MatrixType>().getDims();
+      ArrayRef<int64_t> dimInverseOp2 =
+          resultInverse[1].getType().cast<MatrixType>().getDims();
+      SmallVector<int64_t, 2> dimsMul = {dimInverseOp1[0], dimInverseOp2[1]};
+      // Mul type is SPD.
+      // TODO: worth moving these logic in the builder too?
+      MatrixType newType = MatrixType::get(
+          op.getContext(), MatrixType::MatrixProperty::SPD, dimsMul);
       Value mulVal =
-          rewriter.create<MulOp>(op.getLoc(), buffer.getType(), resultInverse)
+          rewriter.create<MulOp>(op.getLoc(), newType, resultInverse)
               ->getResult(0);
       rewriter.replaceOp(op, mulVal);
       return success();
@@ -173,8 +208,7 @@ struct CholeskyFact : public OpRewritePattern<InverseOp> {
                                 PatternRewriter &rewriter) const override {
     Value operand = op.getOperand();
     Value result = op.getResult();
-    PatternRewriter::InsertionGuard insertGuard(rewriter);
-    // if SPD and is used in a mul -> introduce cholesky fact.
+    // if operand is SPD and is used in a mul -> introduce cholesky fact.
     // 1. build matrix U
     // 2. build matrix trans(U)
     // 3. multiply the two : U(t) * U
@@ -186,41 +220,25 @@ struct CholeskyFact : public OpRewritePattern<InverseOp> {
 
     // check if we have SPD property and the users of the result
     // is a mul operation.
-    if (isSPD(operand.getType()) &&
+    if (isSPD(operand.getType().dyn_cast_or_null<MatrixType>()) &&
         llvm::any_of(result.getUsers(), [](Operation *user) {
           if (isa<MulOp>(user))
             return true;
           return false;
         })) {
-      RankedTensorType opType = operand.getType().cast<RankedTensorType>();
-      // cannot modify the attribute on the 'opType' thus recreate another type.
-      RankedTensorType uType = RankedTensorType::get(
-          opType.getShape(), opType.getElementType(),
-          LinneaMatrixEncodingAttr::get(
-              op->getContext(),
-              {LinneaMatrixEncodingAttr::MatrixType::UpperTriangular,
-               LinneaMatrixEncodingAttr::MatrixType::Factored}));
       // U is upper trinagular.
-      Value u = rewriter.create<CholeskyOp>(op.getLoc(), uType, operand)
-                    ->getResult(0);
-      RankedTensorType uTType = RankedTensorType::get(
-          opType.getShape(), opType.getElementType(),
-          LinneaMatrixEncodingAttr::get(
-              op->getContext(),
-              {LinneaMatrixEncodingAttr::MatrixType::LowerTriangular,
-               LinneaMatrixEncodingAttr::MatrixType::Factored}));
+      Value u = rewriter.create<CholeskyOp>(op.getLoc(), operand)->getResult(0);
       // U(T) is lower trinagular.
-      Value uT = rewriter.create<TransOp>(op.getLoc(), uTType, u)->getResult(0);
-      // The mul between U(t) and U is SPD, thus adjust the buffer type.
-      LinneaMatrixEncodingAttr mulAttr = LinneaMatrixEncodingAttr::get(
-          op->getContext(), LinneaMatrixEncodingAttr::MatrixType::SPD);
-      Value buffer =
-          createBufferOpWithAttr(uT, u, op.getLoc(), mulAttr, rewriter);
+      Value uT = rewriter.create<TransposeOp>(op.getLoc(), u)->getResult(0);
+      ArrayRef<int64_t> dimsUT = uT.getType().cast<MatrixType>().getDims();
+      ArrayRef<int64_t> dimsU = u.getType().cast<MatrixType>().getDims();
+      SmallVector<int64_t, 2> dimsMul = {dimsUT[0], dimsU[1]};
+      // Mul type is SPD.
+      MatrixType newType = MatrixType::get(
+          op.getContext(), MatrixType::MatrixProperty::SPD, dimsMul);
       Value mul =
-          rewriter
-              .create<MulOp>(op.getLoc(), buffer.getType(), ValueRange{uT, u})
+          rewriter.create<MulOp>(op.getLoc(), newType, ValueRange{uT, u})
               ->getResult(0);
-
       rewriter.updateRootInPlace(op, [&]() { op->setOperand(0, mul); });
       return success();
     }

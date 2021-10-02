@@ -28,15 +28,15 @@ bool isT(Type type) {
   return false;
 }
 
-bool isSPD(Type type) {
+bool hasSPDAttr(Type type) {
   return isT<LinneaMatrixEncodingAttr::MatrixType::SPD>(type);
 }
 
-bool isLowerTriangular(Type type) {
+bool hasLowerTriangularAttr(Type type) {
   return isT<LinneaMatrixEncodingAttr::MatrixType::LowerTriangular>(type);
 }
 
-bool isUpperTriangular(Type type) {
+bool hasUpperTriangularAttr(Type type) {
   return isT<LinneaMatrixEncodingAttr::MatrixType::UpperTriangular>(type);
 }
 
