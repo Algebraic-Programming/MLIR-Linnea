@@ -222,9 +222,27 @@ struct CholeskyFact : public OpRewritePattern<InverseOp> {
   }
 };
 
+struct CollapseMul : public OpRewritePattern<MulOp> {
+  using OpRewritePattern<MulOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(MulOp op,
+                                PatternRewriter &rewriter) const override {
+    for (auto operand : op.getOperands()) {
+      if (auto mulOp = operand.getDefiningOp<MulOp>()) {
+      }
+    }
+    return failure();
+  }
+};
+
 } // end namespace
 
 void InverseOp::getCanonicalizationPatterns(OwningRewritePatternList &results,
                                             MLIRContext *context) {
   results.insert<DoubleInverse, CholeskyFact, InverseOfMul>(context);
+}
+
+void MulOp::getCanonicalizationPatterns(OwningRewritePatternList &results,
+                                        MLIRContext *context) {
+  results.insert<CollapseMul>(context);
 }

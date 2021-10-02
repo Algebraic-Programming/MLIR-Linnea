@@ -98,6 +98,9 @@ def Linnea_MulOp : Linnea_Op<"mul", [NoSideEffect]> {
     let assemblyFormat = [{
       $input attr-dict `:` type($input) `->` type($output)
     }];
+
+    let hasCanonicalizer = 1;
+
 }
 
 #endif // LINNEA_OPS
