@@ -45,7 +45,7 @@ Type LinneaDialect::parseType(DialectAsmParser &parser) const {
   if (parser.parseKeyword(&ref))
     return Type();
   Type res;
-  auto parsed = generatedTypeParser(getContext(), parser, ref, res);
+  auto parsed = generatedTypeParser(parser, ref, res);
   if (parsed.hasValue() && succeeded(parsed.getValue()))
     return res;
   return Type();
@@ -62,8 +62,7 @@ Attribute LinneaDialect::parseAttribute(DialectAsmParser &parser,
   if (failed(parser.parseKeyword(&attrTag)))
     return Attribute();
   Attribute attr;
-  auto parseResult =
-      generatedAttributeParser(getContext(), parser, attrTag, type, attr);
+  auto parseResult = generatedAttributeParser(parser, attrTag, type, attr);
   if (parseResult.hasValue())
     return attr;
   parser.emitError(parser.getNameLoc(), "unknown linnea attribute: ")
