@@ -18,7 +18,6 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
   let genVerifyDecl = 1;
 
   let parameters = (ins
-    "std::string":$id,
     ArrayRefParameter<"MatrixType::MatrixProperty",
                       "type of matrix encoding"
                       >:$property,
@@ -28,11 +27,6 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
 
   let parser = [{
     if ($_parser.parseLess())
-      return Type();
-    std::string id;
-    if ($_parser.parseString(&id))
-      return Type();
-    if ($_parser.parseComma())
       return Type();
     ArrayAttr properties;
     if ($_parser.parseAttribute(properties))
@@ -95,7 +89,7 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
       return Type();
     return MatrixType::getChecked([&$_parser] { 
       return $_parser.emitError($_parser.getCurrentLocation()); }, 
-             $_ctxt, id, mt, dims);
+             $_ctxt, mt, dims);
   }];
 
  let extraClassDeclaration = [{

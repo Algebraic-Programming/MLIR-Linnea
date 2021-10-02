@@ -5,7 +5,7 @@ using namespace mlir;
 using namespace mlir::linnea;
 
 LogicalResult
-MatrixType::verify(function_ref<InFlightDiagnostic()> emitError, std::string id,
+MatrixType::verify(function_ref<InFlightDiagnostic()> emitError,
                    llvm::ArrayRef<MatrixType::MatrixProperty> property,
                    llvm::ArrayRef<int64_t> dims) {
   return success();
@@ -13,9 +13,7 @@ MatrixType::verify(function_ref<InFlightDiagnostic()> emitError, std::string id,
 
 void MatrixType::print(DialectAsmPrinter &printer) const {
   printer << MatrixType::getMnemonic();
-  printer << "<";
-  printer << "\"" << getId() << "\"";
-  printer << ", [";
+  printer << "<[";
 
   for (size_t i = 0, e = getProperty().size(); i < e; i++) {
     switch (getProperty()[i]) {
