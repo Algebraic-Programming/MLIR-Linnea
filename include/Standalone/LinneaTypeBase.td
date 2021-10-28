@@ -30,7 +30,8 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
                       "type of matrix encoding"
                       >:$property,
     ArrayRefParameter<"int64_t", "dimensions"
-                     >:$dims
+                     >:$dims,
+    "Type":$elementType
   );
 
   let parser = [{
@@ -97,11 +98,17 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
       dims.push_back(intAttr.getInt());
     }
 
+    if ($_parser.parseComma())
+      return Type();
+    Type elementType;
+    if ($_parser.parseType(elementType))
+      return Type();
+
     if ($_parser.parseGreater())
       return Type();
     return MatrixType::getChecked([&$_parser] { 
       return $_parser.emitError($_parser.getCurrentLocation()); }, 
-             $_ctxt, mt, dims);
+             $_ctxt, mt, dims, elementType);
   }];
 
  let extraClassDeclaration = [{

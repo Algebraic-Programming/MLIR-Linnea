@@ -6,7 +6,7 @@ using namespace mlir::linnea;
 
 LogicalResult MatrixType::verify(function_ref<InFlightDiagnostic()> emitError,
                                  ArrayRef<MatrixType::MatrixProperty> property,
-                                 ArrayRef<int64_t> dims) {
+                                 ArrayRef<int64_t> dims, Type elementType) {
   return success();
 }
 
@@ -85,5 +85,7 @@ void MatrixType::print(DialectAsmPrinter &printer) const {
       printer << ", ";
   }
   printer << "]";
+  printer << ", ";
+  printer << getElementType();
   printer << ">";
 }

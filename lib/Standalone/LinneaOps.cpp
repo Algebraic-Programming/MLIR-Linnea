@@ -33,7 +33,7 @@ MatrixType getToggledType(MatrixType type,
   SmallVector<int64_t, 2> dims = {type.getDims().begin(), type.getDims().end()};
   std::swap(dims[0], dims[1]);
 
-  return MatrixType::get(type.getContext(), newPropertiesVec, dims);
+  return MatrixType::get(type.getContext(), newPropertiesVec, dims, type.getElementType());
 }
 
 void TransposeOp::build(OpBuilder &builder, OperationState &result,
@@ -80,7 +80,7 @@ void CholeskyOp::build(OpBuilder &builder, OperationState &result,
   newPropertiesVec.push_back(MatrixType::MatrixProperty::Factored);
 
   MatrixType newType = MatrixType::get(input.getContext(), newPropertiesVec,
-                                       inputType.getDims());
+                                       inputType.getDims(), inputType.getElementType());
 
   build(builder, result, newType, input);
 }
@@ -169,8 +169,9 @@ struct InverseOfMul : public OpRewritePattern<InverseOp> {
       SmallVector<int64_t, 2> dimsMul = {dimInverseOp1[0], dimInverseOp2[1]};
       // Mul type is SPD.
       // TODO: worth moving these logic in the builder too?
+      auto elementType = resultInverse[0].getType().cast<MatrixType>().getElementType();
       MatrixType newType = MatrixType::get(
-          op.getContext(), MatrixType::MatrixProperty::SPD, dimsMul);
+          op.getContext(), MatrixType::MatrixProperty::SPD, dimsMul, elementType);
       Value mulVal =
           rewriter.create<MulOp>(op.getLoc(), newType, resultInverse)
               ->getResult(0);
@@ -233,9 +234,10 @@ struct CholeskyFact : public OpRewritePattern<InverseOp> {
       ArrayRef<int64_t> dimsUT = uT.getType().cast<MatrixType>().getDims();
       ArrayRef<int64_t> dimsU = u.getType().cast<MatrixType>().getDims();
       SmallVector<int64_t, 2> dimsMul = {dimsUT[0], dimsU[1]};
+      auto elementType = uT.getType().cast<MatrixType>().getElementType();
       // Mul type is SPD.
       MatrixType newType = MatrixType::get(
-          op.getContext(), MatrixType::MatrixProperty::SPD, dimsMul);
+          op.getContext(), MatrixType::MatrixProperty::SPD, dimsMul, elementType);
       Value mul =
           rewriter.create<MulOp>(op.getLoc(), newType, ValueRange{uT, u})
               ->getResult(0);
