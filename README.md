@@ -23,6 +23,25 @@ CMake so that it installs `FileCheck` to the chosen installation prefix.
 
 This dialect template is made available under the Apache License 2.0 with LLVM Exceptions. See the `LICENSE.txt` file for more details.
 
+## 27th of October
+
+Example:
+```mlir
+  %symb = linnea.equation %symbol1 : matrix<[2,2]> {
+            ^bb0(%a : matrix<[2,2]):
+              %do something
+              (body only symbolic)
+              linnea.yield %something
+              (nice to have linnea.equal instead of linnea.yield)
+          }
+  use %symbol
+
+Type: AnySymbol, Matrix[size][properties], vector[size][properties], scalar.
+
+What should be the type of the returned value? AnyType? or AnySymbol?
+
+```
+
 ## 28th of Sept
 Current idea is to drop the tensor and attched the dimension information on the attribute.
 

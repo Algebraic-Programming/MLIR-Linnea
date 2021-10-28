@@ -1,5 +1,5 @@
 // RUN: standalone-opt %s --split-input-file --canonicalize | FileCheck %s
-// XFAILS: *
+// XFAIL: *
 
 // CHECK-LABEL: func @bar(%{{.*}}: !linnea.matrix<["square"], [32,64]>)
 func @bar(%arg0 : !linnea.matrix<["square"], [32,64]>) {

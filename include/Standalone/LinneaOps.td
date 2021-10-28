@@ -13,14 +13,45 @@ include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "LinneaTypeBase.td" 
 
+def Linnea_EquatinOp : Linnea_Op<"equ", [NoSideEffect]> {
+  let summary = "symbolic equation";
+  let description = [{
+    ```mlir
+      %r = symbolic.equation {
+        %0 = trans(%arg0) : !linnea.matrix<[2,2],["fr"]> -> term
+        %1 = mul(%0, %arg0) : !linnea.term, !linnea.matrix<[2,2],["fr"]> -> term
+    ```
+  }];
+  
+  let arguments = (ins Variadic<LinneaSymbolicMatrix>:$input);
+  let results = (outs LinneaTerm:$output);
+
+  let assemblyFormat = [{
+    $input attr-dict `:` type($input) `->` type($output) $region
+  }];
+
+  let regions = (region SizedRegion<1>:$region);
+}
+
+def Linnea_YieldOp : Linnea_Op<"yield", [NoSideEffect, Terminator]> {
+  let summary = "terminator for an equ op";
+  let description = [{
+  
+  }];
+  let arguments = (ins AnyLinneaType:$input);
+  let assemblyFormat = [{
+    $input attr-dict `:` type($input)
+  }];
+}
+
 def Linnea_InverseOp : Linnea_Op<"inverse", [NoSideEffect]> {
     let summary = "Add doc.";
     let description = [{
     
     }];
 
-    let arguments = (ins LinneaSymbolicMatrix:$input);
-    let results = (outs AnyType:$output);
+    let arguments = (ins AnyLinneaType:$input);
+    let results = (outs LinneaTerm:$output);
 
     let assemblyFormat = [{
       $input attr-dict `:` type($input) `->` type($output)
@@ -41,8 +72,8 @@ def Linnea_TransposeOp : Linnea_Op<"transpose", [NoSideEffect]> {
     
     }];
 
-    let arguments = (ins LinneaSymbolicMatrix:$input);
-    let results = (outs AnyType:$output);
+    let arguments = (ins AnyLinneaType:$input);
+    let results = (outs LinneaTerm:$output);
 
     let assemblyFormat = [{
       $input attr-dict `:` type($input) `->` type($output)
@@ -89,8 +120,8 @@ def Linnea_MulOp : Linnea_Op<"mul", [NoSideEffect]> {
         ```
     }];
 
-    let arguments = (ins Variadic<LinneaSymbolicMatrix>:$input);
-    let results = (outs AnyType:$output);
+    let arguments = (ins Variadic<AnyLinneaType>:$input);
+    let results = (outs LinneaTerm:$output);
 
     let assemblyFormat = [{
       $input attr-dict `:` type($input) `->` type($output)

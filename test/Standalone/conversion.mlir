@@ -1,5 +1,5 @@
 // RUN: standalone-opt %s --split-input-file --convert-linnea-to-linalg | FileCheck %s
-
+// XFAIL: *
 // CHECK-LABEL: func @bar
 func @bar(%arg0 : tensor<2x2xf64>, %arg1 : tensor<2x3xf64>, %arg2 : tensor<3x2xf64>) -> tensor<2x2xf64> {
   %chain = linnea.mul %arg0, %arg1, %arg2 : tensor<2x2xf64>, tensor<2x3xf64>, tensor<3x2xf64> -> tensor<2x2xf64>

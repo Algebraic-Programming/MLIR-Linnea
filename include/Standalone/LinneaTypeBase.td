@@ -8,6 +8,14 @@ include "LinneaDialect.td"
 class Linnea_Type<string name>
   : TypeDef<Linnea_Dialect, name>;
 
+def LinneaTerm : Linnea_Type<"Term"> {
+  let mnemonic = "term";
+  let summary = "A symbolic tensor";
+  let description = [{
+    A generic type similar to anyType.
+  }];
+}
+
 def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
   let mnemonic = "matrix";
 
@@ -113,5 +121,7 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
     };
   }]; 
 }
+
+def AnyLinneaType : AnyTypeOf<[LinneaSymbolicMatrix, LinneaTerm]>;
 
 #endif // LINNEA_TYPE_BASE 
