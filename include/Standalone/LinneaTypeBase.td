@@ -137,6 +137,6 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
   }]; 
 }
 
-def AnyLinneaType : AnyTypeOf<[LinneaSymbolicMatrix, LinneaTerm]>;
+def AnyLinneaType : AnyTypeOf<[LinneaSymbolicMatrix, LinneaTerm, 2DTensorOf<[AnyType]>]>;
 
 #endif // LINNEA_TYPE_BASE 

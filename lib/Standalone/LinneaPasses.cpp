@@ -266,10 +266,15 @@ void LinneaComprehensivePropertyPropagation::runOnOperation() {
     {
       using namespace mlir::linnea::expr;
       ScopedContext ctx;
-      ExprBuilder builder;
-      Expr *root = builder.buildExpr(termOperand);
+      ExprBuilder exprBuilder;
+      Expr *root = exprBuilder.buildLinneaExpr(termOperand);
       ctx.print();
       root->walk();
+      OpBuilder builder(eqOp->getContext());
+      
+      OpBuilder::InsertionGuard guard(builder);
+      builder.setInsertionPointAfter(eqOp);
+      
     }
 
     return WalkResult::advance();

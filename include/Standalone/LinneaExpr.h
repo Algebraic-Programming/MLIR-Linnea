@@ -48,6 +48,12 @@ class Expr {
 public:
   enum class ExprKind { BINARY, UNARY, OPERAND, NARY };
   enum class ExprProperty {
+    GENERAL,
+    FACTORED,
+    UNIT_DIAGONAL,
+    DIAGONAL,
+    SPSD,
+    IDENTITY,
     UPPER_TRIANGULAR,
     LOWER_TRIANGULAR,
     SQUARE,
@@ -271,7 +277,7 @@ private:
   }
 
 public:
-  Expr *buildExpr(mlir::Value value);
+  Expr *buildLinneaExpr(mlir::Value value);
   ExprBuilder() = default;
 };
 

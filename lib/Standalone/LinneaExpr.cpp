@@ -15,9 +15,56 @@
 #include <limits>
 
 using namespace mlir::linnea::expr;
+using namespace mlir::linnea;
 using namespace std;
 
 thread_local int ExprBuilder::operandId = 0;
+
+// TODO: we can use the same set of enums instead of converting each time.
+std::vector<Expr::ExprProperty> convert(llvm::ArrayRef<MatrixType::MatrixProperty> properties) {
+  vector<Expr::ExprProperty> result;
+  for (auto property : properties) {
+    switch (property) {
+      case MatrixType::MatrixProperty::General:
+      result.push_back(Expr::ExprProperty::GENERAL);
+      break;
+    case MatrixType::MatrixProperty::FullRank:
+      result.push_back(Expr::ExprProperty::FULL_RANK);
+      break;
+    case MatrixType::MatrixProperty::Diagonal:
+      result.push_back(Expr::ExprProperty::DIAGONAL);
+      break;
+    case MatrixType::MatrixProperty::UnitDiagonal:
+      result.push_back(Expr::ExprProperty::UNIT_DIAGONAL);
+      break;
+    case MatrixType::MatrixProperty::LowerTriangular:
+      result.push_back(Expr::ExprProperty::LOWER_TRIANGULAR);
+      break;
+    case MatrixType::MatrixProperty::UpperTriangular:
+      result.push_back(Expr::ExprProperty::UPPER_TRIANGULAR);
+      break;
+    case MatrixType::MatrixProperty::Symmetric:
+      result.push_back(Expr::ExprProperty::SYMMETRIC);
+      break;
+    case MatrixType::MatrixProperty::SPD:
+      result.push_back(Expr::ExprProperty::SPD);
+      break;
+    case MatrixType::MatrixProperty::SPSD:
+      result.push_back(Expr::ExprProperty::SPSD);
+      break;
+    case MatrixType::MatrixProperty::Identity:
+      result.push_back(Expr::ExprProperty::IDENTITY);
+      break;
+    case MatrixType::MatrixProperty::Square:
+      result.push_back(Expr::ExprProperty::SQUARE);
+      break;
+    case MatrixType::MatrixProperty::Factored:
+      result.push_back(Expr::ExprProperty::FACTORED);
+      break;
+    }
+  }
+  return result;
+}
 
 Expr *ExprBuilder::buildOperandImpl(Value val) {
   assert(val.getType().cast<MatrixType>() && "expect matrixType");
@@ -25,10 +72,11 @@ Expr *ExprBuilder::buildOperandImpl(Value val) {
     return lookup(val);
 
   auto matrixType = val.getType().cast<MatrixType>();
-  auto properties = matrixType.getProperty();
+  auto properties = convert(matrixType.getProperty());
   auto size = matrixType.getDims();
   std::string id = "A" + std::to_string(getNextId());
   Expr *operand = new Operand(id, size);
+  operand->setProperties(properties);
   map(val, operand);
   return operand;
 }
@@ -43,23 +91,23 @@ Expr *ExprBuilder::buildExprImpl(Value val) {
   if (auto mulOp = dyn_cast_or_null<mlir::linnea::MulOp>(defOp)) {
     std::vector<Expr *> children;
     for (Value operand : mulOp.getOperands()) {
-      children.push_back(buildExpr(operand));
+      children.push_back(buildExprImpl(operand));
     }
     return variadicMul(children);
   }
   if (auto transOp = dyn_cast_or_null<mlir::linnea::TransposeOp>(defOp)) {
-    Expr *child = buildExpr(transOp.getOperand());
+    Expr *child = buildExprImpl(transOp.getOperand());
     return trans(child);
   }
   if (auto invOp = dyn_cast_or_null<mlir::linnea::InverseOp>(defOp)) {
-    Expr *child = buildExpr(invOp.getOperand());
+    Expr *child = buildExprImpl(invOp.getOperand());
     return inv(child);
   }
   assert(0 && "unreachable");
   return nullptr;
 }
 
-Expr *ExprBuilder::buildExpr(Value val) { return buildExprImpl(val); }
+Expr *ExprBuilder::buildLinneaExpr(Value val) { return buildExprImpl(val); }
 
 vector<int64_t> Operand::getResultDimensions() const { return shape; }
 
