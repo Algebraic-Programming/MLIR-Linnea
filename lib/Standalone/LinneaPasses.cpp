@@ -1,10 +1,21 @@
+//===- LinneaPasses.cpp -----------------------------------------*- C++ -*-===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+
 #include "Standalone/LinneaPasses.h"
+#include "Standalone/LinneaExpr.h"
 #include "Standalone/LinneaOps.h"
 
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 
 using namespace mlir;
+using namespace mlir::linnea;
+using namespace mlir::linnea::expr;
 
 #define GEN_PASS_CLASSES
 #include "Standalone/LinneaPasses.h.inc"
@@ -192,7 +203,7 @@ Value matrixCascade(Location loc, ArrayRef<Value> operands,
 class MulOpLowering : public ConversionPattern {
 public:
   MulOpLowering(MLIRContext *ctx)
-      : ConversionPattern(linnea::MulOp::getOperationName(), 1, ctx) {}
+      : ConversionPattern(MulOp::getOperationName(), 1, ctx) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
@@ -219,6 +230,8 @@ void populateLinneaToLinalgPattern(RewritePatternSet &patterns) {
   patterns.add<MulOpLowering>(patterns.getContext());
 }
 
+void pupulateLinneaTypeToTensorTypePattern(TypeConverter &converter) {}
+
 struct LowerToLinalg : public LinneaLowerToLinalgBase<LowerToLinalg> {
   void runOnFunction() override {
     ConversionTarget target(getContext());
@@ -227,15 +240,55 @@ struct LowerToLinalg : public LinneaLowerToLinalgBase<LowerToLinalg> {
                            mlir::tensor::TensorDialect>();
 
     RewritePatternSet patterns(&getContext());
+    TypeConverter converter;
     populateLinneaToLinalgPattern(patterns);
+    pupulateLinneaTypeToTensorTypePattern(converter);
     if (failed(
             applyPartialConversion(getFunction(), target, std::move(patterns))))
       signalPassFailure();
   }
 };
 
+struct LinneaComprehensivePropertyPropagation
+    : public LinneaComprehensivePropertyPropagationBase<
+          LinneaComprehensivePropertyPropagation> {
+  void runOnOperation() override;
+};
+
+void LinneaComprehensivePropertyPropagation::runOnOperation() {
+  ModuleOp module = getOperation();
+  WalkResult res = module.walk([](EquationOp eqOp) -> WalkResult {
+    // get terminator. Start building expression terms from the yield op.
+    Region &region = eqOp.region();
+    Operation *terminator = region.front().getTerminator();
+    Value termOperand = terminator->getOperand(0);
+
+    {
+      using namespace mlir::linnea::expr;
+      ScopedContext ctx;
+      ExprBuilder builder;
+      Expr *root = builder.buildExpr(termOperand);
+      ctx.print();
+      root->walk();
+    }
+
+    return WalkResult::advance();
+  });
+
+  if (res.wasInterrupted()) {
+    signalPassFailure();
+    return;
+  }
+  return;
+}
+
 } // namespace
 
 std::unique_ptr<OperationPass<FuncOp>> mlir::createConvertLinneaToLinalgPass() {
   return std::make_unique<LowerToLinalg>();
+}
+
+std::unique_ptr<OperationPass<ModuleOp>>
+mlir::createLinneaComprehensivePropertyPropagationPass() {
+  return std::make_unique<LinneaComprehensivePropertyPropagation>();
 }

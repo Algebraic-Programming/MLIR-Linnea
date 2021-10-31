@@ -1,4 +1,4 @@
-//===- LinneaOps.cpp - Linnea dialect ops ---------------*- C++ -*-===//
+//===- LinneaOps.cpp - Linnea dialect ops -----------------------*- C++ -*-===//
 //
 // This file is licensed under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -33,7 +33,8 @@ MatrixType getToggledType(MatrixType type,
   SmallVector<int64_t, 2> dims = {type.getDims().begin(), type.getDims().end()};
   std::swap(dims[0], dims[1]);
 
-  return MatrixType::get(type.getContext(), newPropertiesVec, dims, type.getElementType());
+  return MatrixType::get(type.getContext(), newPropertiesVec, dims,
+                         type.getElementType());
 }
 
 void TransposeOp::build(OpBuilder &builder, OperationState &result,
@@ -79,8 +80,9 @@ void CholeskyOp::build(OpBuilder &builder, OperationState &result,
   newPropertiesVec.push_back(MatrixType::MatrixProperty::UpperTriangular);
   newPropertiesVec.push_back(MatrixType::MatrixProperty::Factored);
 
-  MatrixType newType = MatrixType::get(input.getContext(), newPropertiesVec,
-                                       inputType.getDims(), inputType.getElementType());
+  MatrixType newType =
+      MatrixType::get(input.getContext(), newPropertiesVec, inputType.getDims(),
+                      inputType.getElementType());
 
   build(builder, result, newType, input);
 }
@@ -169,9 +171,11 @@ struct InverseOfMul : public OpRewritePattern<InverseOp> {
       SmallVector<int64_t, 2> dimsMul = {dimInverseOp1[0], dimInverseOp2[1]};
       // Mul type is SPD.
       // TODO: worth moving these logic in the builder too?
-      auto elementType = resultInverse[0].getType().cast<MatrixType>().getElementType();
-      MatrixType newType = MatrixType::get(
-          op.getContext(), MatrixType::MatrixProperty::SPD, dimsMul, elementType);
+      auto elementType =
+          resultInverse[0].getType().cast<MatrixType>().getElementType();
+      MatrixType newType =
+          MatrixType::get(op.getContext(), MatrixType::MatrixProperty::SPD,
+                          dimsMul, elementType);
       Value mulVal =
           rewriter.create<MulOp>(op.getLoc(), newType, resultInverse)
               ->getResult(0);
@@ -236,8 +240,9 @@ struct CholeskyFact : public OpRewritePattern<InverseOp> {
       SmallVector<int64_t, 2> dimsMul = {dimsUT[0], dimsU[1]};
       auto elementType = uT.getType().cast<MatrixType>().getElementType();
       // Mul type is SPD.
-      MatrixType newType = MatrixType::get(
-          op.getContext(), MatrixType::MatrixProperty::SPD, dimsMul, elementType);
+      MatrixType newType =
+          MatrixType::get(op.getContext(), MatrixType::MatrixProperty::SPD,
+                          dimsMul, elementType);
       Value mul =
           rewriter.create<MulOp>(op.getLoc(), newType, ValueRange{uT, u})
               ->getResult(0);
@@ -276,14 +281,28 @@ struct CollapseMul : public OpRewritePattern<MulOp> {
   }
 };
 
+struct EvaluateEquation : public OpRewritePattern<EquationOp> {
+  using OpRewritePattern<EquationOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(EquationOp op,
+                                PatternRewriter &rewriter) const override {
+    return failure();
+  }
+};
+
 } // end namespace
 
-void InverseOp::getCanonicalizationPatterns(OwningRewritePatternList &results,
+void InverseOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
   results.insert<DoubleInverse, CholeskyFact, InverseOfMul>(context);
 }
 
-void MulOp::getCanonicalizationPatterns(OwningRewritePatternList &results,
+void MulOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                         MLIRContext *context) {
   results.insert<CollapseMul>(context);
+}
+
+void EquationOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                             MLIRContext *context) {
+  results.insert<EvaluateEquation>(context);
 }

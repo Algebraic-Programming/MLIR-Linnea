@@ -1,4 +1,4 @@
-//===- LinneaOps.td - Linnea dialect ops -----------*- tablegen -*-===//
+//===- LinneaOps.td - Linnea dialect ops -------------------*- tablegen -*-===//
 //
 // This file is licensed under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -13,7 +13,7 @@ include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "LinneaTypeBase.td" 
 
-def Linnea_EquatinOp : Linnea_Op<"equ", [NoSideEffect]> {
+def Linnea_EquationOp : Linnea_Op<"equ"> {
   let summary = "symbolic equation";
   let description = [{
     ```mlir
@@ -31,6 +31,8 @@ def Linnea_EquatinOp : Linnea_Op<"equ", [NoSideEffect]> {
   }];
 
   let regions = (region SizedRegion<1>:$region);
+
+  let hasCanonicalizer = 1;
 }
 
 def Linnea_YieldOp : Linnea_Op<"yield", [NoSideEffect, Terminator]> {
