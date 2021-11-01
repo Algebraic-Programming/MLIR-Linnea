@@ -209,19 +209,19 @@ public:
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const final {
     assert(operands.size() >= 2 && "expect two operands at least");
-    if (failed(checkPreconditions(operands)))
-      return failure();
-    Value result = nullptr;
-    if (operands.size() > 2 && llvm::all_of(operands, [](Value v) {
-          return v.getType().cast<RankedTensorType>().hasStaticShape();
-        }))
-      result = matrixChainOpt(op->getLoc(), operands, rewriter);
-    else
-      result = matrixCascade(op->getLoc(), operands, rewriter);
-
-    assert(result != nullptr && "must be non null");
-    rewriter.replaceOp(op, result);
-    return success();
+    // if (failed(checkPreconditions(operands)))
+    //  return failure();
+    // Value result = nullptr;
+    // if (operands.size() > 2 && llvm::all_of(operands, [](Value v) {
+    //      return v.getType().cast<RankedTensorType>().hasStaticShape();
+    //    }))
+    //  result = matrixChainOpt(op->getLoc(), operands, rewriter);
+    // else
+    //  result = matrixCascade(op->getLoc(), operands, rewriter);
+    //
+    // assert(result != nullptr && "must be non null");
+    // rewriter.replaceOp(op, result);
+    return failure();
   }
 };
 
@@ -230,7 +230,15 @@ void populateLinneaToLinalgPattern(RewritePatternSet &patterns) {
   patterns.add<MulOpLowering>(patterns.getContext());
 }
 
-void pupulateLinneaTypeToTensorTypePattern(TypeConverter &converter) {}
+Type convertMatrixType(MatrixType type) {
+  assert(0);
+  return Type();
+}
+
+void pupulateLinneaTypeToTensorTypePattern(TypeConverter &converter) {
+  converter.addConversion(
+      [](MatrixType type) { return convertMatrixType(type); });
+}
 
 struct LowerToLinalg : public LinneaLowerToLinalgBase<LowerToLinalg> {
   void runOnFunction() override {
@@ -255,9 +263,31 @@ struct LinneaComprehensivePropertyPropagation
   void runOnOperation() override;
 };
 
+static bool isaLinneaTerm(Type t) { return t.isa<mlir::linnea::TermType>(); };
+
+/// Return the unique ReturnOp that terminates `funcOp`.
+/// Return nullptr if there is no such unique ReturnOp.
+static ReturnOp getAssumedUniqueReturnOp(FuncOp funcOp) {
+  ReturnOp returnOp;
+  for (Block &b : funcOp.body()) {
+    if (auto candidateOp = dyn_cast<ReturnOp>(b.getTerminator())) {
+      if (returnOp)
+        return nullptr;
+      returnOp = candidateOp;
+    }
+  }
+  return returnOp;
+}
+
+static FunctionType getFunctionType(FuncOp funcOp, TypeRange argumentTypes,
+                                    TypeRange resultTypes) {
+  return FunctionType::get(funcOp.getContext(), argumentTypes, resultTypes);
+}
+
 void LinneaComprehensivePropertyPropagation::runOnOperation() {
   ModuleOp module = getOperation();
-  WalkResult res = module.walk([](EquationOp eqOp) -> WalkResult {
+  SmallVector<Operation *> toErase;
+  WalkResult res = module.walk([&](EquationOp eqOp) -> WalkResult {
     // get terminator. Start building expression terms from the yield op.
     Region &region = eqOp.region();
     Operation *terminator = region.front().getTerminator();
@@ -267,14 +297,21 @@ void LinneaComprehensivePropertyPropagation::runOnOperation() {
       using namespace mlir::linnea::expr;
       ScopedContext ctx;
       ExprBuilder exprBuilder;
+      BlockAndValueMapping mapper;
+      mapper.map(eqOp.region().getArguments(), eqOp.getOperands());
       Expr *root = exprBuilder.buildLinneaExpr(termOperand);
-      ctx.print();
-      root->walk();
+
+      // ctx.print();
+      // root->walk();
+      // root = root->simplify();
+
       OpBuilder builder(eqOp->getContext());
-      
       OpBuilder::InsertionGuard guard(builder);
       builder.setInsertionPointAfter(eqOp);
-      
+      Value rootVal = exprBuilder.buildIR(eqOp.getLoc(), builder, root, mapper);
+      Value resultEqOp = eqOp.getResult();
+      resultEqOp.replaceAllUsesWith(rootVal);
+      toErase.push_back(eqOp);
     }
 
     return WalkResult::advance();
@@ -284,6 +321,105 @@ void LinneaComprehensivePropertyPropagation::runOnOperation() {
     signalPassFailure();
     return;
   }
+
+  // adjust at function boundaries.
+  // TODO: fix also callee as in comprehensive bufferization pass.
+  res = module.walk([](FuncOp funcOp) -> WalkResult {
+    if (!llvm::any_of(funcOp.getType().getInputs(), isaLinneaTerm) &&
+        !llvm::any_of(funcOp.getType().getResults(), isaLinneaTerm))
+      return WalkResult::advance();
+
+    ReturnOp returnOp = getAssumedUniqueReturnOp(funcOp);
+    if (!returnOp)
+      return funcOp->emitError() << "return op must be available";
+
+    SmallVector<Value> returnValues;
+    for (OpOperand &returnOperand : returnOp->getOpOperands()) {
+      returnValues.push_back(returnOperand.get());
+    }
+    ValueRange retValues{returnValues};
+    FunctionType funcTypes = getFunctionType(
+        funcOp, funcOp.getType().getInputs(), retValues.getTypes());
+
+    Block &front = funcOp.body().front();
+    unsigned numArgs = front.getNumArguments();
+    for (unsigned idx = 0; idx < numArgs; idx++) {
+      auto bbArg = front.getArgument(0);
+      auto termType = bbArg.getType().dyn_cast<TermType>();
+      if (!termType) {
+        front.addArgument(bbArg.getType());
+        bbArg.replaceAllUsesWith(front.getArguments().back());
+        front.eraseArgument(0);
+        continue;
+      } else {
+        termType.dump();
+        assert(0 && "type not supported");
+      }
+    }
+    funcOp.setType(funcTypes);
+    return WalkResult::advance();
+  });
+
+  if (res.wasInterrupted()) {
+    signalPassFailure();
+  }
+
+  for (Operation *op : toErase)
+    op->erase();
+
+  return;
+}
+
+struct LinneaComprehensiveTensorMaterialization
+    : public LinneaComprehensiveTensorMaterializationBase<
+          LinneaComprehensiveTensorMaterialization> {
+  void runOnOperation() override;
+};
+
+// static bool isaMatrixType(Type t) { return t.isa<mlir::linnea::MatrixType>();
+// };
+
+LogicalResult inPlaceUpdateFuncOp(FuncOp funcOp) {
+  /*
+    SmallVector<Operation *> ops;
+    funcOp.walk([&](Operation *op) {
+      if (none_of(op->getOperandTypes(), isaMatrixType) &&
+          none_of(op->getResultTypes(), isaMatrixType))
+        return;
+      ops.push_back(op);
+    });
+
+    if (!ops.size())
+      return success();
+
+    for (Operation *op : reverse(ops)) {
+      if (isa<ReturnOp>(op))
+        continue;
+      OpBuilder builder(op);
+      OpBuilder::InsertionGuard guard(builder);
+      SmallVector<Type> operandTypes;
+      for (OpOperand operand : op->getOperands())
+
+
+    }
+  */
+  return success();
+}
+
+LogicalResult boundaryUpdateFuncOp(FuncOp funcOp) { return success(); }
+
+void LinneaComprehensiveTensorMaterialization::runOnOperation() {
+  ModuleOp module = getOperation();
+  WalkResult res = module.walk([](FuncOp funcOp) -> WalkResult {
+    if (failed(inPlaceUpdateFuncOp(funcOp)))
+      return WalkResult::interrupt();
+    if (failed(boundaryUpdateFuncOp(funcOp)))
+      return WalkResult::interrupt();
+    return WalkResult::advance();
+  });
+
+  if (res.wasInterrupted())
+    signalPassFailure();
   return;
 }
 
@@ -296,4 +432,9 @@ std::unique_ptr<OperationPass<FuncOp>> mlir::createConvertLinneaToLinalgPass() {
 std::unique_ptr<OperationPass<ModuleOp>>
 mlir::createLinneaComprehensivePropertyPropagationPass() {
   return std::make_unique<LinneaComprehensivePropertyPropagation>();
+}
+
+std::unique_ptr<OperationPass<ModuleOp>>
+mlir::createLinneaComprehensiveTensorMaterializationPass() {
+  return std::make_unique<LinneaComprehensiveTensorMaterialization>();
 }

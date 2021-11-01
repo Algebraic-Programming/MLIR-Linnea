@@ -9,6 +9,7 @@
 #include "Standalone/LinneaExpr.h"
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaTypes.h"
+#include "mlir/IR/BlockAndValueMapping.h"
 #include "llvm/Support/Casting.h"
 #include <algorithm>
 #include <iostream>
@@ -21,11 +22,12 @@ using namespace std;
 thread_local int ExprBuilder::operandId = 0;
 
 // TODO: we can use the same set of enums instead of converting each time.
-std::vector<Expr::ExprProperty> convert(llvm::ArrayRef<MatrixType::MatrixProperty> properties) {
+std::vector<Expr::ExprProperty>
+convert(llvm::ArrayRef<MatrixType::MatrixProperty> properties) {
   vector<Expr::ExprProperty> result;
   for (auto property : properties) {
     switch (property) {
-      case MatrixType::MatrixProperty::General:
+    case MatrixType::MatrixProperty::General:
       result.push_back(Expr::ExprProperty::GENERAL);
       break;
     case MatrixType::MatrixProperty::FullRank:
@@ -66,6 +68,52 @@ std::vector<Expr::ExprProperty> convert(llvm::ArrayRef<MatrixType::MatrixPropert
   return result;
 }
 
+llvm::SmallVector<MatrixType::MatrixProperty>
+convert(std::vector<Expr::ExprProperty> properties) {
+  llvm::SmallVector<MatrixType::MatrixProperty> result;
+  for (auto property : properties) {
+    switch (property) {
+    case Expr::ExprProperty::GENERAL:
+      result.push_back(MatrixType::MatrixProperty::General);
+      break;
+    case Expr::ExprProperty::FULL_RANK:
+      result.push_back(MatrixType::MatrixProperty::FullRank);
+      break;
+    case Expr::ExprProperty::DIAGONAL:
+      result.push_back(MatrixType::MatrixProperty::Diagonal);
+      break;
+    case Expr::ExprProperty::UNIT_DIAGONAL:
+      result.push_back(MatrixType::MatrixProperty::UnitDiagonal);
+      break;
+    case Expr::ExprProperty::LOWER_TRIANGULAR:
+      result.push_back(MatrixType::MatrixProperty::LowerTriangular);
+      break;
+    case Expr::ExprProperty::UPPER_TRIANGULAR:
+      result.push_back(MatrixType::MatrixProperty::UpperTriangular);
+      break;
+    case Expr::ExprProperty::SYMMETRIC:
+      result.push_back(MatrixType::MatrixProperty::Symmetric);
+      break;
+    case Expr::ExprProperty::SPD:
+      result.push_back(MatrixType::MatrixProperty::SPD);
+      break;
+    case Expr::ExprProperty::SPSD:
+      result.push_back(MatrixType::MatrixProperty::SPSD);
+      break;
+    case Expr::ExprProperty::IDENTITY:
+      result.push_back(MatrixType::MatrixProperty::Identity);
+      break;
+    case Expr::ExprProperty::SQUARE:
+      result.push_back(MatrixType::MatrixProperty::Square);
+      break;
+    case Expr::ExprProperty::FACTORED:
+      result.push_back(MatrixType::MatrixProperty::Factored);
+      break;
+    }
+  }
+  return result;
+}
+
 Expr *ExprBuilder::buildOperandImpl(Value val) {
   assert(val.getType().cast<MatrixType>() && "expect matrixType");
   if (contains(val))
@@ -77,8 +125,76 @@ Expr *ExprBuilder::buildOperandImpl(Value val) {
   std::string id = "A" + std::to_string(getNextId());
   Expr *operand = new Operand(id, size);
   operand->setProperties(properties);
+  // map in both directions
   map(val, operand);
+  map(operand, val);
   return operand;
+}
+
+mlir::Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
+                                      NaryExpr *expr,
+                                      BlockAndValueMapping &mapper) {
+  SmallVector<Value> operands;
+  auto children = expr->getChildren();
+  for (int i = 0, e = children.size(); i < e; i++)
+    operands.push_back(buildIRImpl(loc, builder, children[i], mapper));
+  MatrixType first = operands[0].getType().cast<MatrixType>();
+  MatrixType last = operands[operands.size() - 1].getType().cast<MatrixType>();
+  SmallVector<MatrixType::MatrixProperty> properties =
+      convert(expr->getAndSetProperties());
+  SmallVector<int64_t> dims = {first.getDims()[0], last.getDims()[1]};
+  MatrixType result = MatrixType::get(builder.getContext(), properties, dims,
+                                      first.getElementType());
+  return builder.create<MulOp>(loc, result, operands);
+}
+
+mlir::Value ExprBuilder::buildTransposeImpl(Location loc, OpBuilder &builder,
+                                            UnaryExpr *expr,
+                                            BlockAndValueMapping &mapper) {
+  return nullptr;
+}
+
+mlir::Value ExprBuilder::buildInverseImpl(Location loc, OpBuilder &builder,
+                                          UnaryExpr *expr,
+                                          BlockAndValueMapping &mapper) {
+  return nullptr;
+}
+
+mlir::Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder,
+                                     Expr *root, BlockAndValueMapping &mapper) {
+  if (root) {
+    if (auto naryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
+      switch (naryExpr->getKind()) {
+      case NaryExpr::NaryExprKind::MUL:
+        return buildMulImpl(loc, builder, naryExpr, mapper);
+        break;
+      default:
+        assert(0 && "UNK");
+      }
+    }
+    if (auto unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(root)) {
+      switch (unaryExpr->getKind()) {
+      case UnaryExpr::UnaryExprKind::TRANSPOSE:
+        return buildTransposeImpl(loc, builder, unaryExpr, mapper);
+        break;
+      case UnaryExpr::UnaryExprKind::INVERSE:
+        return buildInverseImpl(loc, builder, unaryExpr, mapper);
+        break;
+      default:
+        assert(0 && "UNK");
+      }
+    }
+    if (auto operand = llvm::dyn_cast_or_null<Operand>(root)) {
+      return mapper.lookup(exprMap[operand]);
+    }
+  }
+  assert(0 && "UNKN");
+  return nullptr;
+}
+
+mlir::Value ExprBuilder::buildIR(Location loc, OpBuilder &builder, Expr *root,
+                                 BlockAndValueMapping &mapper) {
+  return buildIRImpl(loc, builder, root, mapper);
 }
 
 Expr *ExprBuilder::buildExprImpl(Value val) {

@@ -19,6 +19,12 @@
 #include <vector>
 
 namespace mlir {
+class OpBuilder;
+class Location;
+class BlockAndValueMapping;
+} // namespace mlir
+
+namespace mlir {
 namespace linnea {
 namespace expr {
 
@@ -253,7 +259,12 @@ public:
 class ExprBuilder {
 private:
   static thread_local int operandId;
+
+  // map from value to expr.
   llvm::DenseMap<Value, Expr *> valueMap;
+
+  // map from expr to value.
+  llvm::DenseMap<Expr *, Value> exprMap;
 
   // return the next id for the operand.
   int getNextId() { return operandId++; };
@@ -261,23 +272,42 @@ private:
   // build entire expr.
   Expr *buildExprImpl(mlir::Value val);
 
-  // build operand.
+  // build operand as expr.
   Expr *buildOperandImpl(mlir::Value type);
+
+  // build mul/transpose/inverse.
+  mlir::Value buildIRImpl(Location loc, OpBuilder &builder, Expr *root,
+                          BlockAndValueMapping &mapper);
+  mlir::Value buildMulImpl(Location loc, OpBuilder &builder, NaryExpr *expr,
+                           BlockAndValueMapping &mapper);
+  mlir::Value buildTransposeImpl(Location loc, OpBuilder &builder,
+                                 UnaryExpr *expr, BlockAndValueMapping &mapper);
+  mlir::Value buildInverseImpl(Location loc, OpBuilder &builder,
+                               UnaryExpr *expr, BlockAndValueMapping &mapper);
 
   // map 'from' to 'to'.
   void map(Value from, Expr *to) { valueMap[from] = to; };
+  void map(Expr *from, Value to) { exprMap[from] = to; };
 
   // check if 'from' is available in valueMap.
   bool contains(Value from) const { return valueMap.count(from); };
+  bool contains(Expr *from) const { return exprMap.count(from); };
 
   // return value given 'from' key (must be available).
   Expr *lookup(Value from) {
     assert(contains(from) && "expect value to be contained in the map");
     return valueMap[from];
   }
+  Value lookup(Expr *from) {
+    assert(contains(from) && "expect value to be contained in the map");
+    return exprMap[from];
+  }
 
 public:
   Expr *buildLinneaExpr(mlir::Value value);
+  mlir::Value buildIR(Location loc, OpBuilder &builder, Expr *root,
+                      BlockAndValueMapping &mapper);
+
   ExprBuilder() = default;
 };
 

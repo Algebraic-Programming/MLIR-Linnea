@@ -123,7 +123,7 @@ def Linnea_MulOp : Linnea_Op<"mul", [NoSideEffect]> {
     }];
 
     let arguments = (ins Variadic<AnyLinneaType>:$input);
-    let results = (outs LinneaTerm:$output);
+    let results = (outs AnyLinneaType:$output);
 
     let assemblyFormat = [{
       $input attr-dict `:` type($input) `->` type($output)

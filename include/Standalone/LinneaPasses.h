@@ -17,6 +17,8 @@ namespace mlir {
 std::unique_ptr<OperationPass<FuncOp>> createConvertLinneaToLinalgPass();
 std::unique_ptr<OperationPass<ModuleOp>>
 createLinneaComprehensivePropertyPropagationPass();
+std::unique_ptr<OperationPass<ModuleOp>>
+createLinneaComprehensiveTensorMaterializationPass();
 //} // end linnea
 } // namespace mlir
 
