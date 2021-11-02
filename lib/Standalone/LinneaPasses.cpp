@@ -9,6 +9,7 @@
 #include "Standalone/LinneaPasses.h"
 #include "Standalone/LinneaExpr.h"
 #include "Standalone/LinneaOps.h"
+#include "Standalone/LinneaTypeConverter.h"
 
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
@@ -202,13 +203,14 @@ Value matrixCascade(Location loc, ArrayRef<Value> operands,
 
 class MulOpLowering : public ConversionPattern {
 public:
-  MulOpLowering(MLIRContext *ctx)
-      : ConversionPattern(MulOp::getOperationName(), 1, ctx) {}
+  MulOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
+      : ConversionPattern(typeConverter, MulOp::getOperationName(), 1, ctx) {}
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const final {
     assert(operands.size() >= 2 && "expect two operands at least");
+    typeConverter->convertType(op->getOperands()[0].getType());
     // if (failed(checkPreconditions(operands)))
     //  return failure();
     // Value result = nullptr;
@@ -226,16 +228,17 @@ public:
 };
 
 /// Populate
-void populateLinneaToLinalgPattern(RewritePatternSet &patterns) {
-  patterns.add<MulOpLowering>(patterns.getContext());
+void populateLinneaToLinalgPattern(TypeConverter &converter,
+                                   RewritePatternSet &patterns) {
+  patterns.add<MulOpLowering>(converter, patterns.getContext());
 }
 
 Type convertMatrixType(MatrixType type) {
-  assert(0);
+  assert(0 && "conversion not available");
   return Type();
 }
 
-void pupulateLinneaTypeToTensorTypePattern(TypeConverter &converter) {
+void pupulateLinneaTypeToTensorTypePattern(LinneaTypeConverter &converter) {
   converter.addConversion(
       [](MatrixType type) { return convertMatrixType(type); });
 }
@@ -248,9 +251,9 @@ struct LowerToLinalg : public LinneaLowerToLinalgBase<LowerToLinalg> {
                            mlir::tensor::TensorDialect>();
 
     RewritePatternSet patterns(&getContext());
-    TypeConverter converter;
-    populateLinneaToLinalgPattern(patterns);
+    LinneaTypeConverter converter;
     pupulateLinneaTypeToTensorTypePattern(converter);
+    populateLinneaToLinalgPattern(converter, patterns);
     if (failed(
             applyPartialConversion(getFunction(), target, std::move(patterns))))
       signalPassFailure();
