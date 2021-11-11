@@ -10,6 +10,7 @@
 #include "Standalone/LinneaExpr.h"
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaTypeConverter.h"
+#include "mlir/Dialect/StandardOps/Transforms/FuncConversions.h"
 
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
@@ -22,6 +23,22 @@ using namespace mlir::linnea::expr;
 #include "Standalone/LinneaPasses.h.inc"
 
 namespace {
+
+/// Type converter
+class LinneaTypeConverter : public TypeConverter {
+public:
+  LinneaTypeConverter() {
+    addConversion([](Type type) { return type; });
+    addConversion(convertMatrixType);
+
+    addSourceMaterialization([](OpBuilder &builder, RankedTensorType type,
+                                ValueRange inputs,
+                                Location loc) -> Value { return inputs[0]; });
+  }
+  static Type convertMatrixType(MatrixType type) {
+    return RankedTensorType::get(type.getDims(), type.getElementType());
+  }
+};
 
 SmallVector<int64_t, 2> getOutputShape(Value x, Value y) {
   RankedTensorType xType = x.getType().cast<RankedTensorType>();
@@ -201,6 +218,24 @@ Value matrixCascade(Location loc, ArrayRef<Value> operands,
   return result;
 }
 
+class DummyOpLowering : public ConversionPattern {
+public:
+  DummyOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
+      : ConversionPattern(typeConverter, DummyOp::getOperationName(), 1, ctx) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const final {
+    auto input = typeConverter->convertType(op->getOperands()[0].getType())
+                     .cast<RankedTensorType>();
+
+    auto result = rewriter.create<linalg::InitTensorOp>(
+        op->getLoc(), input.getShape(), input.getElementType());
+    rewriter.replaceOp(op, result->getResult(0));
+    return success();
+  }
+};
+
 class MulOpLowering : public ConversionPattern {
 public:
   MulOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
@@ -210,7 +245,17 @@ public:
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const final {
     assert(operands.size() >= 2 && "expect two operands at least");
-    typeConverter->convertType(op->getOperands()[0].getType());
+    auto left = typeConverter->convertType(op->getOperands()[0].getType());
+    auto right = typeConverter->convertType(op->getOperands()[1].getType());
+    auto dest = RankedTensorType::get(
+        {30, 15},
+        op->getOperands()[0].getType().cast<MatrixType>().getElementType());
+    auto result =
+        rewriter
+            .create<linalg::MatmulOp>(
+                op->getLoc(), TypeRange{left},
+                ValueRange{op->getOperands()[0], op->getOperands()[1]})
+            ->getResult(0);
     // if (failed(checkPreconditions(operands)))
     //  return failure();
     // Value result = nullptr;
@@ -221,39 +266,72 @@ public:
     // else
     //  result = matrixCascade(op->getLoc(), operands, rewriter);
     //
-    // assert(result != nullptr && "must be non null");
-    // rewriter.replaceOp(op, result);
-    return failure();
+    assert(result != nullptr && "must be non null");
+    rewriter.replaceOp(op, result);
+    return success();
   }
 };
 
 /// Populate
-void populateLinneaToLinalgPattern(TypeConverter &converter,
-                                   RewritePatternSet &patterns) {
-  patterns.add<MulOpLowering>(converter, patterns.getContext());
+void populateLinneaToLinalgPattern(RewritePatternSet &patterns,
+                                   TypeConverter &converter) {
+  // patterns.add<MulOpLowering>(converter, patterns.getContext());
+  patterns.add<DummyOpLowering>(converter, patterns.getContext());
 }
 
-Type convertMatrixType(MatrixType type) {
-  assert(0 && "conversion not available");
-  return Type();
-}
-
+/*
 void pupulateLinneaTypeToTensorTypePattern(LinneaTypeConverter &converter) {
   converter.addConversion(
       [](MatrixType type) { return convertMatrixType(type); });
+
+  converter.addTargetMaterialization(
+      [](OpBuilder &builder, RankedTensorType resultType, ValueRange inputs,
+         Location loc) -> Value {
+        assert(inputs.size() == 1 && "expect single input");
+        assert(inputs[0].getType().cast<MatrixType>());
+        return builder.create<MatrixCastOp>(loc, resultType, inputs[0]);
+      });
+
+  converter.addSourceMaterialization(
+      [](OpBuilder &builder, RankedTensorType type, ValueRange inputs,
+         Location loc) -> Value {
+        assert(0);
+        return nullptr;
+      });
+
+  converter.addSourceMaterialization([](OpBuilder &builder, MatrixType type,
+                                        ValueRange inputs,
+                                        Location loc) -> Value {
+    //type.dump();
+    //llvm::errs() << "#--------------------------\n";
+    //inputs[0].dump();
+    //llvm::errs() << "#--------------------------\n";
+    //assert(0);
+    return inputs[0];
+  });
+
 }
+*/
 
 struct LowerToLinalg : public LinneaLowerToLinalgBase<LowerToLinalg> {
   void runOnFunction() override {
     ConversionTarget target(getContext());
-    target.addLegalDialect<linalg::LinalgDialect, memref::MemRefDialect,
-                           StandardOpsDialect, BuiltinDialect,
-                           mlir::tensor::TensorDialect>();
 
     RewritePatternSet patterns(&getContext());
     LinneaTypeConverter converter;
-    pupulateLinneaTypeToTensorTypePattern(converter);
-    populateLinneaToLinalgPattern(converter, patterns);
+    target.addLegalDialect<linalg::LinalgDialect>();
+    // target.addLegalDialect<StandardOpsDialect>();
+
+    target.addDynamicallyLegalOp<FuncOp>(
+        [&](FuncOp op) { return converter.isSignatureLegal(op.getType()); });
+    target.addDynamicallyLegalOp<ReturnOp>(
+        [&](ReturnOp op) { return converter.isLegal(op.getOperandTypes()); });
+
+    populateFuncOpTypeConversionPattern(patterns, converter);
+    populateReturnOpTypeConversionPattern(patterns, converter);
+    populateCallOpTypeConversionPattern(patterns, converter);
+    populateLinneaToLinalgPattern(patterns, converter);
+
     if (failed(
             applyPartialConversion(getFunction(), target, std::move(patterns))))
       signalPassFailure();

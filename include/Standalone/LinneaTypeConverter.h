@@ -5,12 +5,14 @@
 
 namespace mlir {
 namespace linnea {
-
+/*
 class LinneaTypeConverter : public TypeConverter {
 public:
-  LinneaTypeConverter() = default;
+  LinneaTypeConverter() {
+    addConversion([](Type type) { return type; });
+    addConversion(convertMatrixType);
 };
-
+*/
 } // end namespace linnea
 } // namespace mlir
 #endif
