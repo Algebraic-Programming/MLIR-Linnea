@@ -24,11 +24,4 @@ def LinneaComprehensivePropertyPropagation :
   let constructor = "mlir::createLinneaComprehensivePropertyPropagationPass()";
 }
 
-def LinneaComprehensiveTensorMaterialization :
-    Pass<"comprehensive-tenosor-materialization", "ModuleOp"> {
-  let summary = "materialize tensors";
-  let description = [{ todo }];
-  let constructor = "mlir::createLinneaComprehensiveTensorMaterializationPass()";
-}
-
 #endif

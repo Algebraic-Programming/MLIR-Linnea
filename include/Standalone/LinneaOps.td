@@ -13,24 +13,6 @@ include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "LinneaTypeBase.td" 
 
-def Linnea_MatrixCastOp : Linnea_Op<"cast-matrix"> {
-  let summary = "to be added";
-  let description = [{
-    todo.
-  }];
-  let arguments = (ins LinneaSymbolicMatrix:$matrix);
-  let results = (outs AnyTensor:$tensor);
-}
-
-def Linnea_TensorCastOp : Linnea_Op<"cast-tensor"> {
-  let summary = "to be added";
-  let description = [{
-    todo.
-  }];
-  let arguments = (ins AnyTensor:$tensor);
-  let results = (outs LinneaSymbolicMatrix:$matrix);
-}
-
 def Linnea_EquationOp : Linnea_Op<"equ"> {
   let summary = "symbolic equation";
   let description = [{
@@ -124,16 +106,6 @@ def Linnea_CholeskyOp : Linnea_Op<"cholesky", [NoSideEffect]> {
     ];
 
     let verifier = [{ return ::verifyCholeskyOp(*this); }];
-}
-
-def Linnea_DummyOp : Linnea_Op<"dummy"> {
-  let summary = "dummyop";
-  let description = [{ test }];
-  let arguments = (ins AnyLinneaType:$input);
-  let results = (outs AnyLinneaType:$output);
-  let assemblyFormat = [{
-      $input attr-dict `:` type($input) `->` type($output)
-    }];
 }
 
 def Linnea_MulOp : Linnea_Op<"mul", [NoSideEffect]> {
