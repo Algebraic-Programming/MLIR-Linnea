@@ -30,10 +30,6 @@ public:
   LinneaTypeConverter() {
     addConversion([](Type type) { return type; });
     addConversion(convertMatrixType);
-
-    addSourceMaterialization([](OpBuilder &builder, RankedTensorType type,
-                                ValueRange inputs,
-                                Location loc) -> Value { return inputs[0]; });
   }
   static Type convertMatrixType(MatrixType type) {
     return RankedTensorType::get(type.getDims(), type.getElementType());
@@ -43,24 +39,27 @@ public:
 // Emit a cascade of matrix ops. Optimization (i.e., matrix-chain
 // reordering happen at the symbolic level).
 Value matrixCascade(Location loc, ArrayRef<Value> operands,
-                    ConversionPatternRewriter &rewriter) {
-  /*
-    Value left = operands[0];
-    Value result = nullptr;
-    for (size_t i = 1; i < operands.size(); i++) {
-      Value right = operands[i];
-      Value leftDim = rewriter.createOrFold<tensor::DimOp>(loc, left, 0);
-      Value rightDim = rewriter.createOrFold<tensor::DimOp>(loc, right, 1);
-      SmallVector<Value, 2> outShape{leftDim, rightDim};
-      Value buffer = rewriter.create<linalg::InitTensorOp>(loc, outShape,
-                                                           getElementType(left));
-      result = rewriter
-                   .create<linalg::MatmulOp>(loc, TypeRange{buffer.getType()},
-                                             ValueRange{left, right}, buffer)
-                   ->getResult(0);
-    }
-  */
-  return nullptr;
+                    ConversionPatternRewriter &rewriter,
+                    TypeConverter *typeConverter) {
+  Value left = operands[0];
+  Type leftType = typeConverter->convertType(left.getType());
+  Value result = nullptr;
+  for (size_t i = 1; i < operands.size(); i++) {
+    Value right = operands[i];
+    Type rightType = typeConverter->convertType(right.getType());
+    RankedTensorType dest = RankedTensorType::get(
+        {leftType.cast<RankedTensorType>().getShape()[0],
+         rightType.cast<RankedTensorType>().getShape()[1]},
+        leftType.cast<RankedTensorType>().getElementType());
+    Value buffer = rewriter.create<linalg::InitTensorOp>(loc, dest.getShape(),
+                                                         dest.getElementType());
+    result = rewriter
+                 .create<linalg::MatmulOp>(loc, TypeRange{dest},
+                                           ValueRange{left, right}, buffer)
+                 ->getResult(0);
+    left = result;
+  }
+  return result;
 }
 
 class MulOpLowering : public ConversionPattern {
@@ -72,10 +71,28 @@ public:
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const final {
     assert(operands.size() >= 2 && "expect two operands at least");
-
-    Value result = matrixCascade(op->getLoc(), operands, rewriter);
+    Value result =
+        matrixCascade(op->getLoc(), operands, rewriter, typeConverter);
     assert(result != nullptr && "must be non null");
     rewriter.replaceOp(op, result);
+    return success();
+  }
+};
+
+class DummyOpLowering : public ConversionPattern {
+public:
+  DummyOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
+      : ConversionPattern(typeConverter, DummyOp::getOperationName(), 1, ctx) {}
+
+  LogicalResult
+  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
+                  ConversionPatternRewriter &rewriter) const final {
+    auto input = typeConverter->convertType(op->getOperands()[0].getType())
+                     .cast<RankedTensorType>();
+
+    auto result = rewriter.create<linalg::InitTensorOp>(
+        op->getLoc(), input.getShape(), input.getElementType());
+    rewriter.replaceOp(op, result->getResult(0));
     return success();
   }
 };
@@ -84,6 +101,7 @@ public:
 void populateLinneaToLinalgPattern(RewritePatternSet &patterns,
                                    TypeConverter &converter) {
   patterns.add<MulOpLowering>(converter, patterns.getContext());
+  patterns.add<DummyOpLowering>(converter, patterns.getContext());
 }
 
 struct LowerToLinalg : public LinneaLowerToLinalgBase<LowerToLinalg> {
@@ -101,7 +119,8 @@ struct LowerToLinalg : public LinneaLowerToLinalgBase<LowerToLinalg> {
 
     populateFuncOpTypeConversionPattern(patterns, converter);
     populateReturnOpTypeConversionPattern(patterns, converter);
-    populateCallOpTypeConversionPattern(patterns, converter);
+    // populateCallOpTypeConversionPattern(patterns, converter);
+    // populateBranchOpInterfaceTypeConversionPattern(patterns, converter);
     populateLinneaToLinalgPattern(patterns, converter);
 
     if (failed(

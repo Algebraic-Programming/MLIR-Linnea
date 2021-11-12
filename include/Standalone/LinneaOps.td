@@ -13,6 +13,16 @@ include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "LinneaTypeBase.td" 
 
+def Linnea_DummyOp : Linnea_Op<"dummy"> {
+  let summary = "dummyop";
+  let description = [{ test }];
+  let arguments = (ins AnyLinneaType:$input);
+  let results = (outs AnyLinneaType:$output);
+  let assemblyFormat = [{
+      $input attr-dict `:` type($input) `->` type($output)
+    }];
+}
+
 def Linnea_EquationOp : Linnea_Op<"equ"> {
   let summary = "symbolic equation";
   let description = [{
