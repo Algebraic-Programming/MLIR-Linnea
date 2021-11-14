@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Standalone/LinneaPasses.h"
+#include "Standalone/LinneaAttributes.h"
 #include "Standalone/LinneaExpr.h"
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaTypeConverter.h"
@@ -24,6 +25,13 @@ using namespace mlir::linnea::expr;
 
 namespace {
 
+// TODO: split the attribute from the MatrixType. This avoid all
+// these clutter.
+static LinneaMatrixEncodingAttr getMatrixEncodingAttr(MatrixType matrix) {
+  return LinneaMatrixEncodingAttr::get(
+      matrix.getContext(), {LinneaMatrixEncodingAttr::MatrixType::Square});
+}
+
 /// Type converter
 class LinneaTypeConverter : public TypeConverter {
 public:
@@ -32,34 +40,33 @@ public:
     addConversion(convertMatrixType);
   }
   static Type convertMatrixType(MatrixType type) {
-    return RankedTensorType::get(type.getDims(), type.getElementType());
+    // Attribute attr = getMatrixEncodingAttr(type);
+    return RankedTensorType::get(type.getDims(),
+                                 type.getElementType() /*, attr*/);
   }
 };
 
-// Emit a cascade of matrix ops. Optimization (i.e., matrix-chain
+// Emit linalg matrix op. Optimization (i.e., matrix-chain
 // reordering happen at the symbolic level).
-Value matrixCascade(Location loc, ArrayRef<Value> operands,
-                    ConversionPatternRewriter &rewriter,
-                    TypeConverter *typeConverter) {
+Value emitLinalgMatrix(Location loc, ArrayRef<Value> operands,
+                       ConversionPatternRewriter &rewriter,
+                       TypeConverter *typeConverter, ResultRange results) {
+  assert(operands.size() == 2 && "expect two operands");
+  assert(results.size() == 1 && "expect one output");
+
   Value left = operands[0];
-  Type leftType = typeConverter->convertType(left.getType());
-  Value result = nullptr;
-  for (size_t i = 1; i < operands.size(); i++) {
-    Value right = operands[i];
-    Type rightType = typeConverter->convertType(right.getType());
-    RankedTensorType dest = RankedTensorType::get(
-        {leftType.cast<RankedTensorType>().getShape()[0],
-         rightType.cast<RankedTensorType>().getShape()[1]},
-        leftType.cast<RankedTensorType>().getElementType());
-    Value buffer = rewriter.create<linalg::InitTensorOp>(loc, dest.getShape(),
-                                                         dest.getElementType());
-    result = rewriter
-                 .create<linalg::MatmulOp>(loc, TypeRange{dest},
-                                           ValueRange{left, right}, buffer)
-                 ->getResult(0);
-    left = result;
-  }
-  return result;
+  Value right = operands[1];
+  RankedTensorType outputType =
+      typeConverter->convertType(results[0].getType()).cast<RankedTensorType>();
+
+  SmallVector<Value, 4> dynamicSizes;
+  Value buffer = rewriter.create<linalg::InitTensorOp>(
+      loc, outputType, dynamicSizes,
+      rewriter.getI64ArrayAttr(outputType.getShape()));
+  return rewriter
+      .create<linalg::MatmulOp>(loc, TypeRange{outputType},
+                                ValueRange{left, right}, buffer)
+      ->getResult(0);
 }
 
 class MulOpLowering : public ConversionPattern {
@@ -71,8 +78,8 @@ public:
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const final {
     assert(operands.size() >= 2 && "expect two operands at least");
-    Value result =
-        matrixCascade(op->getLoc(), operands, rewriter, typeConverter);
+    Value result = emitLinalgMatrix(op->getLoc(), operands, rewriter,
+                                    typeConverter, op->getResults());
     assert(result != nullptr && "must be non null");
     rewriter.replaceOp(op, result);
     return success();
@@ -175,7 +182,8 @@ void LinneaComprehensivePropertyPropagation::runOnOperation() {
 
       // ctx.print();
       // root->walk();
-      // root = root->simplify();
+      root = root->simplify();
+      // root->walk();
 
       OpBuilder builder(eqOp->getContext());
       OpBuilder::InsertionGuard guard(builder);

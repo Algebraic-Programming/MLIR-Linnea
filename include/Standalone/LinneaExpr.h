@@ -108,6 +108,7 @@ public:
   bool isSame(const Expr *right);
   void walk(int space = 0) const;
   long getMCPFlops();
+  Expr *simplify();
 
 protected:
   Expr() = delete;

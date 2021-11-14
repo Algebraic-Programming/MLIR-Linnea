@@ -581,6 +581,7 @@ void getKernelCostTopLevelExpr(Expr *node, long &cost) {
 struct ResultMCP {
   vector<vector<long>> m;
   vector<vector<long>> s;
+  Expr *newExpr = nullptr;
 };
 
 ResultMCP runMCP(Expr *expr) {
@@ -670,7 +671,7 @@ ResultMCP runMCP(Expr *expr) {
   printOptimalParens(s, 1, operands.size(), operands);
   cout << "\n\n";
 #endif
-  return {m, s};
+  return {m, s, tmps[1][tmps.size() - 1]};
 }
 
 long Expr::getMCPFlops() {
@@ -680,4 +681,9 @@ long Expr::getMCPFlops() {
   cout << "FLOPS: " << m[1][m.size() - 1] << "\n";
 #endif
   return m[1][m.size() - 1];
+}
+
+Expr *Expr::simplify() {
+  auto p = runMCP(this);
+  return p.newExpr;
 }
