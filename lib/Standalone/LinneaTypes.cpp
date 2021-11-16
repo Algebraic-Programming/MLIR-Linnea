@@ -39,8 +39,7 @@ bool isUpperTriangular(MatrixType type) {
   return isT<MatrixType::MatrixProperty::UpperTriangular>(type);
 }
 
-void MatrixType::print(DialectAsmPrinter &printer) const {
-  printer << MatrixType::getMnemonic();
+void MatrixType::print(AsmPrinter &printer) const {
   printer << "<[";
 
   for (size_t i = 0, e = getProperty().size(); i < e; i++) {
