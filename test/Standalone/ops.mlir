@@ -10,28 +10,13 @@ func @bar(%arg0: !linnea.term, %arg1: !linnea.matrix<["identity"],[32,32], f32>)
 // -----
 
 // CHECK-LABEL: func @bar(
-func @bar(%arg0: !linnea.term, %arg1: !linnea.matrix<["identity"],[32,32], f32>) {
-  // CHECK: %{{.*}} = linnea.equ %{{.*}}
-  %0 = linnea.equ %arg1: !linnea.matrix<["identity"],[32,32], f32> -> !linnea.term {
-    ^bb0(%0: !linnea.matrix<["identity"],[32,32], f32>):
+func @bar(%arg0: !linnea.matrix<["identity"],[32,32], f32>) {
+  // CHECK: %{{.*}} = linnea.equation
+  %0 = linnea.equation {
       // CHECK: %{{.*}} = linnea.transpose %{{.*}}
-      %1 = linnea.transpose %0 : !linnea.matrix<["identity"],[32,32], f32> -> !linnea.term
+      %1 = linnea.transpose %arg0 : !linnea.matrix<["identity"],[32,32], f32> -> !linnea.term
       // CHECK: linnea.yield %{{.*}}
       linnea.yield %1 : !linnea.term
   }
   return
 }
-
-// -----
-
-// CHECK-LABEL: func @bar(
-func @bar(%arg0: !linnea.term, %arg1: !linnea.matrix<["identity"],[32,32], f32>) {
-  // CHECK: %{{.*}} = linnea.equ %{{.*}}
-  %0 = linnea.equ %arg1: !linnea.matrix<["identity"],[32,32], f32> -> !linnea.term {
-    ^bb0(%0: !linnea.matrix<["identity"],[32,32], f32>):
-      // CHECK: linnea.yield %{{.*}}
-      linnea.yield %0 : !linnea.matrix<["identity"],[32,32], f32>
-  }
-  return
-}
- 

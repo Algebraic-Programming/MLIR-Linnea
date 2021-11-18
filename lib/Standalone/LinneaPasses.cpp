@@ -86,29 +86,10 @@ public:
   }
 };
 
-class DummyOpLowering : public ConversionPattern {
-public:
-  DummyOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
-      : ConversionPattern(typeConverter, DummyOp::getOperationName(), 1, ctx) {}
-
-  LogicalResult
-  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
-                  ConversionPatternRewriter &rewriter) const final {
-    auto input = typeConverter->convertType(op->getOperands()[0].getType())
-                     .cast<RankedTensorType>();
-
-    auto result = rewriter.create<linalg::InitTensorOp>(
-        op->getLoc(), input.getShape(), input.getElementType());
-    rewriter.replaceOp(op, result->getResult(0));
-    return success();
-  }
-};
-
 // Populate patterns
 void populateLinneaToLinalgPattern(RewritePatternSet &patterns,
                                    TypeConverter &converter) {
   patterns.add<MulOpLowering>(converter, patterns.getContext());
-  patterns.add<DummyOpLowering>(converter, patterns.getContext());
 }
 
 struct LowerToLinalg : public LinneaLowerToLinalgBase<LowerToLinalg> {
@@ -126,8 +107,6 @@ struct LowerToLinalg : public LinneaLowerToLinalgBase<LowerToLinalg> {
 
     populateFuncOpTypeConversionPattern(patterns, converter);
     populateReturnOpTypeConversionPattern(patterns, converter);
-    // populateCallOpTypeConversionPattern(patterns, converter);
-    // populateBranchOpInterfaceTypeConversionPattern(patterns, converter);
     populateLinneaToLinalgPattern(patterns, converter);
 
     if (failed(
@@ -168,7 +147,7 @@ void LinneaComprehensivePropertyPropagation::runOnOperation() {
   SmallVector<Operation *> toErase;
   WalkResult res = module.walk([&](EquationOp eqOp) -> WalkResult {
     // get terminator. Start building expression terms from the yield op.
-    Region &region = eqOp.region();
+    Region &region = eqOp.getBody();
     Operation *terminator = region.front().getTerminator();
     Value termOperand = terminator->getOperand(0);
 
@@ -176,19 +155,17 @@ void LinneaComprehensivePropertyPropagation::runOnOperation() {
       using namespace mlir::linnea::expr;
       ScopedContext ctx;
       ExprBuilder exprBuilder;
-      BlockAndValueMapping mapper;
-      mapper.map(eqOp.region().getArguments(), eqOp.getOperands());
       Expr *root = exprBuilder.buildLinneaExpr(termOperand);
 
       // ctx.print();
       // root->walk();
       root = root->simplify();
-      // root->walk();
+      root->walk();
 
       OpBuilder builder(eqOp->getContext());
       OpBuilder::InsertionGuard guard(builder);
       builder.setInsertionPointAfter(eqOp);
-      Value rootVal = exprBuilder.buildIR(eqOp.getLoc(), builder, root, mapper);
+      Value rootVal = exprBuilder.buildIR(eqOp->getLoc(), builder, root);
       Value resultEqOp = eqOp.getResult();
       resultEqOp.replaceAllUsesWith(rootVal);
       toErase.push_back(eqOp);

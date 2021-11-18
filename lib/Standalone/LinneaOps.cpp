@@ -55,12 +55,10 @@ void TransposeOp::build(OpBuilder &builder, OperationState &result,
   build(builder, result, outputType, input);
 }
 
-// FIXME
 void InverseOp::build(OpBuilder &builder, OperationState &result, Value input) {
   build(builder, result, input.getType(), input);
 }
 
-// FIXME
 void CholeskyOp::build(OpBuilder &builder, OperationState &result,
                        Value input) {
   MatrixType inputType = input.getType().cast<MatrixType>();
@@ -87,7 +85,6 @@ void CholeskyOp::build(OpBuilder &builder, OperationState &result,
   build(builder, result, newType, input);
 }
 
-// FIXME
 void MulOp::build(OpBuilder &builder, OperationState &result,
                   ValueRange inputs) {
   build(builder, result, Type(), inputs);
@@ -101,46 +98,28 @@ static LogicalResult verifyTransposeOp(TransposeOp op) { return success(); }
 
 static LogicalResult verifyMulOp(MulOp op) { return success(); }
 
-#define GET_OP_CLASSES
-#include "Standalone/LinneaOps.cpp.inc"
-/*
-// Assume we are dealing with ranked 2d tensor type.
-static Type getElementType(Value v) {
-  RankedTensorType t = v.getType().cast<RankedTensorType>();
-  return t.getElementType();
+static ParseResult parseEquationOp(OpAsmParser &parser,
+                                   OperationState &result) {
+  // Parse the body region.
+  Region *body = result.addRegion();
+  if (parser.parseRegion(*body))
+    return failure();
+
+  // Parse terminator.
+  Operation &yield = body->back().back();
+  result.types.reserve(yield.getNumOperands());
+  result.types.append(yield.operand_type_begin(), yield.operand_type_end());
+  return success();
 }
 
-// Assume we are dealing with ranked 2d tensor type.
-static Value createBufferOpWithAttr(Value u, Value v, Location loc,
-                                    LinneaMatrixEncodingAttr attr,
-                                    PatternRewriter &rewriter) {
-  // static shape.
-  mlir::Value buffer;
-  RankedTensorType uT = u.getType().cast<RankedTensorType>();
-  RankedTensorType vT = v.getType().cast<RankedTensorType>();
-  if ((uT.hasStaticShape()) && (vT.hasStaticShape())) {
-    auto shapeU = uT.getShape();
-    auto shapeV = vT.getShape();
-    SmallVector<int64_t, 2> outShape{shapeU[0], shapeV[1]};
-    buffer =
-        rewriter.create<linalg::InitTensorOp>(loc, outShape, getElementType(u));
-  }
-  // dynamic shape.
-  else {
-    Value left = rewriter.createOrFold<tensor::DimOp>(loc, u, 0);
-    Value right = rewriter.createOrFold<tensor::DimOp>(loc, v, 1);
-    SmallVector<Value, 2> outShape{left, right};
-    buffer =
-        rewriter.create<linalg::InitTensorOp>(loc, outShape, getElementType(u));
-  }
-  // cast
-  RankedTensorType bufferType = buffer.getType().cast<RankedTensorType>();
-  RankedTensorType castType = RankedTensorType::get(
-      bufferType.getShape(), bufferType.getElementType(), attr);
-  Value cast = rewriter.create<tensor::CastOp>(loc, castType, buffer);
-  return cast;
+static void print(OpAsmPrinter &printer, EquationOp op) {
+  // Print the region.
+  printer.printRegion(op.getBody());
 }
-*/
+
+#define GET_OP_CLASSES
+#include "Standalone/LinneaOps.cpp.inc"
+
 namespace {
 
 struct InverseOfMul : public OpRewritePattern<InverseOp> {
@@ -281,15 +260,6 @@ struct CollapseMul : public OpRewritePattern<MulOp> {
   }
 };
 
-struct EvaluateEquation : public OpRewritePattern<EquationOp> {
-  using OpRewritePattern<EquationOp>::OpRewritePattern;
-
-  LogicalResult matchAndRewrite(EquationOp op,
-                                PatternRewriter &rewriter) const override {
-    return failure();
-  }
-};
-
 } // end namespace
 
 void InverseOp::getCanonicalizationPatterns(RewritePatternSet &results,
@@ -303,6 +273,4 @@ void MulOp::getCanonicalizationPatterns(RewritePatternSet &results,
 }
 
 void EquationOp::getCanonicalizationPatterns(RewritePatternSet &results,
-                                             MLIRContext *context) {
-  results.insert<EvaluateEquation>(context);
-}
+                                             MLIRContext *context) {}

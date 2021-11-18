@@ -21,7 +21,7 @@
 namespace mlir {
 class OpBuilder;
 class Location;
-class BlockAndValueMapping;
+class Region;
 } // namespace mlir
 
 namespace mlir {
@@ -277,14 +277,12 @@ private:
   Expr *buildOperandImpl(mlir::Value type);
 
   // build mul/transpose/inverse.
-  mlir::Value buildIRImpl(Location loc, OpBuilder &builder, Expr *root,
-                          BlockAndValueMapping &mapper);
-  mlir::Value buildMulImpl(Location loc, OpBuilder &builder, NaryExpr *expr,
-                           BlockAndValueMapping &mapper);
+  mlir::Value buildIRImpl(Location loc, OpBuilder &builder, Expr *root);
+  mlir::Value buildMulImpl(Location loc, OpBuilder &builder, NaryExpr *expr);
   mlir::Value buildTransposeImpl(Location loc, OpBuilder &builder,
-                                 UnaryExpr *expr, BlockAndValueMapping &mapper);
+                                 UnaryExpr *expr);
   mlir::Value buildInverseImpl(Location loc, OpBuilder &builder,
-                               UnaryExpr *expr, BlockAndValueMapping &mapper);
+                               UnaryExpr *expr);
 
   // map 'from' to 'to'.
   void map(Value from, Expr *to) { valueMap[from] = to; };
@@ -306,8 +304,7 @@ private:
 
 public:
   Expr *buildLinneaExpr(mlir::Value value);
-  mlir::Value buildIR(Location loc, OpBuilder &builder, Expr *root,
-                      BlockAndValueMapping &mapper);
+  mlir::Value buildIR(Location loc, OpBuilder &builder, Expr *root);
 
   ExprBuilder() = default;
 };

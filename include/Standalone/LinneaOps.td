@@ -13,44 +13,39 @@ include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "LinneaTypeBase.td" 
 
-def Linnea_DummyOp : Linnea_Op<"dummy"> {
-  let summary = "dummyop";
-  let description = [{ test }];
-  let arguments = (ins AnyLinneaType:$input);
-  let results = (outs AnyLinneaType:$output);
-  let assemblyFormat = [{
-      $input attr-dict `:` type($input) `->` type($output)
-    }];
-}
-
-def Linnea_EquationOp : Linnea_Op<"equ"> {
-  let summary = "symbolic equation";
+def Linnea_EquationOp : Linnea_Op<"equation", 
+    [SingleBlockImplicitTerminator<"YieldOp">]> {
+  let summary = "Operation wrapper to contains a set of linnea operations.";
   let description = [{
     ```mlir
-      %r = symbolic.equation {
-        %0 = trans(%arg0) : !linnea.matrix<[2,2],["fr"]> -> term
-        %1 = mul(%0, %arg0) : !linnea.term, !linnea.matrix<[2,2],["fr"]> -> term
     ```
+    `linnea.equation` is introduced as a wrapper for `linnea` dialect
+    operations which makes analysis and transformation simpler.
+    The `linnea.equationOp` operation has a single region with a single
+    basic block attached. The block is terminated by `linnea.yieldOp` 
+    which returns the result.
+    The `linnea.equation` region allows implicit capture.
   }];
   
-  let arguments = (ins Variadic<LinneaSymbolicMatrix>:$input);
   let results = (outs LinneaTerm:$output);
 
-  let assemblyFormat = [{
-    $input attr-dict `:` type($input) `->` type($output) $region
+  let regions = (region SizedRegion<1>:$region);
+
+  let extraClassDeclaration = [{
+    Region &getBody() { return getOperation()->getRegion(0); }
   }];
 
-  let regions = (region SizedRegion<1>:$region);
+  let parser = [{ return ::parse$cppClass(parser, result); }];
+  let printer = [{ return ::print(p, *this); }];
 
   let hasCanonicalizer = 1;
 }
 
-def Linnea_YieldOp : Linnea_Op<"yield", [NoSideEffect, Terminator]> {
-  let summary = "terminator for an equ op";
-  let description = [{
-  
-  }];
+def Linnea_YieldOp : Linnea_Op<"yield", 
+    [Terminator, HasParent<"EquationOp">]> {
+  let summary = "The `linnea.yield` returns value from `linnea.equation`.";
   let arguments = (ins AnyLinneaType:$input);
+  
   let assemblyFormat = [{
     $input attr-dict `:` type($input)
   }];

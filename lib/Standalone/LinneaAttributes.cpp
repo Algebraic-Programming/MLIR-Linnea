@@ -49,7 +49,7 @@ bool hasUpperTriangularAttr(Type type) {
 }
 
 void LinneaMatrixEncodingAttr::print(AsmPrinter &printer) const {
-  printer << "matrix<{p = [";
+  printer << "<{p = [";
 
   for (size_t i = 0, e = getEncodingType().size(); i < e; i++) {
     switch (getEncodingType()[i]) {

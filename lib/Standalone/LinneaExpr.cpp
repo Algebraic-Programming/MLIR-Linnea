@@ -125,19 +125,18 @@ Expr *ExprBuilder::buildOperandImpl(Value val) {
   std::string id = "A" + std::to_string(getNextId());
   Expr *operand = new Operand(id, size);
   operand->setProperties(properties);
-  // map in both directions
+  // map in both directions.
   map(val, operand);
   map(operand, val);
   return operand;
 }
 
 mlir::Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
-                                      NaryExpr *expr,
-                                      BlockAndValueMapping &mapper) {
+                                      NaryExpr *expr) {
   SmallVector<Value> operands;
   auto children = expr->getChildren();
   for (int i = 0, e = children.size(); i < e; i++)
-    operands.push_back(buildIRImpl(loc, builder, children[i], mapper));
+    operands.push_back(buildIRImpl(loc, builder, children[i]));
   MatrixType first = operands[0].getType().cast<MatrixType>();
   MatrixType last = operands[operands.size() - 1].getType().cast<MatrixType>();
   SmallVector<MatrixType::MatrixProperty> properties =
@@ -149,24 +148,22 @@ mlir::Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
 }
 
 mlir::Value ExprBuilder::buildTransposeImpl(Location loc, OpBuilder &builder,
-                                            UnaryExpr *expr,
-                                            BlockAndValueMapping &mapper) {
+                                            UnaryExpr *expr) {
   return nullptr;
 }
 
 mlir::Value ExprBuilder::buildInverseImpl(Location loc, OpBuilder &builder,
-                                          UnaryExpr *expr,
-                                          BlockAndValueMapping &mapper) {
+                                          UnaryExpr *expr) {
   return nullptr;
 }
 
 mlir::Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder,
-                                     Expr *root, BlockAndValueMapping &mapper) {
+                                     Expr *root) {
   if (root) {
     if (auto naryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
       switch (naryExpr->getKind()) {
       case NaryExpr::NaryExprKind::MUL:
-        return buildMulImpl(loc, builder, naryExpr, mapper);
+        return buildMulImpl(loc, builder, naryExpr);
         break;
       default:
         assert(0 && "UNK");
@@ -175,26 +172,25 @@ mlir::Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder,
     if (auto unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(root)) {
       switch (unaryExpr->getKind()) {
       case UnaryExpr::UnaryExprKind::TRANSPOSE:
-        return buildTransposeImpl(loc, builder, unaryExpr, mapper);
+        return buildTransposeImpl(loc, builder, unaryExpr);
         break;
       case UnaryExpr::UnaryExprKind::INVERSE:
-        return buildInverseImpl(loc, builder, unaryExpr, mapper);
+        return buildInverseImpl(loc, builder, unaryExpr);
         break;
       default:
         assert(0 && "UNK");
       }
     }
     if (auto operand = llvm::dyn_cast_or_null<Operand>(root)) {
-      return mapper.lookup(exprMap[operand]);
+      return exprMap[operand];
     }
   }
   assert(0 && "UNKN");
   return nullptr;
 }
 
-mlir::Value ExprBuilder::buildIR(Location loc, OpBuilder &builder, Expr *root,
-                                 BlockAndValueMapping &mapper) {
-  return buildIRImpl(loc, builder, root, mapper);
+mlir::Value ExprBuilder::buildIR(Location loc, OpBuilder &builder, Expr *root) {
+  return buildIRImpl(loc, builder, root);
 }
 
 Expr *ExprBuilder::buildExprImpl(Value val) {
