@@ -39,8 +39,8 @@ def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
     SmallVector<MatrixType, 4> mt;
 
     for (const NamedAttribute &attr : dict) {
-      if (attr.first == "p") {
-        auto arrayAttr = attr.second.dyn_cast<ArrayAttr>();
+      if (attr.getName() == "p") {
+        auto arrayAttr = attr.getValue().dyn_cast<ArrayAttr>();
         if (!arrayAttr) {
           $_parser.emitError($_parser.getNameLoc(), 
                              "expect an array for matrix encoding");
