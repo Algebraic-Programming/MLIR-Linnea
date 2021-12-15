@@ -236,10 +236,7 @@ public:
   std::vector<Expr::ExprProperty> getProperties() const;
 
   // add additional properties to 'inferredProperties'.
-  void setProperties(std::vector<Expr::ExprProperty> properties) override {
-    for (auto property : properties)
-      inferredProperties.insert(property);
-  };
+  void setProperties(std::vector<Expr::ExprProperty> properties) override;
 
   // return normal form for current expression.
   Expr *getNormalForm() override;

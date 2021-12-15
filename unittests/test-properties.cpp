@@ -4,6 +4,23 @@
 using namespace std;
 using namespace mlir::linnea::expr;
 
+// must fails: a triangular matrix is a special kind of square matrix.
+TEST(Property, LowerTriangular) {
+  ScopedContext ctx;
+  auto *A = new Operand("A", {20, 10});
+  A->setProperties({Expr::ExprProperty::LOWER_TRIANGULAR});
+  EXPECT_EQ(A->isLowerTriangular(), false);
+}
+
+// must fails: a symmetric matrix is a square matrix that is equal to its
+// transpose.
+TEST(Property, Symmetric) {
+  ScopedContext ctx;
+  auto *A = new Operand("A", {20, 10});
+  A->setProperties({Expr::ExprProperty::SYMMETRIC});
+  EXPECT_EQ(A->isSymmetric(), false);
+}
+
 TEST(Property, TriangularInverse) {
   ScopedContext ctx;
   auto *A = new Operand("A", {20, 20});

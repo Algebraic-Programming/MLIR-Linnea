@@ -9,7 +9,6 @@
 #include "Standalone/LinneaExpr.h"
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaTypes.h"
-#include "mlir/IR/BlockAndValueMapping.h"
 #include "llvm/Support/Casting.h"
 #include <algorithm>
 #include <iostream>
@@ -313,6 +312,26 @@ Operand::Operand(string name, vector<int64_t> shape)
     this->setProperties({Expr::ExprProperty::SQUARE});
 }
 
+void Operand::setProperties(std::vector<Expr::ExprProperty> properties) {
+  for (auto property : properties) {
+    if (property == Expr::ExprProperty::LOWER_TRIANGULAR && !this->isSquare()) {
+      llvm::errs()
+          << "A triangular matrix is a special kind of square matrix\n";
+      continue;
+    }
+    if (property == Expr::ExprProperty::UPPER_TRIANGULAR && !this->isSquare()) {
+      llvm::errs()
+          << "A triangular matrix is a special kind of square matrix\n";
+      continue;
+    }
+    if (property == Expr::ExprProperty::SYMMETRIC && !this->isSquare()) {
+      llvm::errs() << "A symmetric matrix is a special kind of square matrix\n";
+      continue;
+    }
+    inferredProperties.insert(property);
+  }
+}
+
 void ScopedContext::print() {
   cout << "#live refs: " << liveRefs.size() << "\n";
   int operands = 0;
@@ -535,6 +554,9 @@ static void print(vector<vector<Expr *>> &tmps, bool bitLayout = false) {
 // where n are the properties. But if we allow multiple properties
 // this becomes goes beyond control.
 int getCostBasedOnProperties(Expr *node, int m, int n, int k) {
+  llvm::errs() << "---------------------------------\n";
+  node->walk();
+  llvm::errs() << "---------------------------------\n";
   auto binaryOp = llvm::dyn_cast_or_null<NaryExpr>(node);
   assert(binaryOp && "must be non null");
   assert(binaryOp->getChildren().size() == 2 && "expect two children");

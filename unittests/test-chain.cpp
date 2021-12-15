@@ -88,6 +88,74 @@ TEST(Chain, CountFlopsIsSymmetric) {
   EXPECT_EQ(result, 22000);
 }
 
+// See table: https://arxiv.org/pdf/1804.04021.pdf
+TEST(Chain, costBlas) {
+  ScopedContext ctx;
+  auto *X = new Operand("A", {30, 20});
+  auto *Y = new Operand("B", {30, 40});
+  // GEMM
+  auto *Z = mul(X, Y);
+  auto flops = Z->getMCPFlops();
+  EXPECT_EQ(flops, 2 * 20 * 30 * 40);
+
+  X = new Operand("A", {30, 30});
+  X->setProperties({Expr::ExprProperty::LOWER_TRIANGULAR});
+  Y = new Operand("B", {30, 20});
+  // TRMM
+  Z = mul(X, Y);
+  flops = Z->getMCPFlops();
+  EXPECT_EQ(flops, 30 * 30 * 20);
+}
+
+TEST(Chain, LinneaTest0) {
+  /*
+
+  """
+      algorithm0(ml0::Array{Float64,2}, ml1::Array{Float64,2},
+  ml2::Array{Float64,2}, ml3::Array{Float64,2})
+
+  Compute
+  X = (A B C D).
+
+  Requires at least Julia v1.0.
+
+  # Arguments
+  - `ml0::Array{Float64,2}`: Matrix A of size 100 x 90.
+  - `ml1::Array{Float64,2}`: Matrix B of size 90 x 90 with property SPD.
+  - `ml2::Array{Float64,2}`: Matrix C of size 90 x 80.
+  - `ml3::Array{Float64,2}`: Matrix D of size 80 x 70.
+  """
+  function algorithm0(ml0::Array{Float64,2}, ml1::Array{Float64,2},
+  ml2::Array{Float64,2}, ml3::Array{Float64,2}) # cost: 3.4e+06 FLOPs # A: ml0,
+  full, B: ml1, full, C: ml2, full, D: ml3, full ml4 = Array{Float64}(undef, 90,
+  70) # tmp3 = (C D) gemm!('N', 'N', 1.0, ml2, ml3, 0.0, ml4)
+
+      # A: ml0, full, B: ml1, full, tmp3: ml4, full
+      ml5 = Array{Float64}(undef, 90, 70)
+      # tmp5 = (B tmp3)
+      symm!('L', 'L', 1.0, ml1, ml4, 0.0, ml5)
+
+      # A: ml0, full, tmp5: ml5, full
+      ml6 = Array{Float64}(undef, 100, 70)
+      # tmp6 = (A tmp5)
+      gemm!('N', 'N', 1.0, ml0, ml5, 0.0, ml6)
+
+      # tmp6: ml6, full
+      # X = tmp6
+      return (ml6)
+  */
+
+  ScopedContext ctx;
+  auto *A = new Operand("A", {100, 90});
+  auto *B = new Operand("B", {90, 90});
+  B->setProperties({Expr::ExprProperty::SPD});
+  auto *C = new Operand("C", {90, 80});
+  auto *D = new Operand("D", {80, 70});
+  auto *X = mul(A, B, C, D);
+  auto flops = X->getMCPFlops();
+  EXPECT_EQ(flops, 3402000);
+}
+
 /*
 TEST(Chain, Factorized) {
   ScopedContext ctx;
