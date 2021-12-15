@@ -102,6 +102,7 @@ public:
   virtual bool isSymmetric() const = 0;
   virtual bool isFullRank() const = 0;
   virtual bool isSPD() const = 0;
+  virtual bool isFactored() const = 0;
 
   // utilities.
   bool isTransposeOf(const Expr *right);
@@ -163,6 +164,7 @@ public:
   bool isSymmetric() const override;
   bool isFullRank() const override;
   bool isSPD() const override;
+  bool isFactored() const override;
 
   // kind of the nary expression.
   NaryExprKind getKind() const { return kind; };
@@ -205,6 +207,7 @@ public:
   bool isLowerTriangular() const override;
   bool isFullRank() const override;
   bool isSPD() const override;
+  bool isFactored() const override;
 
   // kind of unary expression.
   UnaryExprKind getKind() const { return kind; };
@@ -251,6 +254,7 @@ public:
   bool isSymmetric() const override;
   bool isFullRank() const override;
   bool isSPD() const override;
+  bool isFactored() const override;
 
   static bool classof(const Expr *expr) {
     return expr->getKind() == ExprKind::OPERAND;

@@ -21,6 +21,8 @@ using namespace std;
 
 thread_local int ExprBuilder::operandId = 0;
 
+// TODO: make more llvm friendly (do not use cout).
+
 // TODO: we can use the same set of enums instead of converting each time.
 std::vector<Expr::ExprProperty>
 convert(llvm::ArrayRef<MatrixType::MatrixProperty> properties) {
@@ -351,6 +353,9 @@ static void printProperties(vector<Expr::ExprProperty> properties) {
     case Expr::ExprProperty::SPD:
       cout << "SPD";
       break;
+    case Expr::ExprProperty::FACTORED:
+      cout << "FACTORED";
+      break;
     default:
       assert(0 && "UNK");
     }
@@ -397,7 +402,7 @@ void Expr::walk(int level) const {
       cout << "UNK";
     }
     unaryOp->getChild()->walk(level);
-    cout << ")";
+    cout << string(level, ' ') << ")";
   } // unaryOp
   if (auto operand = llvm::dyn_cast_or_null<Operand>(this)) {
     cout << string(level, ' ') << operand->getName() << " [";
@@ -446,10 +451,9 @@ static vector<long> getPVector(vector<Expr *> exprs) {
   vector<long> pVector;
   for (auto expr : exprs) {
     Operand *operand = nullptr;
-    if (auto unaryOp = llvm::dyn_cast_or_null<UnaryExpr>(expr))
-      operand = llvm::dyn_cast_or_null<Operand>(unaryOp->getChild());
-    else
-      operand = llvm::dyn_cast_or_null<Operand>(expr);
+    while (auto unaryOp = llvm::dyn_cast_or_null<UnaryExpr>(expr))
+      expr = unaryOp->getChild();
+    operand = llvm::dyn_cast_or_null<Operand>(expr);
     assert(operand && "must be non null");
     auto shape = operand->getShape();
     if (!pVector.size()) {
@@ -527,25 +531,37 @@ static void print(vector<vector<Expr *>> &tmps, bool bitLayout = false) {
 }
 #endif
 
-// TODO: n-ary how to handle? Do we need to?
+// XXX: this does not scale. We are bulding a n * n table
+// where n are the properties. But if we allow multiple properties
+// this becomes goes beyond control.
+int getCostBasedOnProperties(Expr *node, int m, int n, int k) {
+  auto binaryOp = llvm::dyn_cast_or_null<NaryExpr>(node);
+  assert(binaryOp && "must be non null");
+  assert(binaryOp->getChildren().size() == 2 && "expect two children");
+  if (binaryOp->getChildren()[0]
+          ->isSymmetric() /*&& binaryOp->getChildren()[1]->isSquare()*/)
+    return m * n * k;
+  if (binaryOp->getChildren()[0]
+          ->isLowerTriangular() /*&& binaryOp->getChildren()[1]->isSquare()*/)
+    return m * n * k;
+
+  return m * n * k * 2;
+}
+
+// Compute the cost of the current matrix multiplication based on
+// flop count and properties.
 pair<long, long> getKernelCostImpl(Expr *node, long &cost, bool fullTree) {
   if (node) {
     if (auto binaryOp = llvm::dyn_cast_or_null<NaryExpr>(node)) {
       auto children = binaryOp->getChildren();
-      // walk(node);
       assert(children.size() == 2 && "expect only two children");
       pair<long, long> left = getKernelCostImpl(children[0], cost, fullTree);
       pair<long, long> right = getKernelCostImpl(children[1], cost, fullTree);
       // note this cost must be the cost of the top level expr
       // not the cost of the tree.
       // GEMM by default adjust later on.
-      auto currentCost = left.first * left.second * right.second * 2;
-      // TRMM TODO: must be square the other?
-      if (children[0]->isLowerTriangular())
-        currentCost >>= 1;
-      // SYMM TODO: must be square the other?
-      else if (children[0]->isSymmetric())
-        currentCost >>= 1;
+      auto currentCost =
+          getCostBasedOnProperties(node, left.first, left.second, right.second);
 
       if (fullTree)
         cost += currentCost;

@@ -4,7 +4,11 @@ function(add_linnea_unittest name)
   add_unittest(StandaloneUnitTests ${name} ${ARGN})
 endfunction()
 
-add_linnea_unittest(LinneaUnitTests dummy.cpp test-chain.cpp)
+add_linnea_unittest(LinneaUnitTests dummy.cpp 
+  test-dimensions.cpp
+  test-properties.cpp
+  test-parser.cpp
+  test-chain.cpp)
 
 target_link_libraries(LinneaUnitTests
   PRIVATE

@@ -36,7 +36,11 @@ bool Operand::isFullRank() const { return isX<ExprProperty::FULL_RANK>(this); }
 
 bool Operand::isSPD() const { return isX<ExprProperty::SPD>(this); }
 
+bool Operand::isFactored() const { return isX<ExprProperty::FACTORED>(this); }
+
 // ----------------------------------------------------------------------
+
+bool UnaryExpr::isFactored() const { return child->isFactored(); }
 
 bool UnaryExpr::isUpperTriangular() const {
   auto kind = this->getKind();
@@ -105,6 +109,8 @@ bool UnaryExpr::isSPD() const {
 }
 
 // ----------------------------------------------------------------------
+
+bool NaryExpr::isFactored() const { return false; }
 
 bool NaryExpr::isUpperTriangular() const {
   auto kind = this->getKind();

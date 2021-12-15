@@ -1,27 +1,8 @@
-#include "Standalone/LinneaExpr.h"
+#include "mul.h"
 #include "gtest/gtest.h"
 
 using namespace std;
 using namespace mlir::linnea::expr;
-
-namespace {
-template <typename... Args>
-vector<typename std::common_type<Args...>::type> varargToVector(Args... args) {
-  vector<typename std::common_type<Args...>::type> result;
-  result.reserve(sizeof...(Args));
-  for (auto arg :
-       {static_cast<typename std::common_type<Args...>::type>(args)...}) {
-    result.emplace_back(arg);
-  }
-  return result;
-}
-} // end namespace
-
-template <typename Arg, typename... Args> Expr *mul(Arg arg, Args... args) {
-  auto operands = varargToVector<Expr *>(arg, args...);
-  assert(operands.size() >= 2 && "one or more operands");
-  return variadicMul(operands);
-}
 
 TEST(Chain, MCP) {
   ScopedContext ctx;
@@ -106,3 +87,15 @@ TEST(Chain, CountFlopsIsSymmetric) {
   result = G->getMCPFlops();
   EXPECT_EQ(result, 22000);
 }
+
+/*
+TEST(Chain, Factorized) {
+  ScopedContext ctx;
+  auto *A = new Operand("A", {20, 20});
+  A->setProperties({Expr::ExprProperty::FULL_RANK});
+  auto *L = new Operand("L", {20, 20});
+  L->setProperties({Expr::ExprProperty::LOWER_TRIANGULAR,
+Expr::ExprProperty::FACTORED}); auto *R = mul(trans(A), inv(trans(L)), inv(L),
+A); auto f = R->getMCPFlops(); EXPECT_EQ(f, 1);
+}
+*/
