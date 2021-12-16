@@ -23,6 +23,9 @@ thread_local int ExprBuilder::operandId = 0;
 // TODO: make more llvm friendly (do not use cout).
 
 // TODO: we can use the same set of enums instead of converting each time.
+// think if it makes sense to use the same MatrixProperty enums, what
+// if tomorrow we introduce a vector type? Can we share the enums
+// between the twos?
 std::vector<Expr::ExprProperty>
 convert(llvm::ArrayRef<MatrixType::MatrixProperty> properties) {
   vector<Expr::ExprProperty> result;
@@ -224,10 +227,11 @@ Expr *ExprBuilder::buildLinneaExpr(Value val) { return buildExprImpl(val); }
 
 vector<int64_t> Operand::getResultDimensions() const { return shape; }
 
+/// Return the size of the unary expr operand.
 vector<int64_t> UnaryExpr::getResultDimensions() const {
   if (this->getKind() == UnaryExprKind::INVERSE)
     return this->getChild()->getResultDimensions();
-  else {
+  else { // transpose.
     vector<int64_t> dims = this->getChild()->getResultDimensions();
     assert(dims.size() == 2 && "expect two dimensions");
     std::swap(dims[0], dims[1]);
@@ -237,6 +241,7 @@ vector<int64_t> UnaryExpr::getResultDimensions() const {
   return {};
 }
 
+/// Return the size of the nary expr operand.
 vector<int64_t> NaryExpr::getResultDimensions() const {
   if (this->getKind() == NaryExprKind::MUL) {
     auto children = this->getChildren();
@@ -248,22 +253,35 @@ vector<int64_t> NaryExpr::getResultDimensions() const {
   assert(0 && "unreachable");
 }
 
+/// check if `expr` has `property`.
+template <typename T>
+bool Expr::hasProperty(T *expr, Expr::ExprProperty property) {
+  return (expr->inferredProperties).count(property) != 0;
+}
+
+/// Query each property on `expr`.
 template <typename T>
 void Expr::setPropertiesImpl(T *expr) {
-  if (expr->isUpperTriangular())
+  // if the lookup fails check if the expr has the given property.
+  if (!hasProperty<T>(expr, Expr::ExprProperty::UPPER_TRIANGULAR) &&
+      expr->isUpperTriangular())
     expr->inferredProperties.insert(Expr::ExprProperty::UPPER_TRIANGULAR);
-  if (expr->isLowerTriangular())
+  if (!hasProperty<T>(expr, Expr::ExprProperty::UPPER_TRIANGULAR) &&
+      expr->isLowerTriangular())
     expr->inferredProperties.insert(Expr::ExprProperty::LOWER_TRIANGULAR);
-  if (expr->isSquare())
+  if (!hasProperty<T>(expr, Expr::ExprProperty::SQUARE) && expr->isSquare())
     expr->inferredProperties.insert(Expr::ExprProperty::SQUARE);
-  if (expr->isSymmetric())
+  if (!hasProperty<T>(expr, Expr::ExprProperty::SYMMETRIC) &&
+      expr->isSymmetric())
     expr->inferredProperties.insert(Expr::ExprProperty::SYMMETRIC);
-  if (expr->isFullRank())
+  if (!hasProperty<T>(expr, Expr::ExprProperty::FULL_RANK) &&
+      expr->isFullRank())
     expr->inferredProperties.insert(Expr::ExprProperty::FULL_RANK);
-  if (expr->isSPD())
+  if (!hasProperty<T>(expr, Expr::ExprProperty::SPD) && expr->isSPD())
     expr->inferredProperties.insert(Expr::ExprProperty::SPD);
 }
 
+/// Return a vector of inferred properties by calling `setPropertiesImpl`.
 vector<Expr::ExprProperty> UnaryExpr::getAndSetProperties() {
   vector<Expr::ExprProperty> inferredPropertiesAsVec;
   setPropertiesImpl<UnaryExpr>(this);
@@ -272,6 +290,7 @@ vector<Expr::ExprProperty> UnaryExpr::getAndSetProperties() {
   return inferredPropertiesAsVec;
 }
 
+/// Return a vector of inferred properties by calling `setPropertiesImpl`.
 vector<Expr::ExprProperty> NaryExpr::getAndSetProperties() {
   vector<Expr::ExprProperty> inferredPropertiesAsVec;
   setPropertiesImpl<NaryExpr>(this);
@@ -280,6 +299,7 @@ vector<Expr::ExprProperty> NaryExpr::getAndSetProperties() {
   return inferredPropertiesAsVec;
 }
 
+/// Return a vector of properties for the current operand.
 vector<Expr::ExprProperty> Operand::getProperties() const {
   vector<Expr::ExprProperty> inferredPropertiesAsVec;
   for (auto property : inferredProperties)
@@ -312,6 +332,7 @@ Operand::Operand(string name, vector<int64_t> shape)
     this->setProperties({Expr::ExprProperty::SQUARE});
 }
 
+/// Set properties for the current operand.
 void Operand::setProperties(std::vector<Expr::ExprProperty> properties) {
   for (auto property : properties) {
     if (property == Expr::ExprProperty::LOWER_TRIANGULAR && !this->isSquare()) {
@@ -550,24 +571,65 @@ static void print(vector<vector<Expr *>> &tmps, bool bitLayout = false) {
 }
 #endif
 
-// XXX: this does not scale. We are bulding a n * n table
-// where n are the properties. But if we allow multiple properties
-// this becomes goes beyond control.
+bool isGEMMLikePattern(NaryExpr *node) {
+  Expr *leftExpr = node->getChildren()[0];
+  while (auto unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(leftExpr)) {
+    if (unaryExpr->getKind() == UnaryExpr::UnaryExprKind::INVERSE)
+      return false;
+    leftExpr = unaryExpr->getChild();
+  }
+  auto *leftOperand = llvm::dyn_cast_or_null<Operand>(leftExpr);
+  if (!leftOperand)
+    return false;
+  Expr *rightExpr = node->getChildren()[1];
+  while (auto unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(rightExpr)) {
+    if (unaryExpr->getKind() == UnaryExpr::UnaryExprKind::INVERSE)
+      return false;
+    rightExpr = unaryExpr->getChild();
+  }
+  auto *rightOperand = llvm::dyn_cast_or_null<Operand>(rightExpr);
+  if (!rightOperand)
+    return false;
+  return leftOperand != rightOperand;
+}
+
+bool isGEMM(NaryExpr *node) { return isGEMMLikePattern(node); }
+
+bool isTRMM(NaryExpr *node) {
+  return node->getChildren()[0]->isLowerTriangular() && isGEMMLikePattern(node);
+}
+
+bool isSYMM(NaryExpr *node) {
+  return node->getChildren()[0]->isSymmetric() && isGEMMLikePattern(node);
+}
+
+bool isTRSM(NaryExpr *node) { return false; }
+
+bool isSYRK(NaryExpr *node) { return false; }
+
+// Do a simple pattern matching on 'node'. Generalize later if needed.
+// Do we want to call BLAS or use Linalg for code-generation?
 int getCostBasedOnProperties(Expr *node, int m, int n, int k) {
-  llvm::errs() << "---------------------------------\n";
-  node->walk();
-  llvm::errs() << "---------------------------------\n";
-  auto binaryOp = llvm::dyn_cast_or_null<NaryExpr>(node);
-  assert(binaryOp && "must be non null");
-  assert(binaryOp->getChildren().size() == 2 && "expect two children");
-  if (binaryOp->getChildren()[0]
-          ->isSymmetric() /*&& binaryOp->getChildren()[1]->isSquare()*/)
+  auto binaryExpr = llvm::dyn_cast_or_null<NaryExpr>(node);
+  assert(binaryExpr && "must be non null");
+  assert(binaryExpr->getChildren().size() == 2 && "expect two children");
+
+  // detect specific cases.
+  if (isTRMM(binaryExpr) || isSYMM(binaryExpr) || (isTRSM(binaryExpr)))
     return m * n * k;
-  if (binaryOp->getChildren()[0]
-          ->isLowerTriangular() /*&& binaryOp->getChildren()[1]->isSquare()*/)
+  else if (isSYRK(binaryExpr))
+    return m * m * k;
+  else if (isGEMM(binaryExpr))
+    return m * n * k << 1;
+
+  // left child is not a blas pattern but known to be symmetric.
+  // or lowertriangular.
+  if (binaryExpr->getChildren()[0]->isSymmetric())
+    return m * n * k;
+  if (binaryExpr->getChildren()[0]->isLowerTriangular())
     return m * n * k;
 
-  return m * n * k * 2;
+  return m * n * k << 1;
 }
 
 // Compute the cost of the current matrix multiplication based on
@@ -581,7 +643,6 @@ pair<long, long> getKernelCostImpl(Expr *node, long &cost, bool fullTree) {
       pair<long, long> right = getKernelCostImpl(children[1], cost, fullTree);
       // note this cost must be the cost of the top level expr
       // not the cost of the tree.
-      // GEMM by default adjust later on.
       auto currentCost =
           getCostBasedOnProperties(node, left.first, left.second, right.second);
 

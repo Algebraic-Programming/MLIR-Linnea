@@ -74,6 +74,8 @@ private:
 protected:
   template <typename T>
   void setPropertiesImpl(T *);
+  template <typename T>
+  bool hasProperty(T *, Expr::ExprProperty p);
   std::unordered_set<Expr::ExprProperty> inferredProperties;
 
 public:
