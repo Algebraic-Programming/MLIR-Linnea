@@ -119,7 +119,7 @@ public:
 class Lexer {
 public:
   Lexer() = delete;
-  Lexer(string str) : str(str){};
+  Lexer(string str);
 
   bool expect(TokenValue val);
   bool nextIs(TokenValue val);
@@ -134,7 +134,13 @@ private:
   size_t idxPos = 0;
   // current parsed token.
   Token currTok;
+  // trie node to store keywords.
+  unique_ptr<TrieNode> trieHead;
 };
+
+Lexer::Lexer(string str) : str(str), trieHead(new TrieNode()) {
+  trieHead->insertAllKeywords();
+}
 
 // XXX: here we do not update 'currTok'
 // and it remains to the previous parsed
@@ -212,10 +218,6 @@ TokenValue Lexer::getNextToken() {
       return TokenValue::NUM;
     }
 
-    // find keyword.
-    unique_ptr<TrieNode> trieHead(new TrieNode());
-    // XXX: move this, we init the trie every time we call getNextToken.
-    trieHead->insertAllKeywords();
     TrieNode *currHead = trieHead.get();
     string keyword;
     string identifier;
