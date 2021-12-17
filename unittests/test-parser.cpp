@@ -139,7 +139,9 @@ public:
   bool nextIs(TokenValue val);
   void putBackCurrTok();
   TokenValue getNextToken();
+  TokenValue getCurrToken() { return currTok.val; };
   Token getCurrTok() { return currTok; };
+  int getTokPrecedence();
 
 private:
   // parsed string.
@@ -150,15 +152,26 @@ private:
   Token currTok;
   // trie node to store keywords.
   unique_ptr<TrieNode> trieHead;
+  // operator precedence.
+  unordered_map<string, int> precedence;
 };
 
 Lexer::Lexer(string str) : str(str), trieHead(new TrieNode()) {
   trieHead->insertAllKeywords();
+  precedence["*"] = 2;
+  precedence["+"] = 1;
+}
+
+int Lexer::getTokPrecedence() {
+  string tokAsString = currTok.tokenAsString;
+  if (precedence.count(tokAsString) == 0)
+    return -1;
+  return precedence[tokAsString];
 }
 
 // XXX: here we do not update 'currTok'
 // and it remains to the previous parsed
-// value.
+// value. Use stack?
 void Lexer::putBackCurrTok() {
   if (currTok.val == TokenValue::NUM) {
     int nSize = std::to_string(currTok.tokenAsNumber).size();
@@ -314,7 +327,8 @@ private:
   void parseWhereClause(vector<ParsedOperand> &operands);
   Expression parseStmt(vector<ParsedOperand> &operands, string funcName);
   Expr *parsePrimary(vector<ParsedOperand> &operands);
-  Expr *parseTerm(vector<ParsedOperand> &operands);
+  Expr *parseExpression(vector<ParsedOperand> &operands);
+  Expr *parseRhs(int precedence, Expr *lhs, vector<ParsedOperand> &operands);
   Expr *buildOperand(string id, vector<ParsedOperand> &operands);
 };
 
@@ -386,7 +400,7 @@ Expr *Parser::parsePrimary(vector<ParsedOperand> &operands) {
   case TokenValue::NAME:
     return buildOperand(lex.getCurrTok().tokenAsString, operands);
   case TokenValue::LP: {
-    Expr *term = parseTerm(operands);
+    Expr *term = parseExpression(operands);
     currTok = lex.getNextToken();
     if (currTok != TokenValue::RP)
       assert(0 && "expect RP");
@@ -397,26 +411,42 @@ Expr *Parser::parsePrimary(vector<ParsedOperand> &operands) {
   }
 }
 
-Expr *Parser::parseTerm(vector<ParsedOperand> &operands) {
-  Expr *left = parsePrimary(operands);
-  auto currTok = lex.getNextToken();
+Expr *Parser::parseRhs(int precedence, Expr *lhs,
+                       vector<ParsedOperand> &operands) {
+  auto currTok = lex.getCurrToken();
   while (true) {
     switch (currTok) {
     case TokenValue::MUL:
-      left = mul(left, parsePrimary(operands));
+      lhs = mul(lhs, parsePrimary(operands));
       currTok = lex.getNextToken();
       break;
-    case TokenValue::ADD:
-      left = add(left, parsePrimary(operands));
+    case TokenValue::ADD: {
+      int currPrec = lex.getTokPrecedence();
+      Expr *rhs = parsePrimary(operands);
+      (void)lex.getNextToken();
+      int nextPrec = lex.getTokPrecedence();
+      if (currPrec < nextPrec) {
+        rhs = parseRhs(currPrec + 1, rhs, operands);
+      } else { // put back if the precedence is same.
+        lex.putBackCurrTok();
+      }
+      lhs = add(lhs, rhs);
       currTok = lex.getNextToken();
       break;
+    }
     default:
       // before returing put back
       // last token.
       lex.putBackCurrTok();
-      return left;
+      return lhs;
     }
   }
+}
+
+Expr *Parser::parseExpression(vector<ParsedOperand> &operands) {
+  Expr *lhs = parsePrimary(operands);
+  (void)lex.getNextToken();
+  return parseRhs(0, lhs, operands);
 }
 
 void Parser::parseWhereClause(vector<ParsedOperand> &operands) {
@@ -476,7 +506,7 @@ Expression Parser::parseStmt(vector<ParsedOperand> &operands, string funcName) {
   if (!lex.expect(TokenValue::EQ))
     assert(0 && "expect assingment EQ");
   Token assignment = lex.getCurrTok();
-  Expr *rhs = parseTerm(operands);
+  Expr *rhs = parseExpression(operands);
 
   if (lex.nextIs(TokenValue::TK_WHERE))
     parseWhereClause(operands);
@@ -590,6 +620,24 @@ TEST(Parser, simpleAdd) {
   EXPECT_EQ(isSameTree(root.getRhs(), truth), true);
 }
 
+TEST(Parser, simplePrecedence) {
+  using namespace parser;
+  ScopedContext ctx;
+  string s = R"(
+  def precedence(float(32, 32) A, float(32, 32) B, float(32, 32) C) {
+    C = A + B * A
+  })";
+
+  Parser p(s, ctx);
+  auto root = p.parseFunction();
+  root.print();
+  assert(root.getRhs() && "must be non-null");
+  auto *A = new Operand("A", {32, 32});
+  auto *B = new Operand("B", {32, 32});
+  auto *truth = add(A, mul(B, A));
+  EXPECT_EQ(isSameTree(root.getRhs(), truth), true);
+}
+
 TEST(Parser, variadicMul) {
   using namespace parser;
   ScopedContext ctx;
@@ -598,7 +646,7 @@ TEST(Parser, variadicMul) {
           float(32, 32) C, float(32, 32) D,
           float(32, 32) E, float(32, 32) F, 
           float(32, 32) G) {
-    G = A * B * C * D * E *F
+    G = A * B * C * D * E * F
   })";
 
   Parser p(s, ctx);
@@ -611,6 +659,30 @@ TEST(Parser, variadicMul) {
   auto *E = new Operand("E", {32, 32});
   auto *F = new Operand("F", {32, 32});
   auto *truth = mul(A, B, C, D, E, F);
+  EXPECT_EQ(isSameTree(root.getRhs(), truth), true);
+}
+
+TEST(Parser, variadicAdd) {
+  using namespace parser;
+  ScopedContext ctx;
+  string s = R"(
+  def mul(float(32, 32) A, float(32, 32) B, 
+          float(32, 32) C, float(32, 32) D,
+          float(32, 32) E, float(32, 32) F, 
+          float(32, 32) G) {
+    G = A + B + C + D + E + F
+  })";
+
+  Parser p(s, ctx);
+  auto root = p.parseFunction();
+  assert(root.getRhs() && "must be non null");
+  auto *A = new Operand("A", {32, 32});
+  auto *B = new Operand("B", {32, 32});
+  auto *C = new Operand("C", {32, 32});
+  auto *D = new Operand("D", {32, 32});
+  auto *E = new Operand("E", {32, 32});
+  auto *F = new Operand("F", {32, 32});
+  auto *truth = add(A, B, C, D, E, F);
   EXPECT_EQ(isSameTree(root.getRhs(), truth), true);
 }
 
