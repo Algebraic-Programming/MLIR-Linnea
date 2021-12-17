@@ -10,7 +10,7 @@
 #include "Standalone/LinneaDialect.h"
 #include "Standalone/LinneaTypes.h"
 
-#include "mlir/Dialect/Linalg/IR/LinalgOps.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/IR/OpImplementation.h"
 
 using namespace mlir;

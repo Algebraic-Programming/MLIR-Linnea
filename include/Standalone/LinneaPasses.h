@@ -9,7 +9,7 @@
 #ifndef LINNEA_PASSES_H
 #define LINNEA_PASSES_H
 
-#include "mlir/Dialect/Linalg/IR/LinalgOps.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Pass/Pass.h"
 
 namespace mlir {

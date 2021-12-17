@@ -1,4 +1,4 @@
-#include "mul.h"
+#include "basicOp.h"
 #include "llvm/Support/Casting.h"
 #include "gtest/gtest.h"
 
@@ -49,7 +49,8 @@ enum class TokenValue {
   CRP,      // }
   EOS,      // end of string
   EQ,       // =
-  MUL       // *
+  MUL,      // *
+  ADD       // +
 };
 
 /// Terminator POD for Trie data structure.
@@ -89,6 +90,7 @@ void TrieNode::insertAllKeywords() {
   insert(")", TokenValue::RP);
   insert("}", TokenValue::CRP);
   insert("{", TokenValue::CLP);
+  insert("+", TokenValue::ADD);
 }
 
 void TrieNode::insertImpl(string str, int idx, int size, TokenValue tokVal) {
@@ -404,6 +406,10 @@ Expr *Parser::parseTerm(vector<ParsedOperand> &operands) {
       left = mul(left, parsePrimary(operands));
       currTok = lex.getNextToken();
       break;
+    case TokenValue::ADD:
+      left = add(left, parsePrimary(operands));
+      currTok = lex.getNextToken();
+      break;
     default:
       // before returing put back
       // last token.
@@ -564,6 +570,23 @@ TEST(Parser, simpleMul) {
   auto *A = new Operand("A", {32, 32});
   auto *B = new Operand("B", {32, 32});
   auto *truth = mul(A, B);
+  EXPECT_EQ(isSameTree(root.getRhs(), truth), true);
+}
+
+TEST(Parser, simpleAdd) {
+  using namespace parser;
+  ScopedContext ctx;
+  string s = R"(
+  def add(float(32, 32) A, float(32, 32) B, float(32, 32) C) {
+    C = A + B
+  })";
+
+  Parser p(s, ctx);
+  auto root = p.parseFunction();
+  assert(root.getRhs() && "must be non-null");
+  auto *A = new Operand("A", {32, 32});
+  auto *B = new Operand("B", {32, 32});
+  auto *truth = add(A, B);
   EXPECT_EQ(isSameTree(root.getRhs(), truth), true);
 }
 

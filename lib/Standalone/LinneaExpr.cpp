@@ -209,7 +209,7 @@ Expr *ExprBuilder::buildExprImpl(Value val) {
     for (Value operand : mulOp.getOperands()) {
       children.push_back(buildExprImpl(operand));
     }
-    return variadicMul(children);
+    return variadicMul(children, /*isBinary*/ false);
   }
   if (auto transOp = dyn_cast_or_null<mlir::linnea::TransposeOp>(defOp)) {
     Expr *child = buildExprImpl(transOp.getOperand());
@@ -451,40 +451,6 @@ void Expr::walk(int level) const {
     printShape(operand->getShape());
     cout << "]";
   } // operand
-}
-
-/// Multiply two or more expressions.
-Expr *mlir::linnea::expr::variadicMul(vector<Expr *> children, bool binary) {
-  if (binary) {
-    assert(children.size() == 2 && "expect only two children");
-    return new NaryExpr({children[0], children[1]},
-                        NaryExpr::NaryExprKind::MUL);
-  }
-  // fold other mul inside.
-  vector<Expr *> newChildren;
-  int size = children.size();
-  for (int i = size - 1; i >= 0; i--) {
-    if (auto childMul = llvm::dyn_cast_or_null<NaryExpr>(children.at(i))) {
-      auto childrenOfChildMul = childMul->getChildren();
-      newChildren.insert(newChildren.begin(), childrenOfChildMul.begin(),
-                         childrenOfChildMul.end());
-    } else
-      newChildren.insert(newChildren.begin(), children.at(i));
-  }
-  return new NaryExpr(newChildren, NaryExpr::NaryExprKind::MUL);
-}
-
-/// invert an expression.
-Expr *mlir::linnea::expr::inv(Expr *child) {
-  assert(child && "child expr must be non null");
-  return new UnaryExpr(child, UnaryExpr::UnaryExprKind::INVERSE);
-}
-
-/// transpose an expression.
-// TODO: check namespace. Why full specify?
-Expr *mlir::linnea::expr::trans(Expr *child) {
-  assert(child && "child expr must be non null");
-  return new UnaryExpr(child, UnaryExpr::UnaryExprKind::TRANSPOSE);
 }
 
 static vector<long> getPVector(vector<Expr *> exprs) {

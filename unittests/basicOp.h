@@ -22,7 +22,14 @@ vector<typename std::common_type<Args...>::type> varargToVector(Args... args) {
 template <typename Arg, typename... Args>
 Expr *mul(Arg arg, Args... args) {
   auto operands = varargToVector<Expr *>(arg, args...);
-  assert(operands.size() >= 2 && "one or more operands");
-  return variadicMul(operands);
+  assert(operands.size() >= 2 && "two or more operands");
+  return variadicMul(operands, /*isBinary*/ false);
+}
+
+template <typename Arg, typename... Args>
+Expr *add(Arg arg, Args... args) {
+  auto operands = varargToVector<Expr *>(arg, args...);
+  assert(operands.size() >= 2 && "two or more operands");
+  return variadicAdd(operands, /*isBinary*/ false);
 }
 #endif

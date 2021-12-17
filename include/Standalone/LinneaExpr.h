@@ -134,9 +134,11 @@ public:
 };
 
 /// Nary operation (i.e., MUL).
+// TODO: Does it make sense to query the same
+// properties on the "ADD" ?
 class NaryExpr : public ScopedExpr<NaryExpr> {
 public:
-  enum class NaryExprKind { MUL };
+  enum class NaryExprKind { MUL, ADD };
 
 private:
   std::vector<Expr *> children;
@@ -218,10 +220,6 @@ public:
     return expr->getKind() == ExprKind::UNARY;
   };
 };
-
-Expr *variadicMul(std::vector<Expr *> children, bool binary = false);
-Expr *inv(Expr *child);
-Expr *trans(Expr *child);
 
 /// Generic operand (i.e., matrix or vector).
 class Operand : public ScopedExpr<Operand> {
@@ -312,8 +310,15 @@ public:
   ExprBuilder() = default;
 };
 
+template <typename K>
+Expr *variadicExpr(std::vector<Expr *> children, bool isBinary);
+template <typename K>
+Expr *unaryExpr(Expr *child);
+
 } // end namespace expr.
 } // end namespace linnea.
 } // end namespace mlir.
+
+#include "Standalone/LinneaExprImpl.h"
 
 #endif
