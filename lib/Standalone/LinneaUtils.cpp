@@ -112,7 +112,7 @@ Expr *NaryExpr::getNormalForm() {
   vector<Expr *> operands;
   for (auto child : this->getChildren())
     operands.push_back(child->getNormalForm());
-  return variadicMul(operands, /*isBinary*/ false);
+  return variadicMul(operands, /*fold*/ true);
 }
 
 // TODO: avoid duplicating code when problem more specified.
@@ -129,7 +129,7 @@ Expr *UnaryExpr::getNormalForm() {
       int size = children.size();
       for (int i = size - 1; i >= 0; i--)
         normalFormOperands.push_back(trans(children.at(i)->getNormalForm()));
-      return variadicMul(normalFormOperands, /*isBinary*/ false);
+      return variadicMul(normalFormOperands, /*fold*/ true);
     }
   }
   // normal form inverse.
@@ -142,7 +142,7 @@ Expr *UnaryExpr::getNormalForm() {
       int size = children.size();
       for (int i = size - 1; i >= 0; i--)
         normalFormOperands.push_back(inv(children.at(i)->getNormalForm()));
-      return variadicMul(normalFormOperands, /*isBinary*/ false);
+      return variadicMul(normalFormOperands, /*fold*/ true);
     }
   }
   // normal form operand.

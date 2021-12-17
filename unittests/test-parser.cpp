@@ -706,6 +706,7 @@ TEST(Parser, whereClause) {
   EXPECT_EQ(isSameTree(root.getRhs(), truth), true);
 }
 
+// TODO: we need to keep ( ... ) into account.
 TEST(Parser, paren) {
   using namespace parser;
   ScopedContext ctx;
@@ -716,6 +717,7 @@ TEST(Parser, paren) {
 
   Parser p(s, ctx);
   auto root = p.parseFunction();
+  root.print();
   assert(root.getRhs() && "must be non-null");
   auto *A = new Operand("A", {32, 32});
   auto *B = new Operand("B", {32, 32});

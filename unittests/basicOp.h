@@ -23,13 +23,13 @@ template <typename Arg, typename... Args>
 Expr *mul(Arg arg, Args... args) {
   auto operands = varargToVector<Expr *>(arg, args...);
   assert(operands.size() >= 2 && "two or more operands");
-  return variadicMul(operands, /*isBinary*/ false);
+  return variadicMul(operands, /*fold*/ true);
 }
 
 template <typename Arg, typename... Args>
 Expr *add(Arg arg, Args... args) {
   auto operands = varargToVector<Expr *>(arg, args...);
   assert(operands.size() >= 2 && "two or more operands");
-  return variadicAdd(operands, /*isBinary*/ false);
+  return variadicAdd(operands, /*fold*/ true);
 }
 #endif

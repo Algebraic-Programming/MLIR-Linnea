@@ -209,7 +209,7 @@ Expr *ExprBuilder::buildExprImpl(Value val) {
     for (Value operand : mulOp.getOperands()) {
       children.push_back(buildExprImpl(operand));
     }
-    return variadicMul(children, /*isBinary*/ false);
+    return variadicMul(children, /*fold*/ true);
   }
   if (auto transOp = dyn_cast_or_null<mlir::linnea::TransposeOp>(defOp)) {
     Expr *child = buildExprImpl(transOp.getOperand());
@@ -679,7 +679,8 @@ ResultMCP runMCP(Expr *expr) {
       m[i][j] = std::numeric_limits<long>::max();
       for (size_t k = i; k <= j - 1; k++) {
 
-        auto tmpexpr = variadicMul({tmps[i][k], tmps[k + 1][j]}, true);
+        auto tmpexpr =
+            variadicMul({tmps[i][k], tmps[k + 1][j]}, /*fold*/ false);
 #if DEBUG
         cout << "---\n";
         walk(tmpexpr);
@@ -689,7 +690,8 @@ ResultMCP runMCP(Expr *expr) {
         getKernelCostTopLevelExpr(tmpexpr, cost);
         q = m[i][k] + m[k + 1][j] + cost;
         if (q < m[i][j]) {
-          tmps[i][j] = variadicMul({tmps[i][k], tmps[k + 1][j]}, true);
+          tmps[i][j] =
+              variadicMul({tmps[i][k], tmps[k + 1][j]}, /*fold*/ false);
           // tmps[i][j]->inferProperties();
           m[i][j] = q;
           s[i][j] = k;

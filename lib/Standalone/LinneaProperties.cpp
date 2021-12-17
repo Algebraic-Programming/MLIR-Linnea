@@ -191,8 +191,8 @@ static bool isSymmetricProduct(const NaryExpr *op, bool checkSPD = false) {
       else
         rightChildren.push_back(children[i]);
     }
-    auto leftExpr = variadicMul(leftChildren, /*isBinary*/ false);
-    auto rightExpr = variadicMul(rightChildren, /*isBinary*/ false);
+    auto leftExpr = variadicMul(leftChildren, /*fold*/ true);
+    auto rightExpr = variadicMul(rightChildren, /*fold*/ true);
 #if DEBUG
     cout << __func__ << "\n";
     walk(leftExpr);
@@ -223,8 +223,8 @@ static bool isSymmetricProduct(const NaryExpr *op, bool checkSPD = false) {
       else
         rightChildren.push_back(children[i]);
     }
-    auto leftExpr = variadicMul(leftChildren, /*isBainry*/ false);
-    auto rightExpr = variadicMul(rightChildren, /*isBinary*/ false);
+    auto leftExpr = variadicMul(leftChildren, /*fold*/ true);
+    auto rightExpr = variadicMul(rightChildren, /*fold*/ true);
 #if DEBUG
     cout << __func__ << "\n";
     walk(leftExpr);
