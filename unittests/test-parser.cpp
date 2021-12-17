@@ -69,7 +69,8 @@ public:
 
   // insert 'str' in the tree with size 'size'. The terminator
   // node in the tree for 'str' will have the tokenValue 'tokval'.
-  void insert(string str, int idx, int size, TokenValue tokVal);
+  void insertImpl(string str, int idx, int size, TokenValue tokVal);
+  void insert(string str, TokenValue tokVal);
 
   void insertAllKeywords();
 
@@ -78,12 +79,12 @@ public:
 };
 
 void TrieNode::insertAllKeywords() {
-  insert("def", 0, 3, TokenValue::TK_DEF);
-  insert("where", 0, 5, TokenValue::TK_WHERE);
-  insert("is", 0, 2, TokenValue::TK_IS);
+  insert("def", TokenValue::TK_DEF);
+  insert("where", TokenValue::TK_WHERE);
+  insert("is", TokenValue::TK_IS);
 }
 
-void TrieNode::insert(string str, int idx, int size, TokenValue tokVal) {
+void TrieNode::insertImpl(string str, int idx, int size, TokenValue tokVal) {
   if (idx == size)
     return;
 
@@ -100,7 +101,11 @@ void TrieNode::insert(string str, int idx, int size, TokenValue tokVal) {
       children[str[idx]]->terminator.tokVal = tokVal;
     }
   }
-  children[str[idx]]->insert(str, idx + 1, size, tokVal);
+  children[str[idx]]->insertImpl(str, idx + 1, size, tokVal);
+}
+
+void TrieNode::insert(string str, TokenValue tokVal) {
+  return insertImpl(str, 0, str.size(), tokVal);
 }
 
 /// Represent a token.
