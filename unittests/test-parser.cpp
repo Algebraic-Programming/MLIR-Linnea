@@ -82,6 +82,13 @@ void TrieNode::insertAllKeywords() {
   insert("def", TokenValue::TK_DEF);
   insert("where", TokenValue::TK_WHERE);
   insert("is", TokenValue::TK_IS);
+  insert("*", TokenValue::MUL);
+  insert("=", TokenValue::EQ);
+  insert("(", TokenValue::LP);
+  insert(",", TokenValue::COMMA);
+  insert(")", TokenValue::RP);
+  insert("}", TokenValue::CRP);
+  insert("{", TokenValue::CLP);
 }
 
 void TrieNode::insertImpl(string str, int idx, int size, TokenValue tokVal) {
@@ -170,48 +177,6 @@ TokenValue Lexer::getNextToken() {
     if (idxPos == str.size())
       return TokenValue::EOS;
 
-    if (str[idxPos] == '*') {
-      idxPos++;
-      currTok = Token("*", TokenValue::MUL);
-      return TokenValue::MUL;
-    }
-
-    if (str[idxPos] == '=') {
-      idxPos++;
-      currTok = Token("=", TokenValue::EQ);
-      return TokenValue::EQ;
-    }
-
-    if (str[idxPos] == '(') {
-      idxPos++;
-      currTok = Token("(", TokenValue::LP);
-      return TokenValue::LP;
-    }
-
-    if (str[idxPos] == ',') {
-      idxPos++;
-      currTok = Token(",", TokenValue::COMMA);
-      return TokenValue::COMMA;
-    }
-
-    if (str[idxPos] == ')') {
-      idxPos++;
-      currTok = Token(")", TokenValue::RP);
-      return TokenValue::RP;
-    }
-
-    if (str[idxPos] == '}') {
-      idxPos++;
-      currTok = Token("}", TokenValue::CRP);
-      return TokenValue::CRP;
-    }
-
-    if (str[idxPos] == '{') {
-      idxPos++;
-      currTok = Token("{", TokenValue::CLP);
-      return TokenValue::CLP;
-    }
-
     int number = 0;
     bool isNumber = false;
     while (isdigit(str[idxPos])) {
@@ -226,17 +191,17 @@ TokenValue Lexer::getNextToken() {
     TrieNode *currHead = trieHead.get();
     string keyword;
     string identifier;
-    for (size_t i = 0; i + idxPos < str.size() && isalpha(str[i + idxPos]);
+    for (size_t i = 0;
+         i + idxPos < str.size() && (isalpha(str[i + idxPos]) || currHead);
          i++) {
       if (currHead) {
-        if (currHead->terminator.isEnd) {
-          break;
-        }
         auto it = currHead->children.find(str[i + idxPos]);
         currHead =
             (it == currHead->children.end()) ? nullptr : it->second.get();
         if (currHead)
           keyword += str[i + idxPos];
+        if (currHead && currHead->terminator.isEnd)
+          break;
       }
       identifier += str[i + idxPos];
     } // for.
