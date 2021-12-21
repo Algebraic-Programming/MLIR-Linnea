@@ -422,6 +422,9 @@ void Expr::walk(int level) const {
     case NaryExpr::NaryExprKind::MUL:
       cout << string(level, ' ') << "(*\n";
       break;
+    case NaryExpr::NaryExprKind::ADD:
+      cout << string(level, ' ') << "(+\n";
+      break;
     default:
       cout << "UNK";
     }

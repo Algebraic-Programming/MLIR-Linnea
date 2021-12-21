@@ -321,6 +321,10 @@ private:
   Lexer lex;
   ScopedContext &ctx;
 
+  // flag to indicate if we need to fold operations within other operations of
+  // the same type. The flag is set to false if we hit a LP.
+  bool foldExpr = true;
+
   bool parseFuncName(string &str);
   bool parseOperands(vector<ParsedOperand> &operands);
   bool parseOperand(ParsedOperand &operand);
@@ -400,6 +404,8 @@ Expr *Parser::parsePrimary(vector<ParsedOperand> &operands) {
   case TokenValue::NAME:
     return buildOperand(lex.getCurrTok().tokenAsString, operands);
   case TokenValue::LP: {
+    // do not fold. The user inserted parenthesis. Respect them.
+    foldExpr = false;
     Expr *term = parseExpression(operands);
     currTok = lex.getNextToken();
     if (currTok != TokenValue::RP)
@@ -417,7 +423,7 @@ Expr *Parser::parseRhs(int precedence, Expr *lhs,
   while (true) {
     switch (currTok) {
     case TokenValue::MUL:
-      lhs = mul(lhs, parsePrimary(operands));
+      lhs = mul(foldExpr, lhs, parsePrimary(operands));
       currTok = lex.getNextToken();
       break;
     case TokenValue::ADD: {
@@ -430,7 +436,7 @@ Expr *Parser::parseRhs(int precedence, Expr *lhs,
       } else { // put back if the precedence is same.
         lex.putBackCurrTok();
       }
-      lhs = add(lhs, rhs);
+      lhs = add(foldExpr, lhs, rhs);
       currTok = lex.getNextToken();
       break;
     }
@@ -706,7 +712,6 @@ TEST(Parser, whereClause) {
   EXPECT_EQ(isSameTree(root.getRhs(), truth), true);
 }
 
-// TODO: we need to keep ( ... ) into account.
 TEST(Parser, paren) {
   using namespace parser;
   ScopedContext ctx;
@@ -717,10 +722,28 @@ TEST(Parser, paren) {
 
   Parser p(s, ctx);
   auto root = p.parseFunction();
-  root.print();
   assert(root.getRhs() && "must be non-null");
   auto *A = new Operand("A", {32, 32});
   auto *B = new Operand("B", {32, 32});
+  // must be non equal as we keep parenthesis into account.
   auto *truth = mul(A, A, B, A, B);
-  EXPECT_EQ(isSameTree(root.getRhs(), truth), true);
+  EXPECT_EQ(!isSameTree(root.getRhs(), truth), true);
+}
+
+TEST(Parser, parenAdd) {
+  using namespace parser;
+  ScopedContext ctx;
+  string s = R"(
+  def mul(float(32, 32) A, float(32, 32) B, float(32, 32) C) {
+    C = C + ((A + A) + (A + B)) + (((A + C)))
+  })";
+
+  Parser p(s, ctx);
+  auto root = p.parseFunction();
+  assert(root.getRhs() && "must be non-null");
+  auto *A = new Operand("A", {32, 32});
+  auto *B = new Operand("B", {32, 32});
+  // must be non equal as we keep parenthesis into account.
+  auto *truth = mul(A, A, B, A, B);
+  EXPECT_EQ(!isSameTree(root.getRhs(), truth), true);
 }

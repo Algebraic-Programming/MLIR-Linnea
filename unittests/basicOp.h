@@ -17,19 +17,49 @@ vector<typename std::common_type<Args...>::type> varargToVector(Args... args) {
   }
   return result;
 }
+
+template <typename... Args>
+Expr *adderImpl(bool fold, Args... args) {
+  auto operands = varargToVector<Expr *>(args...);
+  assert(operands.size() >= 2 && "two or more operands");
+  return variadicAdd(operands, fold);
+}
+
+template <typename... Args>
+Expr *adder(Args... args) {
+  return adderImpl(/*fold*/ true, args...);
+}
+
+template <typename... Args>
+Expr *adder(bool arg, Args... args) {
+  return adderImpl(arg, args...);
+}
+
+template <typename... Args>
+Expr *multiplierImpl(bool fold, Args... args) {
+  auto operands = varargToVector<Expr *>(args...);
+  assert(operands.size() >= 2 && "two or more operands");
+  return variadicMul(operands, fold);
+}
+
+template <typename... Args>
+Expr *multiplier(Args... args) {
+  return multiplierImpl(/*fold*/ true, args...);
+}
+
+template <typename... Args>
+Expr *multiplier(bool arg, Args... args) {
+  return multiplierImpl(arg, args...);
+}
 } // end namespace
 
 template <typename Arg, typename... Args>
 Expr *mul(Arg arg, Args... args) {
-  auto operands = varargToVector<Expr *>(arg, args...);
-  assert(operands.size() >= 2 && "two or more operands");
-  return variadicMul(operands, /*fold*/ true);
+  return multiplier(arg, args...);
 }
 
 template <typename Arg, typename... Args>
 Expr *add(Arg arg, Args... args) {
-  auto operands = varargToVector<Expr *>(arg, args...);
-  assert(operands.size() >= 2 && "two or more operands");
-  return variadicAdd(operands, /*fold*/ true);
+  return adder(arg, args...);
 }
 #endif
