@@ -37,8 +37,6 @@ def Linnea_EquationOp : Linnea_Op<"equation",
 
   let parser = [{ return ::parse$cppClass(parser, result); }];
   let printer = [{ return ::print(p, *this); }];
-
-  let hasCanonicalizer = 1;
 }
 
 def Linnea_YieldOp : Linnea_Op<"yield", 
@@ -133,8 +131,6 @@ def Linnea_MulOp : Linnea_Op<"mul", [NoSideEffect]> {
     let assemblyFormat = [{
       $input attr-dict `:` type($input) `->` type($output)
     }];
-
-    let hasCanonicalizer = 1;
 
     let builders = [
       OpBuilder<(ins "ValueRange":$input)>
