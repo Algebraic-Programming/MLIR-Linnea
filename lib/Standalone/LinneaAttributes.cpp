@@ -16,7 +16,7 @@ using namespace mlir::linnea;
 
 LogicalResult LinneaMatrixEncodingAttr::verify(
     function_ref<InFlightDiagnostic()> emitError,
-    ArrayRef<LinneaMatrixEncodingAttr::MatrixType>) {
+    ArrayRef<LinneaMatrixEncodingAttr::MatrixProperty>) {
   return success();
 }
 
@@ -26,7 +26,7 @@ LinneaMatrixEncodingAttr getMatrixEncodingAttr(Type type) {
   return nullptr;
 }
 
-template <LinneaMatrixEncodingAttr::MatrixType T>
+template <LinneaMatrixEncodingAttr::MatrixProperty T>
 bool isT(Type type) {
   auto encoding = getMatrixEncodingAttr(type);
   if (!encoding)
@@ -37,61 +37,61 @@ bool isT(Type type) {
 }
 
 bool hasSPDAttr(Type type) {
-  return isT<LinneaMatrixEncodingAttr::MatrixType::SPD>(type);
+  return isT<LinneaMatrixEncodingAttr::MatrixProperty::SPD>(type);
 }
 
 bool hasLowerTriangularAttr(Type type) {
-  return isT<LinneaMatrixEncodingAttr::MatrixType::LowerTriangular>(type);
+  return isT<LinneaMatrixEncodingAttr::MatrixProperty::LowerTriangular>(type);
 }
 
 bool hasUpperTriangularAttr(Type type) {
-  return isT<LinneaMatrixEncodingAttr::MatrixType::UpperTriangular>(type);
+  return isT<LinneaMatrixEncodingAttr::MatrixProperty::UpperTriangular>(type);
 }
 
 void LinneaMatrixEncodingAttr::print(AsmPrinter &printer) const {
-  printer << "<{p = [";
+  printer << "<[";
 
   for (size_t i = 0, e = getEncodingType().size(); i < e; i++) {
     switch (getEncodingType()[i]) {
-    case MatrixType::General:
+    case MatrixProperty::General:
       printer << "\"general\"";
       break;
-    case MatrixType::FullRank:
+    case MatrixProperty::FullRank:
       printer << "\"fullrank\"";
       break;
-    case MatrixType::Factored:
+    case MatrixProperty::Factored:
       printer << "\"factored\"";
       break;
-    case MatrixType::Diagonal:
+    case MatrixProperty::Diagonal:
       printer << "\"diagonal\"";
       break;
-    case MatrixType::UnitDiagonal:
+    case MatrixProperty::UnitDiagonal:
       printer << "\"unitdiagonal\"";
       break;
-    case MatrixType::LowerTriangular:
+    case MatrixProperty::LowerTriangular:
       printer << "\"lowerTri\"";
       break;
-    case MatrixType::UpperTriangular:
+    case MatrixProperty::UpperTriangular:
       printer << "\"upperTri\"";
       break;
-    case MatrixType::Symmetric:
+    case MatrixProperty::Symmetric:
       printer << "\"symm\"";
       break;
-    case MatrixType::SPD:
+    case MatrixProperty::SPD:
       printer << "\"spd\"";
       break;
-    case MatrixType::SPSD:
+    case MatrixProperty::SPSD:
       printer << "\"spsd\"";
       break;
-    case MatrixType::Square:
+    case MatrixProperty::Square:
       printer << "\"square\"";
       break;
-    case MatrixType::Identity:
+    case MatrixProperty::Identity:
       printer << "\"identity\"";
       break;
     }
     if (i != e - 1)
       printer << ", ";
   }
-  printer << "]}>";
+  printer << "]>";
 }

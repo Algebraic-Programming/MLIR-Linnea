@@ -18,11 +18,11 @@ class Linnea_Attr<string name,
 
 // Linnea encoding attribute.
 def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
-  let mnemonic = "matrix";
+  let mnemonic = "property";
   let description = [{ TODO:add }];
   let parameters = (
     ins
-    ArrayRefParameter<"LinneaMatrixEncodingAttr::MatrixType",
+    ArrayRefParameter<"LinneaMatrixEncodingAttr::MatrixProperty",
                       "type of matrix encoding"
                       >: $encodingType
   );
@@ -31,68 +31,59 @@ def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
   let parser = [{
     if ($_parser.parseLess())
       return {};
-    DictionaryAttr dict;
-    if ($_parser.parseAttribute(dict))
+    ArrayAttr properties;
+    if ($_parser.parseAttribute(properties))
       return {};
     if ($_parser.parseGreater())
       return {};
-    SmallVector<MatrixType, 4> mt;
+    SmallVector<LinneaMatrixEncodingAttr::MatrixProperty, 4> mt;
 
-    for (const NamedAttribute &attr : dict) {
-      if (attr.getName() == "p") {
-        auto arrayAttr = attr.getValue().dyn_cast<ArrayAttr>();
-        if (!arrayAttr) {
-          $_parser.emitError($_parser.getNameLoc(), 
-                             "expect an array for matrix encoding");
-          return {};
-        }
-        for (size_t i = 0, e = arrayAttr.size(); i < e; i++) {
-          auto strAttr = arrayAttr[i].dyn_cast<StringAttr>();
-          if (!strAttr) {
-            $_parser.emitError($_parser.getNameLoc(),
-                               "expect string attribute for matrix type");
-            return {};
-          }
-          auto strVal = strAttr.getValue();
-          if (strVal == "general")
-            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::General);
-          else if (strVal == "fullrank")
-            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::FullRank);
-          else if (strVal == "diagonal")
-            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::Diagonal);
-          else if (strVal == "unitdiagonal")
-            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::UnitDiagonal);
-          else if (strVal == "lowertriangular")
-            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::LowerTriangular);
-          else if (strVal == "uppertriangular")
-            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::UpperTriangular);
-          else if (strVal == "symmetric")
-            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::Symmetric);
-          else if (strVal == "spd")
-            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::SPD);
-          else if (strVal == "spds")
-            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::SPSD);
-          else if (strVal == "identity")
-            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::Identity);
-          else if (strVal == "square")
-            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::Square);
-          else if (strVal == "factored")
-            mt.push_back(LinneaMatrixEncodingAttr::MatrixType::Factored);
-          else {
-            $_parser.emitError($_parser.getNameLoc(),
-                               "unexpected matrix type: ") << strVal;
-            return {};
-          }
-        }
+    for (size_t i = 0, e = properties.size(); i < e; i++) {
+      auto strAttr = properties[i].dyn_cast<StringAttr>();
+      if (!strAttr) {
+        $_parser.emitError($_parser.getNameLoc(),
+                           "expect string attribute for matrix type");
+        return {};
+      }
+      auto strVal = strAttr.getValue();
+      if (strVal == "general")
+        mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::General);
+      else if (strVal == "fullrank")
+        mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::FullRank);
+      else if (strVal == "diagonal")
+        mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Diagonal);
+      else if (strVal == "unitdiagonal")
+        mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::UnitDiagonal);
+      else if (strVal == "lowerTri")
+        mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::LowerTriangular);
+      else if (strVal == "upperTri")
+        mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::UpperTriangular);
+      else if (strVal == "symmetric")
+        mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Symmetric);
+      else if (strVal == "spd")
+        mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::SPD);
+      else if (strVal == "spds")
+        mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::SPSD);
+      else if (strVal == "identity")
+        mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Identity);
+      else if (strVal == "square")
+        mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Square);
+      else if (strVal == "factored")
+        mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Factored);
+      else {
+        $_parser.emitError($_parser.getNameLoc(),
+                           "unexpected matrix type: ") << strVal;
+        return {};
       }
     }
+    
     return LinneaMatrixEncodingAttr::getChecked([&$_parser] {
       return $_parser.emitError($_parser.getCurrentLocation()); },
       $_ctxt, mt);
   }];
 
   let extraClassDeclaration = [{
-    enum class MatrixType {
+    enum class MatrixProperty {
       General,
       FullRank,
       Factored,
