@@ -1,4 +1,5 @@
 #include "basicOp.h"
+#include "llvm/ADT/StringMap.h"
 #include "llvm/Support/Casting.h"
 #include "gtest/gtest.h"
 
@@ -153,7 +154,7 @@ private:
   // trie node to store keywords.
   unique_ptr<TrieNode> trieHead;
   // operator precedence.
-  unordered_map<string, int> precedence;
+  llvm::StringMap<int> precedence;
 };
 
 Lexer::Lexer(string str) : str(str), trieHead(new TrieNode()) {

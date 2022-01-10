@@ -9,13 +9,10 @@
 #ifndef MATRIX_CHAIN_UTILS_H
 #define MATRIX_CHAIN_UTILS_H
 
-// TODO: make LLVM friendly (do not use std but use LLVM utils).
-
 #include "mlir/IR/Value.h"
+#include "llvm/ADT/SmallSet.h"
 #include <cassert>
 #include <memory>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace mlir {
@@ -46,7 +43,7 @@ public:
   static ScopedContext *&getCurrentScopedContext();
 
 private:
-  std::unordered_set<Expr *> liveRefs;
+  llvm::SmallSet<Expr *, 8> liveRefs;
 };
 
 /// Generic expr of type BINARY, UNARY or OPERAND.
@@ -76,7 +73,7 @@ protected:
   void setPropertiesImpl(T *);
   template <typename T>
   bool hasProperty(T *, Expr::ExprProperty p);
-  std::unordered_set<Expr::ExprProperty> inferredProperties;
+  llvm::SmallSet<Expr::ExprProperty, 8> inferredProperties;
 
 public:
   ExprKind getKind() const { return kind; }
