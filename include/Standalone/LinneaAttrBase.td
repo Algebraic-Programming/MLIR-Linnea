@@ -19,7 +19,7 @@ class Linnea_Attr<string name,
 // Linnea encoding attribute.
 def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
   let mnemonic = "property";
-  let description = [{ TODO:add }];
+  let description = [{ Attribute to describe propery of generic tensors.}];
   let parameters = (
     ins
     ArrayRefParameter<"LinneaMatrixEncodingAttr::MatrixProperty",

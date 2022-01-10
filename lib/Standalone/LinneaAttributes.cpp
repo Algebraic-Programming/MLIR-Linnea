@@ -20,33 +20,21 @@ LogicalResult LinneaMatrixEncodingAttr::verify(
   return success();
 }
 
-LinneaMatrixEncodingAttr getMatrixEncodingAttr(Type type) {
-  if (auto ttp = type.dyn_cast<RankedTensorType>())
-    return ttp.getEncoding().dyn_cast_or_null<LinneaMatrixEncodingAttr>();
-  return nullptr;
-}
+// LinneaMatrixEncodingAttr getMatrixEncodingAttr(Type type) {
+//  if (auto ttp = type.dyn_cast<RankedTensorType>())
+//    return ttp.getEncoding().dyn_cast_or_null<LinneaMatrixEncodingAttr>();
+//  return nullptr;
+//}
 
-template <LinneaMatrixEncodingAttr::MatrixProperty T>
-bool isT(Type type) {
-  auto encoding = getMatrixEncodingAttr(type);
-  if (!encoding)
-    return false;
-  if (llvm::is_contained(encoding.getEncodingType(), T))
-    return true;
-  return false;
-}
-
-bool hasSPDAttr(Type type) {
-  return isT<LinneaMatrixEncodingAttr::MatrixProperty::SPD>(type);
-}
-
-bool hasLowerTriangularAttr(Type type) {
-  return isT<LinneaMatrixEncodingAttr::MatrixProperty::LowerTriangular>(type);
-}
-
-bool hasUpperTriangularAttr(Type type) {
-  return isT<LinneaMatrixEncodingAttr::MatrixProperty::UpperTriangular>(type);
-}
+// template <LinneaMatrixEncodingAttr::MatrixProperty T>
+// bool isT(Type type) {
+//  auto encoding = getMatrixEncodingAttr(type);
+//  if (!encoding)
+//    return false;
+//  if (llvm::is_contained(encoding.getEncodingType(), T))
+//    return true;
+//  return false;
+//}
 
 void LinneaMatrixEncodingAttr::print(AsmPrinter &printer) const {
   printer << "<[";
