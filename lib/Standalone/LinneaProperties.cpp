@@ -152,13 +152,12 @@ bool NaryExpr::isSquare() const {
 }
 
 /// Check if the product is full rank.
-/// 1. All children need to be full rank.
-/// 2. All children need to be squared.
+/// All children need to be full rank or square.
 /// Multiplication by a full-rank square matrix preserves rank.
 static bool isFullRankProduct(const NaryExpr *op) {
   assert(op->getKind() == NaryExpr::NaryExprKind::MUL && "must be mul");
   for (auto child : op->getChildren()) {
-    if (!child->isFullRank() || !child->isSquare())
+    if (!child->isFullRank() && !child->isSquare())
       return false;
   }
   return true;

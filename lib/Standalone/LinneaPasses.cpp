@@ -37,8 +37,8 @@ public:
     addConversion(convertMatrixType);
   }
   static Type convertMatrixType(MatrixType type) {
-    return RankedTensorType::get(type.getDims(),
-                                 type.getElementType() /* add attribute*/);
+    return RankedTensorType::get(type.getDims(), type.getElementType(),
+                                 type.getProperty());
   }
 };
 
@@ -74,7 +74,6 @@ static Value emitLinalgMatrix(Location loc, MLIRContext *ctx,
 
   Value left = operands[0];
   Value right = operands[1];
-  // Value out = results[0];
   RankedTensorType outputType =
       typeConverter->convertType(results[0].getType()).cast<RankedTensorType>();
 

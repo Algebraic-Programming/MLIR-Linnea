@@ -39,8 +39,8 @@ LogicalResult LinneaMatrixEncodingAttr::verify(
 void LinneaMatrixEncodingAttr::print(AsmPrinter &printer) const {
   printer << "<[";
 
-  for (size_t i = 0, e = getEncodingType().size(); i < e; i++) {
-    switch (getEncodingType()[i]) {
+  for (size_t i = 0, e = getEncoding().size(); i < e; i++) {
+    switch (getEncoding()[i]) {
     case MatrixProperty::General:
       printer << "\"general\"";
       break;

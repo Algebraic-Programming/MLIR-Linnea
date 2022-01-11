@@ -9,7 +9,7 @@
 #ifndef LINNEA_ATTRDEFS
 #define LINNEA_ATTRDEFS
 
-include "LinneaDialect.td"
+include "Standalone/LinneaDialect.td"
 
 // All of the Linnea attributes will extend this class.
 class Linnea_Attr<string name,
@@ -24,7 +24,7 @@ def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
     ins
     ArrayRefParameter<"LinneaMatrixEncodingAttr::MatrixProperty",
                       "type of matrix encoding"
-                      >: $encodingType
+                      >: $encoding
   );
   let genVerifyDecl = 1;
   

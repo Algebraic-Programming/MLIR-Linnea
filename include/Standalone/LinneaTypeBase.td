@@ -11,7 +11,7 @@
 
 include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinDialect.td"
-include "LinneaDialect.td"
+include "Standalone/LinneaDialect.td"
 
 class Linnea_Type<string name>
   : TypeDef<Linnea_Dialect, name>;
@@ -34,9 +34,7 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
   let genVerifyDecl = 1;
 
   let parameters = (ins
-    ArrayRefParameter<"MatrixType::MatrixProperty",
-                      "type of matrix encoding"
-                      >:$property,
+    "LinneaMatrixEncodingAttr":$property,
     ArrayRefParameter<"int64_t", "dimensions"
                      >:$dims,
     "Type":$elementType
@@ -45,50 +43,9 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
   let parser = [{
     if ($_parser.parseLess())
       return Type();
-    ArrayAttr properties;
+    LinneaMatrixEncodingAttr properties;
     if ($_parser.parseAttribute(properties))
       return Type();
-
-    SmallVector<MatrixProperty, 4> mt;
-    for (size_t i = 0, e = properties.size(); i < e; i++) {
-      auto strAttr = properties[i].dyn_cast<StringAttr>();
-      if (!strAttr) {
-        $_parser.emitError($_parser.getNameLoc(),
-                           "expect string attribute for matrix type");
-        return Type();
-      }
-      auto strVal = strAttr.getValue();
-      if (strVal == "general")
-        mt.push_back(MatrixType::MatrixProperty::General);
-      else if (strVal == "fullrank")
-        mt.push_back(MatrixType::MatrixProperty::FullRank);
-      else if (strVal == "diagonal")
-        mt.push_back(MatrixType::MatrixProperty::Diagonal);
-      else if (strVal == "unitdiagonal")
-        mt.push_back(MatrixType::MatrixProperty::UnitDiagonal);
-      else if (strVal == "lowerTri")
-        mt.push_back(MatrixType::MatrixProperty::LowerTriangular);
-      else if (strVal == "upperTri")
-        mt.push_back(MatrixType::MatrixProperty::UpperTriangular);
-      else if (strVal == "symmetric")
-        mt.push_back(MatrixType::MatrixProperty::Symmetric);
-      else if (strVal == "spd")
-        mt.push_back(MatrixType::MatrixProperty::SPD);
-      else if (strVal == "spds")
-        mt.push_back(MatrixType::MatrixProperty::SPSD);
-      else if (strVal == "identity")
-        mt.push_back(MatrixType::MatrixProperty::Identity);
-      else if (strVal == "square")
-        mt.push_back(MatrixType::MatrixProperty::Square);
-      else if (strVal == "factored")
-        mt.push_back(MatrixType::MatrixProperty::Factored);
-      else {
-        $_parser.emitError($_parser.getNameLoc(),
-                           "unexpected matrix type: ") << strVal;
-        return {};
-      }
-    }
-
     if ($_parser.parseComma())
       return Type();
     ArrayAttr dimensions;
@@ -116,24 +73,7 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
       return Type();
     return MatrixType::getChecked([&$_parser] { 
       return $_parser.emitError($_parser.getCurrentLocation()); }, 
-             $_ctxt, mt, dims, elementType);
-  }];
-
- let extraClassDeclaration = [{
-    enum class MatrixProperty {
-      General,
-      FullRank,
-      Factored,
-      Diagonal,
-      UnitDiagonal,
-      LowerTriangular,
-      UpperTriangular,
-      Symmetric,
-      SPD,
-      SPSD,
-      Square,
-      Identity
-    };
+             $_ctxt, properties, dims, elementType);
   }]; 
 }
 

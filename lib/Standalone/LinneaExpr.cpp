@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Standalone/LinneaExpr.h"
+#include "Standalone/LinneaAttributes.h"
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaTypes.h"
 #include "llvm/Support/Casting.h"
@@ -22,49 +23,47 @@ thread_local int ExprBuilder::operandId = 0;
 
 // TODO: make more llvm friendly (do not use cout).
 
-// TODO: we can use the same set of enums instead of converting each time.
-// think if it makes sense to use the same MatrixProperty enums, what
-// if tomorrow we introduce a vector type? Can we share the enums
-// between the twos?
+// TODO: we can use the same set of enums between MLIR and the side data
+// structure.
 std::vector<Expr::ExprProperty>
-convert(llvm::ArrayRef<MatrixType::MatrixProperty> properties) {
+convert(llvm::ArrayRef<LinneaMatrixEncodingAttr::MatrixProperty> properties) {
   vector<Expr::ExprProperty> result;
   for (auto property : properties) {
     switch (property) {
-    case MatrixType::MatrixProperty::General:
+    case LinneaMatrixEncodingAttr::MatrixProperty::General:
       result.push_back(Expr::ExprProperty::GENERAL);
       break;
-    case MatrixType::MatrixProperty::FullRank:
+    case LinneaMatrixEncodingAttr::MatrixProperty::FullRank:
       result.push_back(Expr::ExprProperty::FULL_RANK);
       break;
-    case MatrixType::MatrixProperty::Diagonal:
+    case LinneaMatrixEncodingAttr::MatrixProperty::Diagonal:
       result.push_back(Expr::ExprProperty::DIAGONAL);
       break;
-    case MatrixType::MatrixProperty::UnitDiagonal:
+    case LinneaMatrixEncodingAttr::MatrixProperty::UnitDiagonal:
       result.push_back(Expr::ExprProperty::UNIT_DIAGONAL);
       break;
-    case MatrixType::MatrixProperty::LowerTriangular:
+    case LinneaMatrixEncodingAttr::MatrixProperty::LowerTriangular:
       result.push_back(Expr::ExprProperty::LOWER_TRIANGULAR);
       break;
-    case MatrixType::MatrixProperty::UpperTriangular:
+    case LinneaMatrixEncodingAttr::MatrixProperty::UpperTriangular:
       result.push_back(Expr::ExprProperty::UPPER_TRIANGULAR);
       break;
-    case MatrixType::MatrixProperty::Symmetric:
+    case LinneaMatrixEncodingAttr::MatrixProperty::Symmetric:
       result.push_back(Expr::ExprProperty::SYMMETRIC);
       break;
-    case MatrixType::MatrixProperty::SPD:
+    case LinneaMatrixEncodingAttr::MatrixProperty::SPD:
       result.push_back(Expr::ExprProperty::SPD);
       break;
-    case MatrixType::MatrixProperty::SPSD:
+    case LinneaMatrixEncodingAttr::MatrixProperty::SPSD:
       result.push_back(Expr::ExprProperty::SPSD);
       break;
-    case MatrixType::MatrixProperty::Identity:
+    case LinneaMatrixEncodingAttr::MatrixProperty::Identity:
       result.push_back(Expr::ExprProperty::IDENTITY);
       break;
-    case MatrixType::MatrixProperty::Square:
+    case LinneaMatrixEncodingAttr::MatrixProperty::Square:
       result.push_back(Expr::ExprProperty::SQUARE);
       break;
-    case MatrixType::MatrixProperty::Factored:
+    case LinneaMatrixEncodingAttr::MatrixProperty::Factored:
       result.push_back(Expr::ExprProperty::FACTORED);
       break;
     }
@@ -72,46 +71,48 @@ convert(llvm::ArrayRef<MatrixType::MatrixProperty> properties) {
   return result;
 }
 
-llvm::SmallVector<MatrixType::MatrixProperty>
+llvm::SmallVector<LinneaMatrixEncodingAttr::MatrixProperty>
 convert(std::vector<Expr::ExprProperty> properties) {
-  llvm::SmallVector<MatrixType::MatrixProperty> result;
+  llvm::SmallVector<LinneaMatrixEncodingAttr::MatrixProperty> result;
   for (auto property : properties) {
     switch (property) {
     case Expr::ExprProperty::GENERAL:
-      result.push_back(MatrixType::MatrixProperty::General);
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::General);
       break;
     case Expr::ExprProperty::FULL_RANK:
-      result.push_back(MatrixType::MatrixProperty::FullRank);
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::FullRank);
       break;
     case Expr::ExprProperty::DIAGONAL:
-      result.push_back(MatrixType::MatrixProperty::Diagonal);
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Diagonal);
       break;
     case Expr::ExprProperty::UNIT_DIAGONAL:
-      result.push_back(MatrixType::MatrixProperty::UnitDiagonal);
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::UnitDiagonal);
       break;
     case Expr::ExprProperty::LOWER_TRIANGULAR:
-      result.push_back(MatrixType::MatrixProperty::LowerTriangular);
+      result.push_back(
+          LinneaMatrixEncodingAttr::MatrixProperty::LowerTriangular);
       break;
     case Expr::ExprProperty::UPPER_TRIANGULAR:
-      result.push_back(MatrixType::MatrixProperty::UpperTriangular);
+      result.push_back(
+          LinneaMatrixEncodingAttr::MatrixProperty::UpperTriangular);
       break;
     case Expr::ExprProperty::SYMMETRIC:
-      result.push_back(MatrixType::MatrixProperty::Symmetric);
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Symmetric);
       break;
     case Expr::ExprProperty::SPD:
-      result.push_back(MatrixType::MatrixProperty::SPD);
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::SPD);
       break;
     case Expr::ExprProperty::SPSD:
-      result.push_back(MatrixType::MatrixProperty::SPSD);
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::SPSD);
       break;
     case Expr::ExprProperty::IDENTITY:
-      result.push_back(MatrixType::MatrixProperty::Identity);
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Identity);
       break;
     case Expr::ExprProperty::SQUARE:
-      result.push_back(MatrixType::MatrixProperty::Square);
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Square);
       break;
     case Expr::ExprProperty::FACTORED:
-      result.push_back(MatrixType::MatrixProperty::Factored);
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Factored);
       break;
     }
   }
@@ -124,7 +125,8 @@ Expr *ExprBuilder::buildOperandImpl(Value val) {
     return lookup(val);
 
   auto matrixType = val.getType().cast<MatrixType>();
-  auto properties = convert(matrixType.getProperty());
+  auto properties = convert(
+      matrixType.getProperty().cast<LinneaMatrixEncodingAttr>().getEncoding());
   auto size = matrixType.getDims();
   std::string id = "A" + std::to_string(getNextId());
   Expr *operand = new Operand(id, size);
@@ -143,11 +145,13 @@ mlir::Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
     operands.push_back(buildIRImpl(loc, builder, children[i]));
   MatrixType first = operands[0].getType().cast<MatrixType>();
   MatrixType last = operands[operands.size() - 1].getType().cast<MatrixType>();
-  SmallVector<MatrixType::MatrixProperty> properties =
+  SmallVector<LinneaMatrixEncodingAttr::MatrixProperty> properties =
       convert(expr->getAndSetProperties());
   SmallVector<int64_t> dims = {first.getDims()[0], last.getDims()[1]};
-  MatrixType result = MatrixType::get(builder.getContext(), properties, dims,
-                                      first.getElementType());
+  MatrixType result = MatrixType::get(
+      builder.getContext(),
+      LinneaMatrixEncodingAttr::get(builder.getContext(), properties), dims,
+      first.getElementType());
   return builder.create<MulOp>(loc, result, operands);
 }
 
