@@ -27,7 +27,7 @@ def LinneaTerm : Linnea_Type<"Term"> {
 def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
   let mnemonic = "matrix";
 
-  let summary = "A symbolic tensor";
+  let summary = "A symbolic matrix type.";
   let description = [{
     A 2-dimensional tensor.
   }];

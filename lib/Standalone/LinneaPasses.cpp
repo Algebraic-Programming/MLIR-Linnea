@@ -15,6 +15,7 @@
 
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
+#include "llvm/Support/Debug.h"
 
 using namespace mlir;
 using namespace mlir::linnea;
@@ -23,14 +24,10 @@ using namespace mlir::linnea::expr;
 #define GEN_PASS_CLASSES
 #include "Standalone/LinneaPasses.h.inc"
 
-namespace {
+#define DEBUG_TYPE "linnea-passes"
+#define DBGS() (llvm::dbgs() << "[" DEBUG_TYPE << "]: ")
 
-// TODO: split the attribute from the MatrixType. This avoid all
-// these clutter.
-static LinneaMatrixEncodingAttr getMatrixEncodingAttr(MatrixType matrix) {
-  return LinneaMatrixEncodingAttr::get(
-      matrix.getContext(), {LinneaMatrixEncodingAttr::MatrixType::Square});
-}
+namespace {
 
 /// Type converter
 class LinneaTypeConverter : public TypeConverter {
@@ -40,32 +37,75 @@ public:
     addConversion(convertMatrixType);
   }
   static Type convertMatrixType(MatrixType type) {
-    // Attribute attr = getMatrixEncodingAttr(type);
     return RankedTensorType::get(type.getDims(),
-                                 type.getElementType() /*, attr*/);
+                                 type.getElementType() /* add attribute*/);
   }
 };
 
+static inline bool isMLIRFloatType(mlir::Type t) {
+  return t.isF16() || t.isF32() || t.isF64();
+}
+
+static inline bool isMLIRIntType(mlir::Type t) {
+  return t.isInteger(2) || t.isInteger(4) || t.isInteger(8) ||
+         t.isInteger(16) || t.isInteger(32) || t.isInteger(64);
+}
+
+template <typename FOpTy, typename IOpTy>
+static Value buildBinaryOpFromValues(OpBuilder builder, Value left, Value right,
+                                     Location loc, Type t) {
+  if (isMLIRFloatType(t))
+    return builder.create<FOpTy>(loc, left, right);
+  else if (isMLIRIntType(t))
+    return builder.create<IOpTy>(loc, left, right);
+  else
+    llvm_unreachable("unsupported type");
+}
+
 // Emit linalg matrix op. Optimization (i.e., matrix-chain
 // reordering happen at the symbolic level).
-Value emitLinalgMatrix(Location loc, ArrayRef<Value> operands,
-                       ConversionPatternRewriter &rewriter,
-                       TypeConverter *typeConverter, ResultRange results) {
+static Value emitLinalgMatrix(Location loc, MLIRContext *ctx,
+                              ArrayRef<Value> operands,
+                              ConversionPatternRewriter &rewriter,
+                              TypeConverter *typeConverter,
+                              ResultRange results) {
   assert(operands.size() == 2 && "expect two operands");
   assert(results.size() == 1 && "expect one output");
 
   Value left = operands[0];
   Value right = operands[1];
+  // Value out = results[0];
   RankedTensorType outputType =
       typeConverter->convertType(results[0].getType()).cast<RankedTensorType>();
 
-  SmallVector<Value, 4> dynamicSizes;
   Value buffer = rewriter.create<linalg::InitTensorOp>(
-      loc, outputType, dynamicSizes,
+      loc, outputType, ArrayRef<Value>({}),
       rewriter.getI64ArrayAttr(outputType.getShape()));
+
+  // build affine map for matmul.
+  using MapList = ArrayRef<ArrayRef<AffineExpr>>;
+  auto infer = [](MapList m) { return AffineMap::inferFromExprList(m); };
+  AffineExpr m, n, k;
+  bindDims(ctx, m, n, k);
+  auto matMulMap = infer({{m, k}, {k, n}, {m, n}});
+
+  // iterator for matmul.
+  llvm::SmallVector<StringRef, 3> iter = {"parallel", "parallel", "reduction"};
+
   return rewriter
-      .create<linalg::MatmulOp>(loc, TypeRange{outputType},
-                                ValueRange{left, right}, buffer)
+      .create<linalg::GenericOp>(
+          loc, TypeRange{outputType}, ValueRange{left, right}, buffer,
+          matMulMap, iter,
+          [&](OpBuilder &nestedBuilder, Location nestedLoc, ValueRange args) {
+            assert(args.size() == 3 && "matmul expects 3 args");
+            Value mul = buildBinaryOpFromValues<arith::MulFOp, arith::MulIOp>(
+                nestedBuilder, args[0], args[1], nestedLoc,
+                outputType.getElementType());
+            Value add = buildBinaryOpFromValues<arith::AddFOp, arith::AddIOp>(
+                nestedBuilder, args[2], mul, nestedLoc,
+                outputType.getElementType());
+            nestedBuilder.create<linalg::YieldOp>(nestedLoc, add);
+          })
       ->getResult(0);
 }
 
@@ -78,8 +118,8 @@ public:
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,
                   ConversionPatternRewriter &rewriter) const final {
     assert(operands.size() >= 2 && "expect two operands at least");
-    Value result = emitLinalgMatrix(op->getLoc(), operands, rewriter,
-                                    typeConverter, op->getResults());
+    Value result = emitLinalgMatrix(op->getLoc(), op->getContext(), operands,
+                                    rewriter, typeConverter, op->getResults());
     assert(result != nullptr && "must be non null");
     rewriter.replaceOp(op, result);
     return success();
@@ -99,6 +139,7 @@ struct LowerToLinalg : public LinneaLowerToLinalgBase<LowerToLinalg> {
     RewritePatternSet patterns(&getContext());
     LinneaTypeConverter converter;
     target.addLegalDialect<linalg::LinalgDialect>();
+    target.addLegalDialect<arith::ArithmeticDialect>();
 
     target.addDynamicallyLegalOp<FuncOp>(
         [&](FuncOp op) { return converter.isSignatureLegal(op.getType()); });
@@ -157,10 +198,9 @@ void LinneaComprehensivePropertyPropagation::runOnOperation() {
       ExprBuilder exprBuilder;
       Expr *root = exprBuilder.buildLinneaExpr(termOperand);
 
-      // ctx.print();
-      // root->walk();
+      // simplify the expression.
       root = root->simplify();
-      root->walk();
+      LLVM_DEBUG(DBGS() << "Simplified expression: \n"; root->walk(););
 
       OpBuilder builder(eqOp->getContext());
       OpBuilder::InsertionGuard guard(builder);
