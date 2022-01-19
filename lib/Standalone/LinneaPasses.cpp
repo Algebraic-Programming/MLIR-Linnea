@@ -145,7 +145,8 @@ struct LowerToLinalg : public LinneaLowerToLinalgBase<LowerToLinalg> {
     target.addDynamicallyLegalOp<ReturnOp>(
         [&](ReturnOp op) { return converter.isLegal(op.getOperandTypes()); });
 
-    populateFuncOpTypeConversionPattern(patterns, converter);
+    populateFunctionOpInterfaceTypeConversionPattern<FuncOp>(patterns,
+                                                             converter);
     populateReturnOpTypeConversionPattern(patterns, converter);
     populateLinneaToLinalgPattern(patterns, converter);
 

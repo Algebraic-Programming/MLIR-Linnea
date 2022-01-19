@@ -39,7 +39,7 @@ void LinneaDialect::initialize() {
 #include "Standalone/LinneaAttrBase.cpp.inc"
       >();
 }
-
+/*
 Type LinneaDialect::parseType(DialectAsmParser &parser) const {
   llvm::StringRef ref;
   if (parser.parseKeyword(&ref))
@@ -75,3 +75,4 @@ void LinneaDialect::printAttribute(Attribute attr,
   if (succeeded(generatedAttributePrinter(attr, printer)))
     return;
 }
+*/
