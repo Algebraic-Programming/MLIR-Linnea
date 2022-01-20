@@ -244,7 +244,7 @@ void LinneaComprehensivePropertyPropagation::runOnOperation() {
       auto bbArg = front.getArgument(0);
       auto termType = bbArg.getType().dyn_cast<TermType>();
       if (!termType) {
-        front.addArgument(bbArg.getType());
+        front.addArgument(bbArg.getType(), bbArg.getLoc());
         bbArg.replaceAllUsesWith(front.getArguments().back());
         front.eraseArgument(0);
         continue;
