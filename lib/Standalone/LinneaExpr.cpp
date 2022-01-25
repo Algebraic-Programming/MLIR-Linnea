@@ -223,6 +223,9 @@ Expr *ExprBuilder::buildExprImpl(Value val) {
     Expr *child = buildExprImpl(invOp.getOperand());
     return inv(child);
   }
+  if (auto fillOp = dyn_cast_or_null<mlir::linnea::FillOp>(defOp)) {
+    return buildExprImpl(fillOp.output());
+  }
   assert(0 && "unreachable");
   return nullptr;
 }

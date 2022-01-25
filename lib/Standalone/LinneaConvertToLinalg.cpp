@@ -29,7 +29,7 @@ using namespace mlir::linnea::expr;
 
 namespace {
 
-/// Type converter
+/// Type converter from MatrixType to RankedTensorType.
 class LinneaTypeConverter : public TypeConverter {
 public:
   LinneaTypeConverter() {
@@ -64,13 +64,14 @@ static Value buildBinaryOpFromValues(OpBuilder builder, Value left, Value right,
 
 // Emit linalg matrix op. Optimization (i.e., matrix-chain
 // reordering happen at the symbolic level).
-static Value emitLinalgMatrix(Location loc, MLIRContext *ctx,
-                              ArrayRef<Value> operands,
+static Value emitLinalgMatrix(MulOpHigh op, ValueRange operands,
                               ConversionPatternRewriter &rewriter,
                               TypeConverter *typeConverter,
                               ResultRange results) {
   assert(operands.size() == 2 && "expect two operands");
   assert(results.size() == 1 && "expect one output");
+  auto loc = op->getLoc();
+  auto ctx = op->getContext();
 
   Value left = operands[0];
   Value right = operands[1];
@@ -108,20 +109,32 @@ static Value emitLinalgMatrix(Location loc, MLIRContext *ctx,
       ->getResult(0);
 }
 
-class MulOpLowering : public ConversionPattern {
+class MulOpLowering : public OpConversionPattern<MulOpHigh> {
 public:
-  MulOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
-      : ConversionPattern(typeConverter, MulOpLow::getOperationName(), 1, ctx) {
-  }
-
+  using OpConversionPattern::OpConversionPattern;
   LogicalResult
-  matchAndRewrite(Operation *op, ArrayRef<Value> operands,
-                  ConversionPatternRewriter &rewriter) const final {
+  matchAndRewrite(MulOpHigh op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto operands = adaptor.input();
     assert(operands.size() >= 2 && "expect two operands at least");
-    Value result = emitLinalgMatrix(op->getLoc(), op->getContext(), operands,
-                                    rewriter, typeConverter, op->getResults());
+    Value result = emitLinalgMatrix(op, operands, rewriter, getTypeConverter(),
+                                    op->getResults());
     assert(result != nullptr && "must be non null");
     rewriter.replaceOp(op, result);
+    return success();
+  }
+};
+
+class FillOpLowering : public OpConversionPattern<FillOp> {
+public:
+  using OpConversionPattern::OpConversionPattern;
+  LogicalResult
+  matchAndRewrite(FillOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    Type newResultType =
+        getTypeConverter()->convertType(adaptor.output().getType());
+    rewriter.replaceOpWithNewOp<linalg::FillOp>(
+        op, newResultType, adaptor.value(), adaptor.output());
     return success();
   }
 };
@@ -130,6 +143,7 @@ public:
 void populateLinneaToLinalgPattern(RewritePatternSet &patterns,
                                    TypeConverter &converter) {
   patterns.add<MulOpLowering>(converter, patterns.getContext());
+  patterns.add<FillOpLowering>(converter, patterns.getContext());
 }
 
 struct ConvertToLinalg : public LinneaConvertToLinalgBase<ConvertToLinalg> {
