@@ -14,10 +14,12 @@
 #include "mlir/Pass/Pass.h"
 
 namespace mlir {
+namespace linnea {
 std::unique_ptr<OperationPass<FuncOp>> createConvertLinneaToLinalgPass();
 std::unique_ptr<OperationPass<ModuleOp>>
 createLinneaComprehensivePropertyPropagationPass();
 std::unique_ptr<OperationPass<FuncOp>> createConvertLinneaToLoopsPass();
+} // namespae linnea
 } // namespace mlir
 
 #define GEN_PASS_REGISTRATION

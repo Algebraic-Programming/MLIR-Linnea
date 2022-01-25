@@ -173,6 +173,6 @@ struct ConvertToLinalg : public LinneaConvertToLinalgBase<ConvertToLinalg> {
 
 } // namespace
 
-std::unique_ptr<OperationPass<FuncOp>> mlir::createConvertLinneaToLinalgPass() {
+std::unique_ptr<OperationPass<FuncOp>> mlir::linnea::createConvertLinneaToLinalgPass() {
   return std::make_unique<ConvertToLinalg>();
 }

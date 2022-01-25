@@ -140,6 +140,6 @@ void LinneaComprehensivePropertyPropagation::runOnOperation() {
 } // namespace
 
 std::unique_ptr<OperationPass<ModuleOp>>
-mlir::createLinneaComprehensivePropertyPropagationPass() {
+mlir::linnea::createLinneaComprehensivePropertyPropagationPass() {
   return std::make_unique<LinneaComprehensivePropertyPropagation>();
 }
