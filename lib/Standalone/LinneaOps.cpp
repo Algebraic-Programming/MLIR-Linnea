@@ -24,6 +24,8 @@ static LogicalResult verifyMulOp(MulOpHigh op) { return success(); }
 
 static LogicalResult verifyMulOp(MulOpLow op) { return success(); }
 
+static LogicalResult verifyFillOp(FillOp op) { return success(); }
+
 static ParseResult parseEquationOp(OpAsmParser &parser,
                                    OperationState &result) {
   // Parse the body region.

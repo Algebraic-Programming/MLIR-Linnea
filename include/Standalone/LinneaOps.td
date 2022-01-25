@@ -13,6 +13,25 @@ include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "LinneaTypeBase.td" 
 
+def Linnea_FillOp : Linnea_Op<"fill"> {
+  let summary = "The `linnea.fillOp` fill a linnea container with a given value";
+  let arguments = (ins
+    AnyTypeOf<[AnyFloat, AnySignlessInteger]>:$value,
+    AnyLinneaType:$output);
+  let results = (outs AnyLinneaType:$result);
+
+  let assemblyFormat = [{
+    `(` $value `,` $output `)` attr-dict `:` 
+        type($value) `,` type($output) `->` type($result)
+  }];
+
+  let builders = [
+    OpBuilder<(ins "Value":$value, "Value":$output)>
+  ];
+
+  let verifier = [{ return ::verifyFillOp(*this); }];
+}
+
 def Linnea_EquationOp : Linnea_Op<"equation", 
     [SingleBlockImplicitTerminator<"YieldOp">]> {
   let summary = "Operation wrapper to contains a set of linnea operations.";
