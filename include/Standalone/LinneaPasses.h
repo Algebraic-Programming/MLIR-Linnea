@@ -10,14 +10,14 @@
 #define LINNEA_PASSES_H
 
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
+#include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Pass/Pass.h"
 
 namespace mlir {
-// namespace linnea {
 std::unique_ptr<OperationPass<FuncOp>> createConvertLinneaToLinalgPass();
 std::unique_ptr<OperationPass<ModuleOp>>
 createLinneaComprehensivePropertyPropagationPass();
-//} // end linnea
+std::unique_ptr<OperationPass<FuncOp>> createConvertLinneaToLoopsPass();
 } // namespace mlir
 
 #define GEN_PASS_REGISTRATION

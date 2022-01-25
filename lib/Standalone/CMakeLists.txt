@@ -7,6 +7,7 @@ add_mlir_dialect_library(MLIRLinnea
         LinneaExpr.cpp
         LinneaProperties.cpp
         LinneaUtils.cpp
+        LinneaConvertToLoops.cpp
 
         ADDITIONAL_HEADER_DIRS
         ${PROJECT_SOURCE_DIR}/include/Standalone

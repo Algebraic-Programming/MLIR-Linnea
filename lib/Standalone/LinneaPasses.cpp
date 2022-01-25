@@ -132,7 +132,7 @@ void populateLinneaToLinalgPattern(RewritePatternSet &patterns,
   patterns.add<MulOpLowering>(converter, patterns.getContext());
 }
 
-struct LowerToLinalg : public LinneaLowerToLinalgBase<LowerToLinalg> {
+struct ConvertToLinalg : public LinneaConvertToLinalgBase<ConvertToLinalg> {
   void runOnFunction() override {
     ConversionTarget target(getContext());
 
@@ -271,7 +271,7 @@ void LinneaComprehensivePropertyPropagation::runOnOperation() {
 } // namespace
 
 std::unique_ptr<OperationPass<FuncOp>> mlir::createConvertLinneaToLinalgPass() {
-  return std::make_unique<LowerToLinalg>();
+  return std::make_unique<ConvertToLinalg>();
 }
 
 std::unique_ptr<OperationPass<ModuleOp>>
