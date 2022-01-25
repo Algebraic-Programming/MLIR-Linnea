@@ -30,4 +30,10 @@ def LinneaComprehensivePropertyPropagation :
   let constructor = "mlir::linnea::createLinneaComprehensivePropertyPropagationPass()";
 }
 
+def LinneaFuncTypeConversion : Pass<"linnea-func-type-conversion", "ModuleOp"> {
+  let summary = "Finalizes a partial conversion to builtin tensors";
+  let constructor = "mlir::linnea::createLinneaFuncTypeConversion()";
+  let description = [{TODO}];
+}
+
 #endif
