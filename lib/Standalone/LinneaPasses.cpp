@@ -111,7 +111,8 @@ static Value emitLinalgMatrix(Location loc, MLIRContext *ctx,
 class MulOpLowering : public ConversionPattern {
 public:
   MulOpLowering(TypeConverter &typeConverter, MLIRContext *ctx)
-      : ConversionPattern(typeConverter, MulOp::getOperationName(), 1, ctx) {}
+      : ConversionPattern(typeConverter, MulOpLow::getOperationName(), 1, ctx) {
+  }
 
   LogicalResult
   matchAndRewrite(Operation *op, ArrayRef<Value> operands,

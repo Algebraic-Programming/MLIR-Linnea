@@ -16,13 +16,13 @@
 using namespace mlir;
 using namespace mlir::linnea;
 
-static LogicalResult verifyCholeskyOp(CholeskyOp op) { return success(); }
-
 static LogicalResult verifyInverseOp(InverseOp op) { return success(); }
 
 static LogicalResult verifyTransposeOp(TransposeOp op) { return success(); }
 
-static LogicalResult verifyMulOp(MulOp op) { return success(); }
+static LogicalResult verifyMulOp(MulOpHigh op) { return success(); }
+
+static LogicalResult verifyMulOp(MulOpLow op) { return success(); }
 
 static ParseResult parseEquationOp(OpAsmParser &parser,
                                    OperationState &result) {

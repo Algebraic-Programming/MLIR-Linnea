@@ -49,7 +49,7 @@ def Linnea_YieldOp : Linnea_Op<"yield",
   }];
 }
 
-def Linnea_InverseOp : Linnea_Op<"inverse", [NoSideEffect]> {
+def Linnea_InverseOp : Linnea_Op<"inverse", [HasParent<"EquationOp">]> {
     let summary = "Add doc.";
     let description = [{
     
@@ -71,7 +71,7 @@ def Linnea_InverseOp : Linnea_Op<"inverse", [NoSideEffect]> {
     let hasCanonicalizer = 1;
 }
 
-def Linnea_TransposeOp : Linnea_Op<"transpose", [NoSideEffect]> {
+def Linnea_TransposeOp : Linnea_Op<"transpose", [HasParent<"EquationOp">]> {
     let summary = "Add doc.";
     let description = [{
     
@@ -91,37 +91,19 @@ def Linnea_TransposeOp : Linnea_Op<"transpose", [NoSideEffect]> {
     let verifier = [{ return ::verifyTransposeOp(*this); }];
 }
 
-def Linnea_CholeskyOp : Linnea_Op<"cholesky", [NoSideEffect]> {
-    let summary = "Add doc.";
+def Linnea_MulOpHigh : Linnea_Op<"mul.high", [HasParent<"EquationOp">]> {
+    let summary = "Variadic matrix multiplication";
     let description = [{
-    
-    }];
-
-    let arguments = (ins LinneaSymbolicMatrix:$input);
-    let results = (outs AnyType:$output);
-
-    let assemblyFormat = [{
-      $input attr-dict `:` type($input) `->` type($output)
-    }];
-
-    let builders = [
-      OpBuilder<(ins "Value":$input)>
-    ];
-
-    let verifier = [{ return ::verifyCholeskyOp(*this); }];
-}
-
-def Linnea_MulOp : Linnea_Op<"mul", [NoSideEffect]> {
-    let summary = "Add doc.";
-    let description = [{
-        The `standalone.inverse` (add doc)
+        The `linnea.mul` represents a variadic multiplication.
+        It is an high-level linnea operation which must be nested within
+        a linnea.equation operation.
 
         Example:
 
         ```mlir
-        %0 = constant 2 : i32
-        // Apply the foo operation to %0
-        %1 = linnea.inverse %0 : i32
+        { // linnea.equation
+          %2 = linnea.mul %0, %1, %2 : (...)
+        } // end linnea.equation
         ```
     }];
 
@@ -130,6 +112,36 @@ def Linnea_MulOp : Linnea_Op<"mul", [NoSideEffect]> {
 
     let assemblyFormat = [{
       $input attr-dict `:` type($input) `->` type($output)
+    }];
+
+    let builders = [
+      OpBuilder<(ins "ValueRange":$input)>
+    ];
+
+    let verifier = [{ return ::verifyMulOp(*this); }];
+}
+
+// def MulOLowOperand : 2DTensorOf<[AnyLinneaType]>;
+
+def Linnea_MulOpLow : Linnea_Op<"mul.low"> {
+    let summary = "Matrix multiplication";
+    let description = [{
+        The `linnea.mul` represents a 2d multiplication.
+        It is an low-level linnea operation ready to be converted
+        1:1 with linalg.generic.
+
+        Example:
+
+        ```mlir
+          %2 = linnea.mul %0, %1 : (...)
+        ```
+    }];
+
+    let arguments = (ins AnyLinneaType:$a, AnyLinneaType:$b);
+    let results = (outs AnyLinneaType:$output);
+
+    let assemblyFormat = [{
+      $a `,` $b attr-dict `:` type($a) `,` type($b) `->` type($output)
     }];
 
     let builders = [

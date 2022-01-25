@@ -152,7 +152,7 @@ mlir::Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
       builder.getContext(),
       LinneaMatrixEncodingAttr::get(builder.getContext(), properties), dims,
       first.getElementType());
-  return builder.create<MulOp>(loc, result, operands);
+  return builder.create<MulOpLow>(loc, result, operands);
 }
 
 mlir::Value ExprBuilder::buildTransposeImpl(Location loc, OpBuilder &builder,
@@ -208,7 +208,7 @@ Expr *ExprBuilder::buildExprImpl(Value val) {
 
   Operation *defOp = val.getDefiningOp();
   assert(defOp && "must be valid");
-  if (auto mulOp = dyn_cast_or_null<mlir::linnea::MulOp>(defOp)) {
+  if (auto mulOp = dyn_cast_or_null<mlir::linnea::MulOpHigh>(defOp)) {
     std::vector<Expr *> children;
     for (Value operand : mulOp.getOperands()) {
       children.push_back(buildExprImpl(operand));
