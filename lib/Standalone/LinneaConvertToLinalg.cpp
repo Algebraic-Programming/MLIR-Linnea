@@ -6,12 +6,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Standalone/LinneaPasses.h"
 #include "Standalone/LinneaAttributes.h"
 #include "Standalone/LinneaExpr.h"
 #include "Standalone/LinneaOps.h"
-#include "Standalone/LinneaTypeConverter.h"
+#include "Standalone/LinneaPasses.h"
 #include "mlir/Dialect/StandardOps/Transforms/FuncConversions.h"
+#include "mlir/Transforms/DialectConversion.h"
 
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
@@ -28,19 +28,6 @@ using namespace mlir::linnea::expr;
 #define DBGS() (llvm::dbgs() << "[" DEBUG_TYPE << "]: ")
 
 namespace {
-
-/// Type converter from MatrixType to RankedTensorType.
-class LinneaTypeConverter : public TypeConverter {
-public:
-  LinneaTypeConverter() {
-    addConversion([](Type type) { return type; });
-    addConversion(convertMatrixType);
-  }
-  static Type convertMatrixType(MatrixType type) {
-    return RankedTensorType::get(type.getDims(), type.getElementType(),
-                                 type.getProperty());
-  }
-};
 
 static inline bool isMLIRFloatType(mlir::Type t) {
   return t.isF16() || t.isF32() || t.isF64();
@@ -143,27 +130,91 @@ void populateLinneaToLinalgPattern(RewritePatternSet &patterns,
   patterns.add<FillOpLowering>(converter, patterns.getContext());
 }
 
+static void setupTypeConversion(ConversionTarget &target,
+                                TypeConverter &typeConverter) {
+  target.addLegalOp<ToBuiltinTensorOp>();
+  typeConverter.addConversion([](MatrixType type) -> RankedTensorType {
+    return RankedTensorType::get(type.getDims(), type.getElementType(),
+                                 type.getProperty());
+  });
+  typeConverter.addTargetMaterialization([](OpBuilder &builder, TensorType type,
+                                            ValueRange inputs,
+                                            Location loc) -> Value {
+    assert(inputs.size() == 1);
+    assert(inputs[0].getType().isa<MatrixType>());
+    return builder.create<ToBuiltinTensorOp>(loc, type, inputs[0]);
+  });
+  auto sourceMaterialization = [](OpBuilder &builder, Type type,
+                                  ValueRange inputs, Location loc) -> Value {
+    assert(inputs.size() == 1);
+    assert(inputs[0].getType().isa<TensorType>());
+    return builder.create<FromBuiltinTensorOp>(loc, type, inputs[0]);
+  };
+  typeConverter.addSourceMaterialization(sourceMaterialization);
+  typeConverter.addArgumentMaterialization(sourceMaterialization);
+}
+
+// In a finalizing conversion, we know that all of the source types have been
+// converted to the destination types, so the materialization becomes an
+// identity.
+template <typename OpTy>
+class FinalizeMaterialization : public OpConversionPattern<OpTy> {
+public:
+  using OpConversionPattern<OpTy>::OpConversionPattern;
+  using OpAdaptor = typename OpTy::Adaptor;
+  LogicalResult
+  matchAndRewrite(OpTy op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    rewriter.replaceOp(op, adaptor.getOperands()[0]);
+    return success();
+  }
+};
+
+template <typename OpTy>
+static void setupFinalization(ConversionTarget &target,
+                              RewritePatternSet &patterns,
+                              TypeConverter &typeConverter) {
+  target.addIllegalOp<OpTy>();
+  patterns.add<FinalizeMaterialization<OpTy>>(typeConverter,
+                                              patterns.getContext());
+}
+
+template <typename OpTy, typename OpTy2, typename... OpTys>
+static void setupFinalization(ConversionTarget &target,
+                              RewritePatternSet &patterns,
+                              TypeConverter &typeConverter) {
+  setupFinalization<OpTy>(target, patterns, typeConverter);
+  setupFinalization<OpTy2, OpTys...>(target, patterns, typeConverter);
+}
+
 struct ConvertToLinalg : public LinneaConvertToLinalgBase<ConvertToLinalg> {
   void runOnFunction() override {
-    ConversionTarget target(getContext());
 
     RewritePatternSet patterns(&getContext());
-    LinneaTypeConverter converter;
+    TypeConverter typeConverter;
+    ConversionTarget target(getContext());
+
+    typeConverter.addConversion([](Type type) { return type; });
+    setupTypeConversion(target, typeConverter);
+
     target.addLegalDialect<linalg::LinalgDialect>();
-    target.addLegalDialect<arith::ArithmeticDialect>();
 
-    target.addDynamicallyLegalOp<FuncOp>(
-        [&](FuncOp op) { return converter.isSignatureLegal(op.getType()); });
-    target.addDynamicallyLegalOp<ReturnOp>(
-        [&](ReturnOp op) { return converter.isLegal(op.getOperandTypes()); });
+    setupFinalization<ToBuiltinTensorOp, FromBuiltinTensorOp>(target, patterns,
+                                                              typeConverter);
 
-    populateFunctionOpInterfaceTypeConversionPattern<FuncOp>(patterns,
-                                                             converter);
-    populateReturnOpTypeConversionPattern(patterns, converter);
-    populateLinneaToLinalgPattern(patterns, converter);
+    // If all result types are legal, and all block arguments are legal, then
+    // all types in the program are legal.
+    //
+    // We also check that the operand types are legal to avoid creating invalid
+    // IR. For example, this prevents the patterns from updating
+    // the types of the operands to a return op without updating the enclosing
+    // function.
+    target.markUnknownOpDynamicallyLegal(
+        [&](Operation *op) { return typeConverter.isLegal(op); });
 
-    if (failed(
-            applyPartialConversion(getFunction(), target, std::move(patterns))))
+    populateLinneaToLinalgPattern(patterns, typeConverter);
+
+    if (failed(applyFullConversion(getFunction(), target, std::move(patterns))))
       signalPassFailure();
   }
 };

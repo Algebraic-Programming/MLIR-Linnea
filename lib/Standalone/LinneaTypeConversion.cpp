@@ -1,4 +1,5 @@
 #include "Standalone/LinneaDialect.h"
+#include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaPasses.h"
 #include "Standalone/LinneaTypes.h"
 #include "mlir/Dialect/StandardOps/Transforms/FuncConversions.h"
@@ -16,10 +17,26 @@ using namespace mlir::linnea;
 namespace {
 static void setupTypeConversion(ConversionTarget &target,
                                 TypeConverter &typeConverter) {
+  target.addLegalOp<ToBuiltinTensorOp>();
   typeConverter.addConversion([](MatrixType type) -> RankedTensorType {
     return RankedTensorType::get(type.getDims(), type.getElementType(),
                                  type.getProperty());
   });
+  typeConverter.addTargetMaterialization([](OpBuilder &builder, TensorType type,
+                                            ValueRange inputs,
+                                            Location loc) -> Value {
+    assert(inputs.size() == 1);
+    assert(inputs[0].getType().isa<MatrixType>());
+    return builder.create<ToBuiltinTensorOp>(loc, type, inputs[0]);
+  });
+  auto sourceMaterialization = [](OpBuilder &builder, Type type,
+                                  ValueRange inputs, Location loc) -> Value {
+    assert(inputs.size() == 1);
+    assert(inputs[0].getType().isa<TensorType>());
+    return builder.create<FromBuiltinTensorOp>(loc, type, inputs[0]);
+  };
+  typeConverter.addSourceMaterialization(sourceMaterialization);
+  typeConverter.addArgumentMaterialization(sourceMaterialization);
 }
 
 struct LinneaFuncTypeConversionPass

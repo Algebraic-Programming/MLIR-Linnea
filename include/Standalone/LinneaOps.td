@@ -13,6 +13,24 @@ include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "LinneaTypeBase.td" 
 
+def Linnea_ToBuiltinTensorOp : Linnea_Op<"to_builtin_tensor"> {
+  let summary = "Convert a `LinneaSymbolicMatrix` to a builtin `tensor`";
+  let arguments = (ins LinneaSymbolicMatrix:$operand);
+  let results = (outs AnyTensor:$result);
+  let assemblyFormat = [{
+    $operand attr-dict `:` qualified(type($operand)) `->` qualified(type($result))
+  }];
+}
+
+def Linnea_FromBuiltinTensorOp : Linnea_Op<"from_builtin_tensor"> {
+  let summary = "Convert a `tensor` to a `LinneaSymbolicMatrix`";
+  let arguments = (ins AnyTensor:$operand);
+  let results = (outs LinneaSymbolicMatrix:$result);
+  let assemblyFormat = [{
+    $operand attr-dict `:` qualified(type($operand)) `->` qualified(type($result))
+  }];
+}
+
 def Linnea_FillOp : Linnea_Op<"fill"> {
   let summary = "The `linnea.fillOp` fill a linnea container with a given value";
   let arguments = (ins
@@ -32,8 +50,6 @@ def Linnea_EquationOp : Linnea_Op<"equation",
     [SingleBlockImplicitTerminator<"YieldOp">]> {
   let summary = "Operation wrapper to contains a set of linnea operations.";
   let description = [{
-    ```mlir
-    ```
     `linnea.equation` is introduced as a wrapper for `linnea` dialect
     operations which makes analysis and transformation simpler.
     The `linnea.equationOp` operation has a single region with a single
