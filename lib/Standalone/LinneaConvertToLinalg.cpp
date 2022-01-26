@@ -64,7 +64,7 @@ static Value buildBinaryOpFromValues(OpBuilder builder, Value left, Value right,
 
 // Emit linalg matrix op. Optimization (i.e., matrix-chain
 // reordering happen at the symbolic level).
-static Value emitLinalgMatrix(MulOpHigh op, ValueRange operands,
+static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
                               ConversionPatternRewriter &rewriter,
                               TypeConverter *typeConverter,
                               ResultRange results) {
@@ -109,14 +109,13 @@ static Value emitLinalgMatrix(MulOpHigh op, ValueRange operands,
       ->getResult(0);
 }
 
-class MulOpLowering : public OpConversionPattern<MulOpHigh> {
+class MulOpLowering : public OpConversionPattern<MulOpLow> {
 public:
   using OpConversionPattern::OpConversionPattern;
   LogicalResult
-  matchAndRewrite(MulOpHigh op, OpAdaptor adaptor,
+  matchAndRewrite(MulOpLow op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    auto operands = adaptor.input();
-    assert(operands.size() >= 2 && "expect two operands at least");
+    ValueRange operands = {adaptor.a(), adaptor.b()};
     Value result = emitLinalgMatrix(op, operands, rewriter, getTypeConverter(),
                                     op->getResults());
     assert(result != nullptr && "must be non null");
@@ -131,10 +130,8 @@ public:
   LogicalResult
   matchAndRewrite(FillOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    Type newResultType =
-        getTypeConverter()->convertType(adaptor.output().getType());
-    rewriter.replaceOpWithNewOp<linalg::FillOp>(
-        op, newResultType, adaptor.value(), adaptor.output());
+    rewriter.replaceOpWithNewOp<linalg::FillOp>(op, adaptor.value(),
+                                                adaptor.output());
     return success();
   }
 };

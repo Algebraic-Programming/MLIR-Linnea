@@ -38,7 +38,6 @@ func @bar(%arg0: !linnea.matrix<#linnea.property<["identity"]>,[32,32], f32>) {
 // CHECK-LABEL: func @bar(
 func @bar(%arg0: !linnea.matrix<#linnea.property<["identity"]>,[32,32], f32>, %arg1: f32) {
   // CHECK: %{{.*}} = linnea.fill
-  %1 = linnea.fill(%arg1, %arg0) : 
-    f32, !linnea.matrix<#linnea.property<["identity"]>,[32,32], f32> -> !linnea.matrix<#linnea.property<["identity"]>,[32,32], f32>
+  linnea.fill(%arg1, %arg0) : f32, !linnea.matrix<#linnea.property<["identity"]>,[32,32], f32>
   return
 }
