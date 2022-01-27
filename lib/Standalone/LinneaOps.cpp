@@ -17,6 +17,17 @@ using namespace mlir;
 using namespace mlir::linnea;
 
 //===----------------------------------------------------------------------===//
+// CastToBuiltinTensor
+//===----------------------------------------------------------------------===//
+OpFoldResult CastToBuiltinTensorOp::fold(ArrayRef<Attribute> attr) {
+  if (auto castFromBuiltinTensor =
+          input().getDefiningOp<CastFromBuiltinTensorOp>())
+    if (castFromBuiltinTensor.output().getType() == input().getType())
+      return castFromBuiltinTensor.input();
+  return {};
+}
+
+//===----------------------------------------------------------------------===//
 // FillOp
 //===----------------------------------------------------------------------===//
 static LogicalResult verifyFillOp(FillOp op) { return success(); }

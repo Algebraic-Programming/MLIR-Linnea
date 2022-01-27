@@ -38,9 +38,13 @@ def LinneaComprehensivePropertyPropagation :
 }
 
 def LinneaFuncTypeConversion : Pass<"linnea-func-type-conversion", "ModuleOp"> {
-  let summary = "Finalizes a partial conversion to builtin tensors";
+  let summary = "Conversion to builtin tensors with linnea attributes from linnea matrix type";
   let constructor = "mlir::linnea::createLinneaFuncTypeConversion()";
-  let description = [{TODO}];
+}
+
+def LinneaFinalizeFuncTypeConversion : Pass<"linnea-finalize-func-type-conversion", "ModuleOp"> {
+  let summary = "Conversion to builtin tensors with linnea attributes to builtin tensor";
+  let constructor = "mlir::linnea::createLinneaFinalizeFuncTypeConversion()";
 }
 
 #endif

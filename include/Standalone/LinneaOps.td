@@ -13,6 +13,25 @@ include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "LinneaTypeBase.td" 
 
+def Linnea_CastToBuiltinTensorOp : Linnea_Op<"cast_to_builtin_tensor", [NoSideEffect]> {
+  let summary = "Convert a `RankedTensorType` with a linna attribute to a builtin `tensor`";
+  let arguments = (ins AnyTensor:$input);
+  let results = (outs AnyTensor:$output);
+  let assemblyFormat = [{
+    $input attr-dict `:` qualified(type($input)) `->` qualified(type($output))
+  }];
+  let hasFolder = 1;
+}
+
+def Linnea_CastFromBuiltinTensorOp : Linnea_Op<"cast_from_builtin_tensor", [NoSideEffect]> {
+  let summary = "Convert a `RankedTensorType` to a `RankedTensorType` with linnea attribute";
+  let arguments = (ins AnyTensor:$input);
+  let results = (outs AnyTensor:$output);
+  let assemblyFormat = [{
+    $input attr-dict `:` qualified(type($input)) `->` qualified(type($output))
+  }];
+}
+
 def Linnea_ToBuiltinTensorOp : Linnea_Op<"to_builtin_tensor"> {
   let summary = "Convert a `LinneaSymbolicMatrix` to a builtin `tensor`";
   let arguments = (ins LinneaSymbolicMatrix:$operand);

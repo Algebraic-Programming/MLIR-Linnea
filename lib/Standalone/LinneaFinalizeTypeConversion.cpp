@@ -17,30 +17,30 @@ using namespace mlir::linnea;
 namespace {
 static void setupTypeConversion(ConversionTarget &target,
                                 TypeConverter &typeConverter) {
-  target.addLegalOp<ToBuiltinTensorOp>();
-  typeConverter.addConversion([](MatrixType type) -> RankedTensorType {
-    return RankedTensorType::get(type.getDims(), type.getElementType(),
-                                 type.getProperty());
+  target.addLegalOp<CastToBuiltinTensorOp>();
+  typeConverter.addConversion([](RankedTensorType type) -> RankedTensorType {
+    return RankedTensorType::get(type.getShape(), type.getElementType());
   });
   typeConverter.addTargetMaterialization([](OpBuilder &builder, TensorType type,
                                             ValueRange inputs,
                                             Location loc) -> Value {
     assert(inputs.size() == 1);
-    assert(inputs[0].getType().isa<MatrixType>());
-    return builder.create<ToBuiltinTensorOp>(loc, type, inputs[0]);
+    assert(inputs[0].getType().isa<RankedTensorType>());
+    return builder.create<CastToBuiltinTensorOp>(loc, type, inputs[0]);
   });
   auto sourceMaterialization = [](OpBuilder &builder, Type type,
                                   ValueRange inputs, Location loc) -> Value {
     assert(inputs.size() == 1);
     assert(inputs[0].getType().isa<RankedTensorType>());
-    return builder.create<FromBuiltinTensorOp>(loc, type, inputs[0]);
+    return builder.create<CastFromBuiltinTensorOp>(loc, type, inputs[0]);
   };
   typeConverter.addSourceMaterialization(sourceMaterialization);
   typeConverter.addArgumentMaterialization(sourceMaterialization);
 }
 
-struct LinneaFuncTypeConversionPass
-    : public LinneaFuncTypeConversionBase<LinneaFuncTypeConversionPass> {
+struct LinneaFinalizeFuncTypeConversionPass
+    : public LinneaFinalizeFuncTypeConversionBase<
+          LinneaFinalizeFuncTypeConversionPass> {
 
   void runOnOperation() override {
     auto module = getOperation();
@@ -82,6 +82,6 @@ struct LinneaFuncTypeConversionPass
 } // namespace
 
 std::unique_ptr<OperationPass<ModuleOp>>
-mlir::linnea::createLinneaFuncTypeConversion() {
-  return std::make_unique<LinneaFuncTypeConversionPass>();
+mlir::linnea::createLinneaFinalizeFuncTypeConversion() {
+  return std::make_unique<LinneaFinalizeFuncTypeConversionPass>();
 }

@@ -10,6 +10,7 @@ add_mlir_dialect_library(MLIRLinnea
         LinneaConvertToLoops.cpp
         LinneaConvertToLinalg.cpp
         LinneaTypeConversion.cpp
+        LinneaFinalizeTypeConversion.cpp
 
         ADDITIONAL_HEADER_DIRS
         ${PROJECT_SOURCE_DIR}/include/Standalone
