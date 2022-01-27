@@ -8,7 +8,10 @@
 
 #include "Standalone/LinneaPasses.h"
 
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
+#include "mlir/Dialect/Linalg/Passes.h"
 #include "mlir/Pass/Pass.h"
+#include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "llvm/Support/Debug.h"
 
@@ -23,11 +26,19 @@ using namespace mlir;
 namespace {
 
 struct ConvertToLoops : public LinneaConvertToLoopsBase<ConvertToLoops> {
-  void runOnFunction() override { return; }
+
+  void runOnOperation() override {
+    ModuleOp module = getOperation();
+    mlir::PassManager pm(module.getContext());
+    pm.addPass(createLinalgComprehensiveModuleBufferizePass());
+    (void)pm.run(module);
+    return;
+  }
 };
 
 } // namespace
 
-std::unique_ptr<OperationPass<FuncOp>> mlir::linnea::createConvertLinneaToLoopsPass() {
+std::unique_ptr<OperationPass<ModuleOp>>
+mlir::linnea::createConvertLinneaToLoopsPass() {
   return std::make_unique<ConvertToLoops>();
 }

@@ -17,10 +17,17 @@ def LinneaConvertToLinalg : FunctionPass<"convert-linnea-to-linalg"> {
   let dependentDialects = ["linalg::LinalgDialect", "tensor::TensorDialect"];
 }
 
-def LinneaConvertToLoops : FunctionPass<"convert-linnea-to-loops"> {
+def LinneaConvertToLoops : Pass<"convert-linnea-to-loops", "ModuleOp"> {
   let summary = "Lower linnea operations to loop";
   let constructor = "mlir::linnea::createConvertLinneaToLoopsPass()";
-  let dependentDialects = ["scf::SCFDialect", "memref::MemRefDialect"];
+  let dependentDialects = ["scf::SCFDialect", 
+                           "memref::MemRefDialect", 
+                           "bufferization::BufferizationDialect",
+                           "arith::ArithmeticDialect",
+                           "tensor::TensorDialect",
+                           "vector::VectorDialect", 
+                           "StandardOpsDialect", 
+                           "AffineDialect"];
 }
 
 def LinneaComprehensivePropertyPropagation :

@@ -9,8 +9,10 @@
 #ifndef LINNEA_PASSES_H
 #define LINNEA_PASSES_H
 
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/SCF/SCF.h"
+#include "mlir/Dialect/Vector/VectorOps.h"
 #include "mlir/Pass/Pass.h"
 
 namespace mlir {
@@ -18,7 +20,7 @@ namespace linnea {
 std::unique_ptr<OperationPass<FuncOp>> createConvertLinneaToLinalgPass();
 std::unique_ptr<OperationPass<ModuleOp>>
 createLinneaComprehensivePropertyPropagationPass();
-std::unique_ptr<OperationPass<FuncOp>> createConvertLinneaToLoopsPass();
+std::unique_ptr<OperationPass<ModuleOp>> createConvertLinneaToLoopsPass();
 std::unique_ptr<OperationPass<ModuleOp>> createLinneaFuncTypeConversion();
 } // namespae linnea
 } // namespace mlir
