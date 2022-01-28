@@ -65,9 +65,15 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
   RankedTensorType outputType =
       typeConverter->convertType(results[0].getType()).cast<RankedTensorType>();
 
-  Value buffer = rewriter.create<linalg::InitTensorOp>(
-      loc, outputType, ArrayRef<Value>({}),
-      rewriter.getI64ArrayAttr(outputType.getShape()));
+  // Value buffer = rewriter.create<linalg::InitTensorOp>(
+  //    loc, outputType, ArrayRef<Value>({}),
+  //    rewriter.getI64ArrayAttr(outputType.getShape()));
+  // TODO: fix me.
+  assert(outputType.getElementType().isa<FloatType>() && "only float for now");
+
+  auto zero = FloatAttr::get(outputType.getElementType(), 0);
+  DenseElementsAttr init = DenseElementsAttr::get(outputType, zero);
+  Value splatTensor = rewriter.create<arith::ConstantOp>(loc, outputType, init);
 
   // build affine map for matmul.
   using MapList = ArrayRef<ArrayRef<AffineExpr>>;
@@ -81,17 +87,14 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
 
   return rewriter
       .create<linalg::GenericOp>(
-          loc, TypeRange{outputType}, ValueRange{left, right}, buffer,
+          loc, TypeRange{outputType}, ValueRange{left, right}, splatTensor,
           matMulMap, iter,
           [&](OpBuilder &nestedBuilder, Location nestedLoc, ValueRange args) {
             assert(args.size() == 3 && "matmul expects 3 args");
             Value mul = buildBinaryOpFromValues<arith::MulFOp, arith::MulIOp>(
                 nestedBuilder, args[0], args[1], nestedLoc,
                 outputType.getElementType());
-            Value add = buildBinaryOpFromValues<arith::AddFOp, arith::AddIOp>(
-                nestedBuilder, args[2], mul, nestedLoc,
-                outputType.getElementType());
-            nestedBuilder.create<linalg::YieldOp>(nestedLoc, add);
+            nestedBuilder.create<linalg::YieldOp>(nestedLoc, mul);
           })
       ->getResult(0);
 }
@@ -126,8 +129,7 @@ public:
 // Populate patterns
 void populateLinneaToLinalgPattern(RewritePatternSet &patterns,
                                    TypeConverter &converter) {
-  patterns.add<MulOpLowering>(converter, patterns.getContext());
-  patterns.add<FillOpLowering>(converter, patterns.getContext());
+  patterns.add<FillOpLowering, MulOpLowering>(converter, patterns.getContext());
 }
 
 static void setupTypeConversion(ConversionTarget &target,

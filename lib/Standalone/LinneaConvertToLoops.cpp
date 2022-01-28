@@ -36,14 +36,6 @@ static LinneaMatrixEncodingAttr getLinneaTensorEncoding(Type type) {
   return nullptr;
 }
 
-struct LoopNestInfo {
-  SmallVector<Value> ubs;
-  SmallVector<Value> lbs;
-  SmallVector<Value> steps;
-};
-
-LoopNestInfo getLoopNestInfo(linalg::FillOp op) {}
-
 static void buildLoopNestImpl(PatternRewriter &rewriter, linalg::FillOp op,
                               Value destMemRef) {
   RankedTensorType outputTensor =
@@ -67,6 +59,10 @@ static void buildLoopNestImpl(PatternRewriter &rewriter, linalg::FillOp op,
       });
 }
 
+static Value constantZero(OpBuilder &builder, Location loc, Type tp) {
+  return builder.create<arith::ConstantOp>(loc, tp, builder.getZeroAttr(tp));
+}
+
 // TODO: fix diagonal i <= j
 static void buildLoopNestTriangularImpl(PatternRewriter &rewriter,
                                         linalg::FillOp op, Value destMemRef) {
@@ -84,18 +80,40 @@ static void buildLoopNestTriangularImpl(PatternRewriter &rewriter,
   Value one = rewriter.create<arith::ConstantIndexOp>(loc, 1);
   SmallVector<Value> steps = {one, one};
 
-  auto currInsertionPoint = rewriter.getInsertionPoint();
-  auto currInsertionBlock = rewriter.getInsertionBlock();
-  scf::ForOp outerForOp =
-      rewriter.create<scf::ForOp>(loc, lbs[0], ubs[0], steps[0]);
-  rewriter.setInsertionPointToStart(&outerForOp.getLoopBody().front());
-  scf::ForOp innerForOp = rewriter.create<scf::ForOp>(
-      loc, lbs[1], outerForOp.getInductionVar(), steps[1]);
-  rewriter.setInsertionPointToStart(&innerForOp.getLoopBody().front());
-  SmallVector<Value> ivs = {outerForOp.getInductionVar(),
-                            innerForOp.getInductionVar()};
-  rewriter.create<memref::StoreOp>(loc, op.value(), destMemRef, ivs);
-  rewriter.setInsertionPoint(currInsertionBlock, currInsertionPoint);
+  Value zeroValue = constantZero(
+      rewriter, loc, destMemRef.getType().cast<MemRefType>().getElementType());
+  // We still assume a rectangular iteration domain, thus set to zero
+  // element in the upper-part.
+  (void)scf::buildLoopNest(
+      rewriter, loc, lbs, ubs, steps,
+      [&](OpBuilder &b, Location loc, ValueRange localIvs) {
+        Value outerLoopIvCast =
+            b.create<arith::IndexCastOp>(loc, localIvs[0], b.getI64Type());
+        Value innerLoopIvCast =
+            b.create<arith::IndexCastOp>(loc, localIvs[1], b.getI64Type());
+        Value cond = b.create<arith::CmpIOp>(loc, arith::CmpIPredicate::sge,
+                                             outerLoopIvCast, innerLoopIvCast);
+        auto ifOp = b.create<scf::IfOp>(loc, cond,
+                                        /*hasElseRegion*/ true);
+        b.setInsertionPointToStart(&ifOp.getThenRegion().front());
+        b.create<memref::StoreOp>(loc, op.value(), destMemRef, localIvs);
+        b.setInsertionPointToStart(&ifOp.getElseRegion().front());
+        b.create<memref::StoreOp>(loc, zeroValue, destMemRef, localIvs);
+        b.setInsertionPointAfter(ifOp);
+      });
+
+  // auto currInsertionPoint = rewriter.getInsertionPoint();
+  // auto currInsertionBlock = rewriter.getInsertionBlock();
+  // scf::ForOp outerForOp =
+  //    rewriter.create<scf::ForOp>(loc, lbs[0], ubs[0], steps[0]);
+  // rewriter.setInsertionPointToStart(&outerForOp.getLoopBody().front());
+  // scf::ForOp innerForOp = rewriter.create<scf::ForOp>(
+  //    loc, lbs[1], outerForOp.getInductionVar(), steps[1]);
+  // rewriter.setInsertionPointToStart(&innerForOp.getLoopBody().front());
+  // SmallVector<Value> ivs = {outerForOp.getInductionVar(),
+  //                          innerForOp.getInductionVar()};
+  // rewriter.create<memref::StoreOp>(loc, op.value(), destMemRef, ivs);
+  // rewriter.setInsertionPoint(currInsertionBlock, currInsertionPoint);
 }
 
 static void buildLoopNest(PatternRewriter &rewriter, linalg::FillOp op,
@@ -111,52 +129,81 @@ static void buildLoopNest(PatternRewriter &rewriter, linalg::FillOp op,
   buildLoopNestImpl(rewriter, op, destMemRef);
 }
 
+static Value castToMemRef(Value val, PatternRewriter &rewriter, Location loc) {
+  RankedTensorType tensor = val.getType().cast<RankedTensorType>();
+  MemRefType memref =
+      MemRefType::get(tensor.getShape(), tensor.getElementType());
+  Type castedLinneaTensorType =
+      RankedTensorType::get(tensor.getShape(), tensor.getElementType());
+  Value castedLinneaTensor =
+      rewriter.create<CastToBuiltinTensorOp>(loc, castedLinneaTensorType, val);
+  Value dest = rewriter.create<bufferization::ToMemrefOp>(loc, memref,
+                                                          castedLinneaTensor);
+  return dest;
+}
+
+static Value castToTensor(Value val, PatternRewriter &rewriter, Location loc) {
+  RankedTensorType tensor = val.getType().cast<RankedTensorType>();
+  MemRefType memref =
+      MemRefType::get(tensor.getShape(), tensor.getElementType());
+  Type castedLinneaTensorType =
+      RankedTensorType::get(tensor.getShape(), tensor.getElementType());
+  Value castedLinneaTensor =
+      rewriter.create<CastToBuiltinTensorOp>(loc, castedLinneaTensorType, val);
+  return castedLinneaTensor;
+}
+
 struct FillOpConverter : public OpRewritePattern<linalg::FillOp> {
 public:
   using OpRewritePattern<linalg::FillOp>::OpRewritePattern;
   LogicalResult matchAndRewrite(linalg::FillOp op,
                                 PatternRewriter &rewriter) const override {
+    // TODO: should we fail if fillop cannot be bufferize in place?
     Type output = op.output().getType();
     RankedTensorType outputTensor = output.cast<RankedTensorType>();
     auto encoding = getLinneaTensorEncoding(output);
     if (!encoding)
       return failure();
-    MemRefType memref =
-        MemRefType::get(outputTensor.getShape(), outputTensor.getElementType());
+
     Location loc = op->getLoc();
-    Type castedLinneaTensorType = RankedTensorType::get(
-        outputTensor.getShape(), outputTensor.getElementType());
-    Value castedLinneaTensor = rewriter.create<CastToBuiltinTensorOp>(
-        loc, castedLinneaTensorType, op.output());
-    Value dest = rewriter.create<bufferization::ToMemrefOp>(loc, memref,
-                                                            castedLinneaTensor);
-
+    Value dest = castToMemRef(op.output(), rewriter, loc);
     buildLoopNest(rewriter, op, dest);
-    /*
-        SmallVector<Value> ubs;
-        Value dim1 = rewriter.create<arith::ConstantIndexOp>(
-            loc, outputTensor.getShape()[0]);
-        Value dim2 = rewriter.create<arith::ConstantIndexOp>(
-            loc, outputTensor.getShape()[1]);
-        ubs = {dim1, dim2};
-        Value zero = rewriter.create<arith::ConstantIndexOp>(loc, 0);
-        SmallVector<Value> lbs = {zero, zero};
-        Value one = rewriter.create<arith::ConstantIndexOp>(loc, 1);
-        SmallVector<Value> steps = {one, one};
 
-        auto loopNest = scf::buildLoopNest(
-            rewriter, loc, lbs, ubs, steps,
-            [&](OpBuilder &b, Location loc, ValueRange localIvs) {
-              b.create<memref::StoreOp>(loc, op.value(), dest, localIvs);
-            });
-    */
+    RankedTensorType builtinTensorType = RankedTensorType::get(
+        outputTensor.getShape(), outputTensor.getElementType());
     Value ret = rewriter.create<bufferization::ToTensorOp>(
-        loc, castedLinneaTensorType, dest);
+        loc, builtinTensorType, dest);
     rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>(
         op, op.output().getType(), ret);
     return success();
+  }
+};
 
-    return failure();
+struct GenericOpConverter : public OpRewritePattern<linalg::GenericOp> {
+public:
+  using OpRewritePattern<linalg::GenericOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(linalg::GenericOp op,
+                                PatternRewriter &rewriter) const override {
+    // TODO: Assume GEMM, assume all the inputs and outputs marked with linnea
+    // attribute.
+    assert(op.outputs().size() == 1);
+    assert(op.inputs().size() == 2);
+
+    RankedTensorType outputTensor =
+        op.outputs()[0].getType().cast<RankedTensorType>();
+    Location loc = op->getLoc();
+    Value A = castToTensor(op.inputs()[0], rewriter, loc);
+    Value B = castToTensor(op.inputs()[1], rewriter, loc);
+    Value C = castToTensor(op.outputs()[0], rewriter, loc);
+
+    auto mul = rewriter.create<linalg::MatmulOp>(loc, TypeRange{C.getType()},
+                                                 ValueRange{A, B}, C);
+    Value dest = mul->getResult(0);
+
+    rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>(
+        op, op.outputs()[0].getType(), dest);
+
+    return success();
   }
 };
 
@@ -184,7 +231,7 @@ struct ConvertToLoops : public LinneaConvertToLoopsBase<ConvertToLoops> {
         (void)pm.run(module);
     */
     RewritePatternSet patterns(module.getContext());
-    patterns.add<FillOpConverter>(patterns.getContext());
+    patterns.add<FillOpConverter, GenericOpConverter>(patterns.getContext());
     (void)applyPatternsAndFoldGreedily(module, std::move(patterns));
   }
 };

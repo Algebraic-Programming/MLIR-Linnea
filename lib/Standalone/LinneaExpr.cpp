@@ -202,12 +202,18 @@ mlir::Value ExprBuilder::buildIR(Location loc, OpBuilder &builder, Expr *root) {
 }
 
 Expr *ExprBuilder::buildExprImpl(Value val) {
+  // 'val' comes is a basic block arg or the result
+  // of a fillOp. Build operand directly.
   if (auto blockArg = val.dyn_cast_or_null<BlockArgument>()) {
     return buildOperandImpl(blockArg);
   }
-
   Operation *defOp = val.getDefiningOp();
   assert(defOp && "must be valid");
+  if (auto fillOp = dyn_cast_or_null<mlir::linnea::FillOp>(defOp)) {
+    return buildOperandImpl(fillOp.result());
+  }
+  // 'val' is the result of another linnea operations, recurse
+  // untill we get a basic block arg or a result of a fillOp.
   if (auto mulOp = dyn_cast_or_null<mlir::linnea::MulOpHigh>(defOp)) {
     std::vector<Expr *> children;
     for (Value operand : mulOp.getOperands()) {
@@ -223,10 +229,7 @@ Expr *ExprBuilder::buildExprImpl(Value val) {
     Expr *child = buildExprImpl(invOp.getOperand());
     return inv(child);
   }
-  if (auto fillOp = dyn_cast_or_null<mlir::linnea::FillOp>(defOp)) {
-    return buildExprImpl(fillOp.output());
-  }
-  assert(0 && "unreachable");
+  llvm_unreachable("operation not handled");
   return nullptr;
 }
 
@@ -267,6 +270,9 @@ bool Expr::hasProperty(T *expr, Expr::ExprProperty property) {
 }
 
 /// Query each property on `expr`.
+// TODO: find a better way to have a class of properties.
+// (i.e., triangular implies square). Passing all the properties
+// to later conversions is annoying.
 template <typename T>
 void Expr::setPropertiesImpl(T *expr) {
   // if the lookup fails check if the expr has the given property.
@@ -276,14 +282,14 @@ void Expr::setPropertiesImpl(T *expr) {
   if (!hasProperty<T>(expr, Expr::ExprProperty::UPPER_TRIANGULAR) &&
       expr->isLowerTriangular())
     expr->inferredProperties.insert(Expr::ExprProperty::LOWER_TRIANGULAR);
-  if (!hasProperty<T>(expr, Expr::ExprProperty::SQUARE) && expr->isSquare())
-    expr->inferredProperties.insert(Expr::ExprProperty::SQUARE);
+  // if (!hasProperty<T>(expr, Expr::ExprProperty::SQUARE) && expr->isSquare())
+  //  expr->inferredProperties.insert(Expr::ExprProperty::SQUARE);
   if (!hasProperty<T>(expr, Expr::ExprProperty::SYMMETRIC) &&
       expr->isSymmetric())
     expr->inferredProperties.insert(Expr::ExprProperty::SYMMETRIC);
-  if (!hasProperty<T>(expr, Expr::ExprProperty::FULL_RANK) &&
-      expr->isFullRank())
-    expr->inferredProperties.insert(Expr::ExprProperty::FULL_RANK);
+  // if (!hasProperty<T>(expr, Expr::ExprProperty::FULL_RANK) &&
+  //    expr->isFullRank())
+  //  expr->inferredProperties.insert(Expr::ExprProperty::FULL_RANK);
   if (!hasProperty<T>(expr, Expr::ExprProperty::SPD) && expr->isSPD())
     expr->inferredProperties.insert(Expr::ExprProperty::SPD);
 }
