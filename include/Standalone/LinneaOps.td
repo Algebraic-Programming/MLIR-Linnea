@@ -13,6 +13,13 @@ include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "LinneaTypeBase.td" 
 
+def Linnea_InitOp : Linnea_Op<"init", [NoSideEffect]> {
+  string summary = "Materializes an unitialized linnea tensor";
+  let arguments = (ins Variadic<Index>:$sizes);
+  let results = (outs LinneaSymbolicMatrix:$result);
+  let assemblyFormat = "`[` $sizes `]` attr-dict `:` type($result)";
+}
+
 def Linnea_CastToBuiltinTensorOp : Linnea_Op<"cast_to_builtin_tensor", [NoSideEffect]> {
   let summary = "Convert a `RankedTensorType` with a linna attribute to a builtin `tensor`";
   let arguments = (ins AnyTensor:$input);
@@ -170,8 +177,6 @@ def Linnea_MulOpHigh : Linnea_Op<"mul.high", [HasParent<"EquationOp">]> {
 
     let verifier = [{ return ::verifyMulOp(*this); }];
 }
-
-// def MulOLowOperand : 2DTensorOf<[AnyLinneaType]>;
 
 def Linnea_MulOpLow : Linnea_Op<"mul.low"> {
     let summary = "Matrix multiplication";

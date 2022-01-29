@@ -7,9 +7,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "Standalone/LinneaAttributes.h"
-#include "Standalone/LinneaExpr.h"
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaPasses.h"
+#include "Standalone/LinneaUtils.h"
 #include "mlir/Dialect/StandardOps/Transforms/FuncConversions.h"
 #include "mlir/Transforms/DialectConversion.h"
 
@@ -19,7 +19,7 @@
 
 using namespace mlir;
 using namespace mlir::linnea;
-using namespace mlir::linnea::expr;
+// using namespace mlir::linnea::utils;
 
 #define GEN_PASS_CLASSES
 #include "Standalone/LinneaPasses.h.inc"
@@ -99,6 +99,7 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
       ->getResult(0);
 }
 
+/// Linnea conversion rule for MulOpLow.
 class MulOpLowering : public OpConversionPattern<MulOpLow> {
 public:
   using OpConversionPattern::OpConversionPattern;
@@ -114,6 +115,7 @@ public:
   }
 };
 
+/// Linnea conversion rule for FillOp.
 class FillOpLowering : public OpConversionPattern<FillOp> {
 public:
   using OpConversionPattern::OpConversionPattern;
@@ -126,10 +128,39 @@ public:
   }
 };
 
+/// Linnea conversion rule for InitOp.
+class InitOpLowering : public OpConversionPattern<InitOp> {
+public:
+  using OpConversionPattern::OpConversionPattern;
+  LogicalResult
+  matchAndRewrite(InitOp op, OpAdaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    Type resType = op.getType();
+    auto encoding = getLinneaTensorEncoding(resType);
+    if (!encoding)
+      return failure();
+    auto linneaType = resType.cast<MatrixType>();
+    // TODO: ensure that op.size() == linneaType.dims().
+    MemRefType memTp =
+        MemRefType::get(linneaType.getDims(), linneaType.getElementType());
+    Location loc = op->getLoc();
+    Value memref = rewriter.create<memref::AllocOp>(loc, memTp);
+    RankedTensorType builtinTensor = RankedTensorType::get(
+        linneaType.getDims(), linneaType.getElementType());
+    Value castToBuiltinTensor =
+        rewriter.create<bufferization::ToTensorOp>(loc, builtinTensor, memref);
+    rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>(op, resType,
+                                                         castToBuiltinTensor);
+    assert(0);
+    return success();
+  }
+};
+
 // Populate patterns
 void populateLinneaToLinalgPattern(RewritePatternSet &patterns,
                                    TypeConverter &converter) {
-  patterns.add<FillOpLowering, MulOpLowering>(converter, patterns.getContext());
+  patterns.add<FillOpLowering, MulOpLowering, InitOpLowering>(
+      converter, patterns.getContext());
 }
 
 static void setupTypeConversion(ConversionTarget &target,

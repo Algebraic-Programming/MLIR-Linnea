@@ -9,6 +9,7 @@
 #include "Standalone/LinneaAttributes.h"
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaPasses.h"
+#include "Standalone/LinneaUtils.h"
 #include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 #include "mlir/Dialect/Bufferization/Transforms/OneShotAnalysis.h"
 #include "mlir/Dialect/Linalg/ComprehensiveBufferize/LinalgInterfaceImpl.h"
@@ -21,6 +22,7 @@
 
 using namespace mlir;
 using namespace mlir::linnea;
+// using namespace mlir::linnea::utils;
 
 #define GEN_PASS_CLASSES
 #include "Standalone/LinneaPasses.h.inc"
@@ -29,12 +31,6 @@ using namespace mlir::linnea;
 #define DBGS() (llvm::dbgs() << "[" DEBUG_TYPE << "]: ")
 
 namespace {
-
-static LinneaMatrixEncodingAttr getLinneaTensorEncoding(Type type) {
-  if (auto ttp = type.dyn_cast<RankedTensorType>())
-    return ttp.getEncoding().dyn_cast_or_null<LinneaMatrixEncodingAttr>();
-  return nullptr;
-}
 
 static void buildLoopNestImpl(PatternRewriter &rewriter, linalg::FillOp op,
                               Value destMemRef) {
@@ -188,6 +184,49 @@ public:
     // attribute.
     assert(op.outputs().size() == 1);
     assert(op.inputs().size() == 2);
+    /*
+        RankedTensorType outputTensor =
+            op.outputs()[0].getType().cast<RankedTensorType>();
+
+        Location loc = op->getLoc();
+        Value A = castToMemRef(op.inputs()[0], rewriter, loc);
+        Value B = castToMemRef(op.inputs()[1], rewriter, loc);
+        Value C = castToMemRef(op.outputs()[0], rewriter, loc);
+
+        SmallVector<Value> ubs;
+        Value i = rewriter.create<arith::ConstantIndexOp>(
+            loc, C.getType().cast<MemRefType>().getShape()[0]);
+        Value j = rewriter.create<arith::ConstantIndexOp>(
+            loc, C.getType().cast<MemRefType>().getShape()[1]);
+        Value k = rewriter.create<arith::ConstantIndexOp>(
+            loc, A.getType().cast<MemRefType>().getShape()[1]);
+        ubs = {i, j, k};
+        Value zero = rewriter.create<arith::ConstantIndexOp>(loc, 0);
+        SmallVector<Value> lbs = {zero, zero, zero};
+        Value one = rewriter.create<arith::ConstantIndexOp>(loc, 1);
+        SmallVector<Value> steps = {one, one, one};
+
+        (void)scf::buildLoopNest(
+            rewriter, loc, lbs, ubs, steps,
+            [&](OpBuilder &builder, Location loc, ValueRange localIvs) {
+              i = localIvs[0];
+              j = localIvs[1];
+              k = localIvs[2];
+              Value c = builder.create<memref::LoadOp>(loc, C, ValueRange{i,
+       j}); Value a = builder.create<memref::LoadOp>(loc, A, ValueRange{i, k});
+              Value b = builder.create<memref::LoadOp>(loc, B, ValueRange{k,
+       j}); Value mul = builder.create<arith::MulFOp>(loc, a, b); Value add =
+       builder.create<arith::AddFOp>(loc, c, mul);
+              builder.create<memref::StoreOp>(loc, add, C, ValueRange{i, j});
+            });
+
+        RankedTensorType builtinTensorType = RankedTensorType::get(
+            outputTensor.getShape(), outputTensor.getElementType());
+        Value ret =
+            rewriter.create<bufferization::ToTensorOp>(loc, builtinTensorType,
+       C); rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>( op,
+       op.outputs()[0].getType(), ret);
+    */
 
     RankedTensorType outputTensor =
         op.outputs()[0].getType().cast<RankedTensorType>();
