@@ -1,5 +1,5 @@
 // RUN: standalone-opt --split-input-file --comprehensive-properties-propagation --convert-linnea-to-linalg %s | FileCheck %s
-
+// XFAIL: *
 func @bar(%arg0: !linnea.matrix<#linnea.property<["fullrank"]>, [30, 35], f32>, 
           %arg1: !linnea.matrix<#linnea.property<["fullrank"]>, [35, 15], f32>,
           %arg2: !linnea.matrix<#linnea.property<["fullrank"]>, [15, 5], f32>,

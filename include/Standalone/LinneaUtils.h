@@ -21,6 +21,7 @@ namespace mlir {
 namespace linnea {
 
 LinneaMatrixEncodingAttr getLinneaTensorEncoding(Type type);
+LinneaMatrixEncodingAttr getLinneaMatrixEncoding(Type type);
 
 } // namespace linnea
 } // namespace mlir

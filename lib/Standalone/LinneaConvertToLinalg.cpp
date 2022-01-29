@@ -136,9 +136,10 @@ public:
   matchAndRewrite(InitOp op, OpAdaptor,
                   ConversionPatternRewriter &rewriter) const override {
     Type resType = op.getType();
-    auto encoding = getLinneaTensorEncoding(resType);
+    auto encoding = getLinneaMatrixEncoding(resType);
     if (!encoding)
       return failure();
+
     auto linneaType = resType.cast<MatrixType>();
     // TODO: ensure that op.size() == linneaType.dims().
     MemRefType memTp =
@@ -147,11 +148,13 @@ public:
     Value memref = rewriter.create<memref::AllocOp>(loc, memTp);
     RankedTensorType builtinTensor = RankedTensorType::get(
         linneaType.getDims(), linneaType.getElementType());
-    Value castToBuiltinTensor =
+    Value tensor =
         rewriter.create<bufferization::ToTensorOp>(loc, builtinTensor, memref);
-    rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>(op, resType,
-                                                         castToBuiltinTensor);
-    assert(0);
+    RankedTensorType builtinTensorWithProperty =
+        RankedTensorType::get(linneaType.getDims(), linneaType.getElementType(),
+                              linneaType.getProperty());
+    rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>(
+        op, builtinTensorWithProperty, tensor);
     return success();
   }
 };

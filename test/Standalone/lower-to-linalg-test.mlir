@@ -1,9 +1,10 @@
-// RUN: standalone-opt %s | FileCheck %s 
-// XFAIL: *
+// RUN: standalone-opt %s | FileCheck %s
+// XFAIL: * 
 func @foo(%arg0: !linnea.matrix<#linnea.property<["lowerTri"]>, 
                                                  [30, 30], f32>,
           %arg1: !linnea.matrix<#linnea.property<["lowerTri"]>, 
-                                                 [30, 30], f32>,
+                                                 [30, 30], f32>, 
+          %arg2: !linnea.term,
           %arg3: f32) -> !linnea.term {
 
   %1 = linnea.fill(%arg3, %arg0) : 
