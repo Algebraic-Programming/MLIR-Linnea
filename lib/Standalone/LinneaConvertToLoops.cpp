@@ -149,6 +149,29 @@ static Value castToTensor(Value val, PatternRewriter &rewriter, Location loc) {
   return castedLinneaTensor;
 }
 
+struct InitOpConverter : public OpRewritePattern<linalg::InitTensorOp> {
+public:
+  using OpRewritePattern<linalg::InitTensorOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(linalg::InitTensorOp op,
+                                PatternRewriter &rewriter) const override {
+    Type output = op.result().getType();
+    RankedTensorType outputTensor = output.cast<RankedTensorType>();
+    auto encoding = getLinneaTensorEncoding(output);
+    if (!encoding)
+      return failure();
+
+    Location loc = op->getLoc();
+    MemRefType memTp =
+        MemRefType::get(outputTensor.getShape(), outputTensor.getElementType());
+    Value memref = rewriter.create<memref::AllocaOp>(loc, memTp);
+    RankedTensorType builtinTensor = RankedTensorType::get(
+        outputTensor.getShape(), outputTensor.getElementType());
+    rewriter.replaceOpWithNewOp<bufferization::ToTensorOp>(op, builtinTensor,
+                                                           memref);
+    return success();
+  }
+};
+
 struct FillOpConverter : public OpRewritePattern<linalg::FillOp> {
 public:
   using OpRewritePattern<linalg::FillOp>::OpRewritePattern;
@@ -270,7 +293,10 @@ struct ConvertToLoops : public LinneaConvertToLoopsBase<ConvertToLoops> {
         (void)pm.run(module);
     */
     RewritePatternSet patterns(module.getContext());
-    patterns.add<FillOpConverter, GenericOpConverter>(patterns.getContext());
+    // TODO: ensure consistency in naming. In conversion to linalg are
+    // 'lowering' and not 'conversion'.
+    patterns.add<FillOpConverter, GenericOpConverter, InitOpConverter>(
+        patterns.getContext());
     (void)applyPatternsAndFoldGreedily(module, std::move(patterns));
   }
 };

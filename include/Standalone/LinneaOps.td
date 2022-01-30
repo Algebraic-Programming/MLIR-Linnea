@@ -13,21 +13,28 @@ include "LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "LinneaTypeBase.td" 
 
+def Linnea_PrintOp : Linnea_Op<"print"> {
+  let summary = "print operation (for testing and debugging)";
+  let arguments = (ins AnyLinneaType:$source);
+  let assemblyFormat = "$source attr-dict `:` type($source)";
+}
+
 def Linnea_InitOp : Linnea_Op<"init", [NoSideEffect]> {
-  string summary = "Materializes an unitialized linnea tensor";
+  let summary = "Materializes an unitialized linnea tensor";
   let arguments = (ins Variadic<Index>:$sizes);
   let results = (outs LinneaSymbolicMatrix:$result);
   let assemblyFormat = "`[` $sizes `]` attr-dict `:` type($result)";
 }
 
 def Linnea_CastToBuiltinTensorOp : Linnea_Op<"cast_to_builtin_tensor", [NoSideEffect]> {
-  let summary = "Convert a `RankedTensorType` with a linna attribute to a builtin `tensor`";
+  let summary = "Convert a `RankedTensorType` with a linnea attribute to a builtin `tensor`";
   let arguments = (ins AnyTensor:$input);
   let results = (outs AnyTensor:$output);
   let assemblyFormat = [{
     $input attr-dict `:` qualified(type($input)) `->` qualified(type($output))
   }];
   let hasFolder = 1;
+  let hasCanonicalizer = 1;
 }
 
 def Linnea_CastFromBuiltinTensorOp : Linnea_Op<"cast_from_builtin_tensor", [NoSideEffect]> {
@@ -41,7 +48,7 @@ def Linnea_CastFromBuiltinTensorOp : Linnea_Op<"cast_from_builtin_tensor", [NoSi
 
 def Linnea_ToBuiltinTensorOp : Linnea_Op<"to_builtin_tensor"> {
   let summary = "Convert a `LinneaSymbolicMatrix` to a builtin `tensor`";
-  let arguments = (ins LinneaSymbolicMatrix:$operand);
+  let arguments = (ins AnyLinneaType:$operand);
   let results = (outs AnyTensor:$result);
   let assemblyFormat = [{
     $operand attr-dict `:` qualified(type($operand)) `->` qualified(type($result))

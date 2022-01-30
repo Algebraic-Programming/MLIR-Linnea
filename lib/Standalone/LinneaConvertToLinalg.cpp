@@ -1,4 +1,5 @@
-//===- LinneaConvertToLinalg.cpp ---------------------------------*- C++ -*-===//
+//===- LinneaConvertToLinalg.cpp ---------------------------------*- C++
+//-*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -65,15 +66,17 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
   RankedTensorType outputType =
       typeConverter->convertType(results[0].getType()).cast<RankedTensorType>();
 
-  // Value buffer = rewriter.create<linalg::InitTensorOp>(
-  //    loc, outputType, ArrayRef<Value>({}),
-  //    rewriter.getI64ArrayAttr(outputType.getShape()));
+  Value buffer = rewriter.create<linalg::InitTensorOp>(
+      loc, outputType, ArrayRef<Value>({}),
+      rewriter.getI64ArrayAttr(outputType.getShape()));
   // TODO: fix me.
-  assert(outputType.getElementType().isa<FloatType>() && "only float for now");
+  // assert(outputType.getElementType().isa<FloatType>() && "only float for
+  // now");
 
-  auto zero = FloatAttr::get(outputType.getElementType(), 0);
-  DenseElementsAttr init = DenseElementsAttr::get(outputType, zero);
-  Value splatTensor = rewriter.create<arith::ConstantOp>(loc, outputType, init);
+  // auto zero = FloatAttr::get(outputType.getElementType(), 0);
+  // DenseElementsAttr init = DenseElementsAttr::get(outputType, zero);
+  // Value splatTensor = rewriter.create<arith::ConstantOp>(loc, outputType,
+  // init);
 
   // build affine map for matmul.
   using MapList = ArrayRef<ArrayRef<AffineExpr>>;
@@ -87,7 +90,7 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
 
   return rewriter
       .create<linalg::GenericOp>(
-          loc, TypeRange{outputType}, ValueRange{left, right}, splatTensor,
+          loc, TypeRange{outputType}, ValueRange{left, right}, buffer,
           matMulMap, iter,
           [&](OpBuilder &nestedBuilder, Location nestedLoc, ValueRange args) {
             assert(args.size() == 3 && "matmul expects 3 args");
@@ -133,7 +136,7 @@ class InitOpLowering : public OpConversionPattern<InitOp> {
 public:
   using OpConversionPattern::OpConversionPattern;
   LogicalResult
-  matchAndRewrite(InitOp op, OpAdaptor,
+  matchAndRewrite(InitOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     Type resType = op.getType();
     auto encoding = getLinneaMatrixEncoding(resType);
@@ -159,10 +162,51 @@ public:
   }
 };
 
+/// Linnea conversion for PrintOp.
+class PrintOpLowering : public OpConversionPattern<PrintOp> {
+public:
+  using OpConversionPattern::OpConversionPattern;
+  LogicalResult
+  matchAndRewrite(PrintOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    Type resType = op.source().getType();
+    auto encoding = getLinneaMatrixEncoding(resType);
+    if (!encoding)
+      return failure();
+    Location loc = op->getLoc();
+    auto linneaType = resType.cast<MatrixType>();
+    RankedTensorType castedTensorType =
+        RankedTensorType::get(linneaType.getDims(), linneaType.getElementType(),
+                              linneaType.getProperty());
+    Value castedToTensor =
+        rewriter.create<ToBuiltinTensorOp>(loc, castedTensorType, op.source());
+    castedTensorType = RankedTensorType::get(linneaType.getDims(),
+                                             linneaType.getElementType());
+    castedToTensor = rewriter.create<CastToBuiltinTensorOp>(
+        loc, castedTensorType, castedToTensor);
+    MemRefType memrefType =
+        MemRefType::get(linneaType.getDims(), linneaType.getElementType());
+    Value memrefVal = rewriter.create<bufferization::ToMemrefOp>(
+        loc, memrefType, castedToTensor);
+    // use the print in the vector dialect.
+    VectorType vecType =
+        VectorType::get(linneaType.getDims(), linneaType.getElementType());
+    Value zero = rewriter.create<arith::ConstantIndexOp>(loc, 0);
+    // Value minusOne = rewriter.create<arith::ConstantFloatOp>(
+    //    loc, -1.0, linneaType.getElementType());
+    Value minusOne =
+        rewriter.create<arith::ConstantOp>(loc, rewriter.getF32FloatAttr(-1));
+    Value vecRead = rewriter.create<vector::TransferReadOp>(
+        loc, vecType, memrefVal, ArrayRef<Value>{zero, zero}, minusOne);
+    rewriter.replaceOpWithNewOp<vector::PrintOp>(op, vecRead);
+    return success();
+  }
+};
+
 // Populate patterns
 void populateLinneaToLinalgPattern(RewritePatternSet &patterns,
                                    TypeConverter &converter) {
-  patterns.add<FillOpLowering, MulOpLowering, InitOpLowering>(
+  patterns.add<FillOpLowering, MulOpLowering, InitOpLowering, PrintOpLowering>(
       converter, patterns.getContext());
 }
 
@@ -257,6 +301,7 @@ struct ConvertToLinalg : public LinneaConvertToLinalgBase<ConvertToLinalg> {
 
 } // namespace
 
-std::unique_ptr<OperationPass<FuncOp>> mlir::linnea::createConvertLinneaToLinalgPass() {
+std::unique_ptr<OperationPass<FuncOp>>
+mlir::linnea::createConvertLinneaToLinalgPass() {
   return std::make_unique<ConvertToLinalg>();
 }

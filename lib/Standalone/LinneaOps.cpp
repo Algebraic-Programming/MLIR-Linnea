@@ -20,11 +20,35 @@ using namespace mlir::linnea;
 // CastToBuiltinTensor
 //===----------------------------------------------------------------------===//
 OpFoldResult CastToBuiltinTensorOp::fold(ArrayRef<Attribute> attr) {
+  // cast_to_builtin_tensor(cast_from_builtin_tensor(a)) -> a
   if (auto castFromBuiltinTensor =
           input().getDefiningOp<CastFromBuiltinTensorOp>())
     if (castFromBuiltinTensor.output().getType() == input().getType())
       return castFromBuiltinTensor.input();
   return {};
+}
+
+namespace {
+struct NoopCastToBuiltin : public OpRewritePattern<CastToBuiltinTensorOp> {
+  using OpRewritePattern<CastToBuiltinTensorOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(CastToBuiltinTensorOp op,
+                                PatternRewriter &rewriter) const override {
+    Type inputType = op.input().getType();
+    Type outputType = op.output().getType();
+    if (inputType == outputType) {
+      op.output().replaceAllUsesWith(op.input());
+      rewriter.eraseOp(op);
+      return success();
+    }
+    return failure();
+  }
+};
+} // namespace
+
+void CastToBuiltinTensorOp::getCanonicalizationPatterns(
+    mlir::RewritePatternSet &patterns, mlir::MLIRContext *context) {
+  patterns.insert<NoopCastToBuiltin>(context);
 }
 
 //===----------------------------------------------------------------------===//
