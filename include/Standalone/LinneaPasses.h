@@ -24,7 +24,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createConvertLinneaToLoopsPass();
 std::unique_ptr<OperationPass<ModuleOp>> createLinneaFuncTypeConversion();
 std::unique_ptr<OperationPass<ModuleOp>>
 createLinneaFinalizeFuncTypeConversion();
-} // namespae linnea
+} // namespace linnea
 } // namespace mlir
 
 #define GEN_PASS_REGISTRATION
