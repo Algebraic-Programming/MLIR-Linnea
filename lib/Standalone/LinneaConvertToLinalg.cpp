@@ -192,10 +192,16 @@ public:
     VectorType vecType =
         VectorType::get(linneaType.getDims(), linneaType.getElementType());
     Value zero = rewriter.create<arith::ConstantIndexOp>(loc, 0);
-    // Value minusOne = rewriter.create<arith::ConstantFloatOp>(
-    //    loc, -1.0, linneaType.getElementType());
-    Value minusOne =
-        rewriter.create<arith::ConstantOp>(loc, rewriter.getF32FloatAttr(-1));
+
+    // TODO: fix me only f32 or i32.
+    Value minusOne = nullptr;
+    if (isMLIRFloatType(linneaType.getElementType()))
+      minusOne =
+          rewriter.create<arith::ConstantOp>(loc, rewriter.getF32FloatAttr(-1));
+    else
+      minusOne = rewriter.create<arith::ConstantOp>(
+          loc, rewriter.getI32IntegerAttr(-1));
+
     Value vecRead = rewriter.create<vector::TransferReadOp>(
         loc, vecType, memrefVal, ArrayRef<Value>{zero, zero}, minusOne);
     rewriter.replaceOpWithNewOp<vector::PrintOp>(op, vecRead);
