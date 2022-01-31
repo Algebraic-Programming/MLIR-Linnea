@@ -20,7 +20,6 @@
 
 using namespace mlir;
 using namespace mlir::linnea;
-// using namespace mlir::linnea::utils;
 
 #define GEN_PASS_CLASSES
 #include "Standalone/LinneaPasses.h.inc"
@@ -103,7 +102,7 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
 }
 
 /// Linnea conversion rule for MulOpLow.
-class MulOpLowering : public OpConversionPattern<MulOpLow> {
+class MulOpConverter : public OpConversionPattern<MulOpLow> {
 public:
   using OpConversionPattern::OpConversionPattern;
   LogicalResult
@@ -119,7 +118,7 @@ public:
 };
 
 /// Linnea conversion rule for FillOp.
-class FillOpLowering : public OpConversionPattern<FillOp> {
+class FillOpConverter : public OpConversionPattern<FillOp> {
 public:
   using OpConversionPattern::OpConversionPattern;
   LogicalResult
@@ -132,7 +131,7 @@ public:
 };
 
 /// Linnea conversion rule for InitOp.
-class InitOpLowering : public OpConversionPattern<InitOp> {
+class InitOpConverter : public OpConversionPattern<InitOp> {
 public:
   using OpConversionPattern::OpConversionPattern;
   LogicalResult
@@ -163,7 +162,7 @@ public:
 };
 
 /// Linnea conversion for PrintOp.
-class PrintOpLowering : public OpConversionPattern<PrintOp> {
+class PrintOpConverter : public OpConversionPattern<PrintOp> {
 public:
   using OpConversionPattern::OpConversionPattern;
   LogicalResult
@@ -212,8 +211,9 @@ public:
 // Populate patterns
 void populateLinneaToLinalgPattern(RewritePatternSet &patterns,
                                    TypeConverter &converter) {
-  patterns.add<FillOpLowering, MulOpLowering, InitOpLowering, PrintOpLowering>(
-      converter, patterns.getContext());
+  patterns
+      .add<FillOpConverter, MulOpConverter, InitOpConverter, PrintOpConverter>(
+          converter, patterns.getContext());
 }
 
 static void setupTypeConversion(ConversionTarget &target,

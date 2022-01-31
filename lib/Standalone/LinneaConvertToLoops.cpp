@@ -22,7 +22,6 @@
 
 using namespace mlir;
 using namespace mlir::linnea;
-// using namespace mlir::linnea::utils;
 
 #define GEN_PASS_CLASSES
 #include "Standalone/LinneaPasses.h.inc"
@@ -140,8 +139,6 @@ static Value castToMemRef(Value val, PatternRewriter &rewriter, Location loc) {
 
 static Value castToTensor(Value val, PatternRewriter &rewriter, Location loc) {
   RankedTensorType tensor = val.getType().cast<RankedTensorType>();
-  MemRefType memref =
-      MemRefType::get(tensor.getShape(), tensor.getElementType());
   Type castedLinneaTensorType =
       RankedTensorType::get(tensor.getShape(), tensor.getElementType());
   Value castedLinneaTensor =
@@ -251,8 +248,6 @@ public:
        op.outputs()[0].getType(), ret);
     */
 
-    RankedTensorType outputTensor =
-        op.outputs()[0].getType().cast<RankedTensorType>();
     Location loc = op->getLoc();
     Value A = castToTensor(op.inputs()[0], rewriter, loc);
     Value B = castToTensor(op.inputs()[1], rewriter, loc);
@@ -293,8 +288,6 @@ struct ConvertToLoops : public LinneaConvertToLoopsBase<ConvertToLoops> {
         (void)pm.run(module);
     */
     RewritePatternSet patterns(module.getContext());
-    // TODO: ensure consistency in naming. In conversion to linalg are
-    // 'lowering' and not 'conversion'.
     patterns.add<FillOpConverter, GenericOpConverter, InitOpConverter>(
         patterns.getContext());
     (void)applyPatternsAndFoldGreedily(module, std::move(patterns));
