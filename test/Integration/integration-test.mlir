@@ -3,7 +3,7 @@
 // RUN:   --sparsification --sparse-tensor-conversion \
 // RUN:   --linalg-bufferize --convert-linalg-to-loops \
 // RUN:   --convert-vector-to-scf --convert-scf-to-std \
-// RUN:   --func-bufferize --tensor-constant-bufferize --tensor-bufferize \
+// RUN:   --func-bufferize --arith-bufferize --tensor-bufferize \
 // RUN:   --std-bufferize --finalizing-bufferize --lower-affine \
 // RUN:   --convert-vector-to-llvm --convert-memref-to-llvm \
 // RUN:   --convert-std-to-llvm --reconcile-unrealized-casts | \
