@@ -25,9 +25,7 @@ def LinneaConvertToLoops : Pass<"convert-linnea-to-loops", "ModuleOp"> {
                            "bufferization::BufferizationDialect",
                            "arith::ArithmeticDialect",
                            "tensor::TensorDialect",
-                           "vector::VectorDialect", 
-                           "StandardOpsDialect", 
-                           "AffineDialect"];
+                           "vector::VectorDialect"];
 }
 
 def LinneaComprehensivePropertyPropagation :

@@ -2,6 +2,7 @@
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaPasses.h"
 #include "Standalone/LinneaTypes.h"
+#include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/Dialect/StandardOps/Transforms/FuncConversions.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"

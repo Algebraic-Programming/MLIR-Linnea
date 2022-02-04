@@ -11,6 +11,7 @@
 #include "Standalone/LinneaExpr.h"
 #include "Standalone/LinneaOps.h"
 
+#include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/Pass/Pass.h"
 #include "llvm/Support/Debug.h"
 

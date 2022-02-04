@@ -3,7 +3,7 @@
 // RUN: --convert-linnea-to-linalg --convert-linnea-to-loops \ 
 // RUN: --linnea-finalize-func-type-conversion --linalg-bufferize \ 
 // RUN: --func-bufferize --arith-bufferize --tensor-bufferize \
-// RUN: --std-bufferize --finalizing-bufferize --convert-vector-to-scf \
+// RUN: --finalizing-bufferize --convert-vector-to-scf \
 // RUN: --convert-scf-to-std --convert-arith-to-llvm --convert-vector-to-llvm \
 // RUN: --convert-memref-to-llvm --convert-std-to-llvm --reconcile-unrealized-casts | \
 // RUN: mlir-cpu-runner \

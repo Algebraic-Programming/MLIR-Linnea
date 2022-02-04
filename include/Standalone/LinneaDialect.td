@@ -37,7 +37,7 @@ def Linnea_Dialect : Dialect {
 // Base linnea operation definition.
 //===----------------------------------------------------------------------===//
 
-class Linnea_Op<string mnemonic, list<OpTrait> traits = []> :
+class Linnea_Op<string mnemonic, list<Trait> traits = []> :
         Op<Linnea_Dialect, mnemonic, traits>;
 
 #endif // LINNEA_DIALECT
