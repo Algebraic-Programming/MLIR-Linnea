@@ -13,6 +13,10 @@
 using namespace mlir::linnea::expr;
 using namespace std;
 
+//===----------------------------------------------------------------------===//
+// Operand
+//===----------------------------------------------------------------------===//
+
 template <Expr::ExprProperty P>
 bool isX(const Operand *operand) {
   auto inferredProperties = operand->getProperties();
@@ -38,7 +42,13 @@ bool Operand::isSPD() const { return isX<ExprProperty::SPD>(this); }
 
 bool Operand::isFactored() const { return isX<ExprProperty::FACTORED>(this); }
 
-// ----------------------------------------------------------------------
+bool Operand::isGeneral() const { return isX<ExprProperty::GENERAL>(this); }
+
+//===----------------------------------------------------------------------===//
+// UnaryExpr
+//===----------------------------------------------------------------------===//
+
+bool UnaryExpr::isGeneral() const { return child->isGeneral(); }
 
 bool UnaryExpr::isFactored() const { return child->isFactored(); }
 
@@ -108,13 +118,33 @@ bool UnaryExpr::isSPD() const {
   return false;
 }
 
-// ----------------------------------------------------------------------
+//===----------------------------------------------------------------------===//
+// NaryExpr
+//===----------------------------------------------------------------------===//
+
+bool NaryExpr::isGeneral() const {
+  auto kind = this->getKind();
+  switch (kind) {
+  // all the children must be general.
+  case NaryExpr::NaryExprKind::MUL: {
+    for (auto *child : this->getChildren()) {
+      if (!child->isGeneral())
+        return false;
+    }
+    return true;
+  }
+  default:
+    assert(0 && "UNK");
+  }
+  llvm_unreachable("Only MUL supported");
+}
 
 bool NaryExpr::isFactored() const { return false; }
 
 bool NaryExpr::isUpperTriangular() const {
   auto kind = this->getKind();
   switch (kind) {
+  // all the children must be upper triangular.
   case NaryExpr::NaryExprKind::MUL: {
     for (auto *child : this->getChildren()) {
       if (!child->isUpperTriangular())
@@ -125,12 +155,13 @@ bool NaryExpr::isUpperTriangular() const {
   default:
     assert(0 && "UNK");
   }
-  return false;
+  llvm_unreachable("Only MUL supported");
 }
 
 bool NaryExpr::isLowerTriangular() const {
   auto kind = this->getKind();
   switch (kind) {
+  // all the children must be lower triangular.
   case NaryExpr::NaryExprKind::MUL: {
     for (auto *child : this->getChildren()) {
       if (!child->isLowerTriangular())
@@ -141,7 +172,7 @@ bool NaryExpr::isLowerTriangular() const {
   default:
     assert(0 && "UNK");
   }
-  return false;
+  llvm_unreachable("Only MUL supported");
 }
 
 bool NaryExpr::isSquare() const {
@@ -171,7 +202,7 @@ bool NaryExpr::isFullRank() const {
   default:
     assert(0 && "UNK");
   }
-  return false;
+  llvm_unreachable("Only MUL supported");
 }
 
 /// is the current product SPD?
@@ -252,7 +283,7 @@ bool NaryExpr::isSPD() const {
   default:
     assert(0 && "UNK");
   }
-  return false;
+  llvm_unreachable("Only MUL supported");
 }
 
 bool NaryExpr::isSymmetric() const {
@@ -263,5 +294,5 @@ bool NaryExpr::isSymmetric() const {
   default:
     assert(0 && "UNK");
   }
-  return false;
+  llvm_unreachable("Only MUL supported");
 }

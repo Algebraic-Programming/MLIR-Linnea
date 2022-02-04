@@ -271,11 +271,14 @@ bool Expr::hasProperty(T *expr, Expr::ExprProperty property) {
 
 /// Query each property on `expr`.
 // TODO: find a better way to have a class of properties.
-// (i.e., triangular implies square). Passing all the properties
-// to later conversions is annoying.
+// (i.e., triangular implies square but you may also want to have multiple types
+// of triangular matrices). Passing all the properties to later conversions is
+// annoying.
 template <typename T>
 void Expr::setPropertiesImpl(T *expr) {
   // if the lookup fails check if the expr has the given property.
+  if (!hasProperty<T>(expr, Expr::ExprProperty::GENERAL) && expr->isGeneral())
+    expr->inferredProperties.insert(Expr::ExprProperty::GENERAL);
   if (!hasProperty<T>(expr, Expr::ExprProperty::UPPER_TRIANGULAR) &&
       expr->isUpperTriangular())
     expr->inferredProperties.insert(Expr::ExprProperty::UPPER_TRIANGULAR);
@@ -408,6 +411,9 @@ static void printProperties(vector<Expr::ExprProperty> properties) {
       break;
     case Expr::ExprProperty::FACTORED:
       cout << "FACTORED";
+      break;
+    case Expr::ExprProperty::GENERAL:
+      cout << "GENERAL";
       break;
     default:
       assert(0 && "UNK");

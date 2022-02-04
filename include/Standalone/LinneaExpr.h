@@ -102,6 +102,7 @@ public:
   virtual bool isFullRank() const = 0;
   virtual bool isSPD() const = 0;
   virtual bool isFactored() const = 0;
+  virtual bool isGeneral() const = 0;
 
   // utilities.
   bool isTransposeOf(const Expr *right);
@@ -166,6 +167,7 @@ public:
   bool isFullRank() const override;
   bool isSPD() const override;
   bool isFactored() const override;
+  bool isGeneral() const override;
 
   // kind of the nary expression.
   NaryExprKind getKind() const { return kind; };
@@ -209,6 +211,7 @@ public:
   bool isFullRank() const override;
   bool isSPD() const override;
   bool isFactored() const override;
+  bool isGeneral() const override;
 
   // kind of unary expression.
   UnaryExprKind getKind() const { return kind; };
@@ -249,6 +252,7 @@ public:
   bool isFullRank() const override;
   bool isSPD() const override;
   bool isFactored() const override;
+  bool isGeneral() const override;
 
   static bool classof(const Expr *expr) {
     return expr->getKind() == ExprKind::OPERAND;
