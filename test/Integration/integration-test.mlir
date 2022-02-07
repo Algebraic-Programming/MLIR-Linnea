@@ -2,7 +2,7 @@
 // RUN:   --linalg-generalize-named-ops --linalg-fuse-elementwise-ops \
 // RUN:   --sparsification --sparse-tensor-conversion \
 // RUN:   --linalg-bufferize --convert-linalg-to-loops \
-// RUN:   --convert-vector-to-scf --convert-scf-to-std \
+// RUN:   --convert-vector-to-scf --convert-scf-to-cf \
 // RUN:   --func-bufferize --arith-bufferize --tensor-bufferize \
 // RUN:   --finalizing-bufferize --lower-affine \
 // RUN:   --convert-vector-to-llvm --convert-memref-to-llvm \

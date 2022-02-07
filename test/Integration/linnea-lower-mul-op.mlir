@@ -4,7 +4,7 @@
 // RUN: --linnea-finalize-func-type-conversion --canonicalize --linalg-bufferize \ 
 // RUN: --func-bufferize --arith-bufferize --tensor-bufferize \
 // RUN: --finalizing-bufferize --convert-linalg-to-loops --convert-vector-to-scf \
-// RUN: --convert-scf-to-std --convert-arith-to-llvm --convert-vector-to-llvm \
+// RUN: --convert-scf-to-cf --convert-arith-to-llvm --convert-vector-to-llvm \
 // RUN: --convert-memref-to-llvm --convert-std-to-llvm --reconcile-unrealized-casts | \
 // RUN: mlir-cpu-runner \
 // RUN:  -e entry -entry-point-result=void  \
@@ -15,8 +15,6 @@
 module {
   func @entry() {
   
-    %d1 = arith.constant -1.0 : f32
-    %c0 = arith.constant 0 : index
     %c5 = arith.constant 5 : index
 
     // Materialize and fill a linnea matrix.
@@ -45,7 +43,9 @@ module {
     // CHECK-SAME:    ( 75, 50, 25, 0, 0 ),
     // CHECK-SAME:    ( 100, 75, 50, 25, 0 ),
     // CHECK-SAME:    ( 125, 100, 75, 50, 25 ) )
-    linnea.print %0 : !linnea.term  
+    linnea.print %0 : !linnea.term 
+    linnea.print %Af : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+    linnea.print %Bf : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32> 
     
     return 
   }

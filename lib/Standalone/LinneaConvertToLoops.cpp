@@ -10,9 +10,6 @@
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaPasses.h"
 #include "Standalone/LinneaUtils.h"
-#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
-#include "mlir/Dialect/Bufferization/Transforms/OneShotAnalysis.h"
-#include "mlir/Dialect/Linalg/ComprehensiveBufferize/LinalgInterfaceImpl.h"
 #include "mlir/Dialect/Linalg/Passes.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
@@ -58,7 +55,6 @@ static Value constantZero(OpBuilder &builder, Location loc, Type tp) {
   return builder.create<arith::ConstantOp>(loc, tp, builder.getZeroAttr(tp));
 }
 
-// TODO: fix diagonal i <= j
 static void buildLoopNestTriangularImpl(PatternRewriter &rewriter,
                                         linalg::FillOp op, Value destMemRef) {
   RankedTensorType outputTensor =
@@ -96,19 +92,6 @@ static void buildLoopNestTriangularImpl(PatternRewriter &rewriter,
         b.create<memref::StoreOp>(loc, zeroValue, destMemRef, localIvs);
         b.setInsertionPointAfter(ifOp);
       });
-
-  // auto currInsertionPoint = rewriter.getInsertionPoint();
-  // auto currInsertionBlock = rewriter.getInsertionBlock();
-  // scf::ForOp outerForOp =
-  //    rewriter.create<scf::ForOp>(loc, lbs[0], ubs[0], steps[0]);
-  // rewriter.setInsertionPointToStart(&outerForOp.getLoopBody().front());
-  // scf::ForOp innerForOp = rewriter.create<scf::ForOp>(
-  //    loc, lbs[1], outerForOp.getInductionVar(), steps[1]);
-  // rewriter.setInsertionPointToStart(&innerForOp.getLoopBody().front());
-  // SmallVector<Value> ivs = {outerForOp.getInductionVar(),
-  //                          innerForOp.getInductionVar()};
-  // rewriter.create<memref::StoreOp>(loc, op.value(), destMemRef, ivs);
-  // rewriter.setInsertionPoint(currInsertionBlock, currInsertionPoint);
 }
 
 static void buildLoopNest(PatternRewriter &rewriter, linalg::FillOp op,
@@ -195,100 +178,40 @@ public:
   }
 };
 
-struct GenericOpConverter : public OpRewritePattern<linalg::GenericOp> {
+struct MatmulOpConverter : public OpRewritePattern<linalg::MatmulOp> {
 public:
-  using OpRewritePattern<linalg::GenericOp>::OpRewritePattern;
-  LogicalResult matchAndRewrite(linalg::GenericOp op,
+  using OpRewritePattern<linalg::MatmulOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(linalg::MatmulOp op,
                                 PatternRewriter &rewriter) const override {
-    // TODO: Assume GEMM, assume all the inputs and outputs marked with linnea
-    // attribute.
     assert(op.outputs().size() == 1);
     assert(op.inputs().size() == 2);
-    /*
-        RankedTensorType outputTensor =
-            op.outputs()[0].getType().cast<RankedTensorType>();
 
-        Location loc = op->getLoc();
-        Value A = castToMemRef(op.inputs()[0], rewriter, loc);
-        Value B = castToMemRef(op.inputs()[1], rewriter, loc);
-        Value C = castToMemRef(op.outputs()[0], rewriter, loc);
-
-        SmallVector<Value> ubs;
-        Value i = rewriter.create<arith::ConstantIndexOp>(
-            loc, C.getType().cast<MemRefType>().getShape()[0]);
-        Value j = rewriter.create<arith::ConstantIndexOp>(
-            loc, C.getType().cast<MemRefType>().getShape()[1]);
-        Value k = rewriter.create<arith::ConstantIndexOp>(
-            loc, A.getType().cast<MemRefType>().getShape()[1]);
-        ubs = {i, j, k};
-        Value zero = rewriter.create<arith::ConstantIndexOp>(loc, 0);
-        SmallVector<Value> lbs = {zero, zero, zero};
-        Value one = rewriter.create<arith::ConstantIndexOp>(loc, 1);
-        SmallVector<Value> steps = {one, one, one};
-
-        (void)scf::buildLoopNest(
-            rewriter, loc, lbs, ubs, steps,
-            [&](OpBuilder &builder, Location loc, ValueRange localIvs) {
-              i = localIvs[0];
-              j = localIvs[1];
-              k = localIvs[2];
-              Value c = builder.create<memref::LoadOp>(loc, C, ValueRange{i,
-       j}); Value a = builder.create<memref::LoadOp>(loc, A, ValueRange{i, k});
-              Value b = builder.create<memref::LoadOp>(loc, B, ValueRange{k,
-       j}); Value mul = builder.create<arith::MulFOp>(loc, a, b); Value add =
-       builder.create<arith::AddFOp>(loc, c, mul);
-              builder.create<memref::StoreOp>(loc, add, C, ValueRange{i, j});
-            });
-
-        RankedTensorType builtinTensorType = RankedTensorType::get(
-            outputTensor.getShape(), outputTensor.getElementType());
-        Value ret =
-            rewriter.create<bufferization::ToTensorOp>(loc, builtinTensorType,
-       C); rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>( op,
-       op.outputs()[0].getType(), ret);
-    */
+    auto encoding = getLinneaTensorEncoding(op.outputs()[0].getType());
+    if (!encoding)
+      return failure();
 
     Location loc = op->getLoc();
     Value A = castToTensor(op.inputs()[0], rewriter, loc);
     Value B = castToTensor(op.inputs()[1], rewriter, loc);
     Value C = castToTensor(op.outputs()[0], rewriter, loc);
 
-    auto mul = rewriter.create<linalg::MatmulOp>(loc, TypeRange{C.getType()},
-                                                 ValueRange{A, B}, C);
-    Value dest = mul->getResult(0);
+    Value dest = rewriter
+                     .create<linalg::MatmulOp>(loc, TypeRange{C.getType()},
+                                               ValueRange{A, B}, C)
+                     ->getResult(0);
 
-    rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>(
-        op, op.outputs()[0].getType(), dest);
-
+    rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>(op, C.getType(), dest);
     return success();
   }
 };
 
 struct ConvertToLoops : public LinneaConvertToLoopsBase<ConvertToLoops> {
 
-  /*
-    void getDependentDialects(DialectRegistry &registry) const override {
-      registry
-          .insert<bufferization::BufferizationDialect, linalg::LinalgDialect,
-                  memref::MemRefDialect, tensor::TensorDialect,
-                  vector::VectorDialect, scf::SCFDialect,
-                  arith::ArithmeticDialect, StandardOpsDialect,
-    AffineDialect>();
-      // register linalg interface.
-      linalg_ext::registerBufferizableOpInterfaceExternalModels(registry);
-    }
-  */
-
   void runOnOperation() override {
 
     ModuleOp module = getOperation();
-    /*
-        mlir::PassManager pm(module.getContext());
-        pm.addPass(createLinalgComprehensiveModuleBufferizePass());
-        (void)pm.run(module);
-    */
     RewritePatternSet patterns(module.getContext());
-    patterns.add<FillOpConverter, GenericOpConverter, InitOpConverter>(
+    patterns.add<FillOpConverter, MatmulOpConverter, InitOpConverter>(
         patterns.getContext());
     (void)applyPatternsAndFoldGreedily(module, std::move(patterns));
   }

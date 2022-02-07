@@ -8,7 +8,7 @@
 // RUN: --linnea-finalize-func-type-conversion --canonicalize --linalg-bufferize \ 
 // RUN: --func-bufferize --arith-bufferize --tensor-bufferize \
 // RUN: --finalizing-bufferize --convert-linalg-to-loops --convert-vector-to-scf \
-// RUN: --convert-scf-to-std --convert-arith-to-llvm --convert-vector-to-llvm \
+// RUN: --convert-scf-to-cf --convert-arith-to-llvm --convert-vector-to-llvm \
 // RUN: --convert-memref-to-llvm --convert-std-to-llvm --reconcile-unrealized-casts | \
 // RUN: mlir-cpu-runner \
 // RUN:  -e entry -entry-point-result=void  \
@@ -21,7 +21,7 @@
 // RUN: --linnea-finalize-func-type-conversion --canonicalize --linalg-bufferize \ 
 // RUN: --func-bufferize --arith-bufferize --tensor-bufferize \
 // RUN: --finalizing-bufferize --convert-linalg-to-loops --convert-vector-to-scf \
-// RUN: --convert-scf-to-std --convert-arith-to-llvm --convert-vector-to-llvm \
+// RUN: --convert-scf-to-cf --convert-arith-to-llvm --convert-vector-to-llvm \
 // RUN: --convert-memref-to-llvm --convert-std-to-llvm --reconcile-unrealized-casts | \
 // RUN: mlir-cpu-runner \
 // RUN:  -e entry -entry-point-result=void  \

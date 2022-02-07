@@ -68,36 +68,10 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
   Value buffer = rewriter.create<linalg::InitTensorOp>(
       loc, outputType, ArrayRef<Value>({}),
       rewriter.getI64ArrayAttr(outputType.getShape()));
-  // TODO: fix me.
-  // assert(outputType.getElementType().isa<FloatType>() && "only float for
-  // now");
-
-  // auto zero = FloatAttr::get(outputType.getElementType(), 0);
-  // DenseElementsAttr init = DenseElementsAttr::get(outputType, zero);
-  // Value splatTensor = rewriter.create<arith::ConstantOp>(loc, outputType,
-  // init);
-
-  // build affine map for matmul.
-  using MapList = ArrayRef<ArrayRef<AffineExpr>>;
-  auto infer = [](MapList m) { return AffineMap::inferFromExprList(m); };
-  AffineExpr m, n, k;
-  bindDims(ctx, m, n, k);
-  auto matMulMap = infer({{m, k}, {k, n}, {m, n}});
-
-  // iterator for matmul.
-  llvm::SmallVector<StringRef, 3> iter = {"parallel", "parallel", "reduction"};
 
   return rewriter
-      .create<linalg::GenericOp>(
-          loc, TypeRange{outputType}, ValueRange{left, right}, buffer,
-          matMulMap, iter,
-          [&](OpBuilder &nestedBuilder, Location nestedLoc, ValueRange args) {
-            assert(args.size() == 3 && "matmul expects 3 args");
-            Value mul = buildBinaryOpFromValues<arith::MulFOp, arith::MulIOp>(
-                nestedBuilder, args[0], args[1], nestedLoc,
-                outputType.getElementType());
-            nestedBuilder.create<linalg::YieldOp>(nestedLoc, mul);
-          })
+      .create<linalg::MatmulOp>(loc, TypeRange{outputType},
+                                ValueRange{left, right}, buffer)
       ->getResult(0);
 }
 
@@ -124,6 +98,10 @@ public:
   LogicalResult
   matchAndRewrite(FillOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
+    Type resType = op.output().getType();
+    auto encoding = getLinneaMatrixEncoding(resType);
+    if (!encoding)
+      return failure();
     rewriter.replaceOpWithNewOp<linalg::FillOp>(op, adaptor.value(),
                                                 adaptor.output());
     return success();
@@ -143,20 +121,14 @@ public:
       return failure();
 
     auto linneaType = resType.cast<MatrixType>();
-    // TODO: ensure that op.size() == linneaType.dims().
-    MemRefType memTp =
-        MemRefType::get(linneaType.getDims(), linneaType.getElementType());
     Location loc = op->getLoc();
-    Value memref = rewriter.create<memref::AllocOp>(loc, memTp);
-    RankedTensorType builtinTensor = RankedTensorType::get(
-        linneaType.getDims(), linneaType.getElementType());
-    Value tensor =
-        rewriter.create<bufferization::ToTensorOp>(loc, builtinTensor, memref);
     RankedTensorType builtinTensorWithProperty =
         RankedTensorType::get(linneaType.getDims(), linneaType.getElementType(),
                               linneaType.getProperty());
-    rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>(
-        op, builtinTensorWithProperty, tensor);
+
+    rewriter.replaceOpWithNewOp<linalg::InitTensorOp>(
+        op, builtinTensorWithProperty, ArrayRef<Value>{},
+        rewriter.getI64ArrayAttr(builtinTensorWithProperty.getShape()));
     return success();
   }
 };
@@ -226,14 +198,14 @@ static void setupTypeConversion(ConversionTarget &target,
   typeConverter.addTargetMaterialization([](OpBuilder &builder, TensorType type,
                                             ValueRange inputs,
                                             Location loc) -> Value {
-    assert(inputs.size() == 1);
-    assert(inputs[0].getType().isa<MatrixType>());
+    assert(inputs.size() == 1 && "expects one input only");
+    assert(inputs[0].getType().isa<MatrixType>() && "must be a MatrixType");
     return builder.create<ToBuiltinTensorOp>(loc, type, inputs[0]);
   });
   auto sourceMaterialization = [](OpBuilder &builder, Type type,
                                   ValueRange inputs, Location loc) -> Value {
-    assert(inputs.size() == 1);
-    assert(inputs[0].getType().isa<TensorType>());
+    assert(inputs.size() == 1 && "expects one input only");
+    assert(inputs[0].getType().isa<TensorType>() && "must be a TensorType");
     return builder.create<FromBuiltinTensorOp>(loc, type, inputs[0]);
   };
   typeConverter.addSourceMaterialization(sourceMaterialization);
@@ -300,7 +272,8 @@ struct ConvertToLinalg : public LinneaConvertToLinalgBase<ConvertToLinalg> {
 
     populateLinneaToLinalgPattern(patterns, typeConverter);
 
-    if (failed(applyFullConversion(getFunction(), target, std::move(patterns))))
+    if (failed(
+            applyPartialConversion(getFunction(), target, std::move(patterns))))
       signalPassFailure();
   }
 };
