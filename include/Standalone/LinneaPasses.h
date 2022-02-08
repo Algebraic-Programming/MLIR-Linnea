@@ -25,6 +25,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createLinneaFuncTypeConversion();
 std::unique_ptr<OperationPass<ModuleOp>>
 createLinneaFinalizeFuncTypeConversion();
 std::unique_ptr<OperationPass<ModuleOp>> createLinneaCompilerPipeline();
+std::unique_ptr<OperationPass<ModuleOp>> createLinneaCopyRemoval();
 } // namespace linnea
 } // namespace mlir
 

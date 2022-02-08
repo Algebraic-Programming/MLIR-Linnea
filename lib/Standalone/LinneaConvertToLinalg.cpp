@@ -58,7 +58,6 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
   assert(operands.size() == 2 && "expect two operands");
   assert(results.size() == 1 && "expect one output");
   auto loc = op->getLoc();
-  auto ctx = op->getContext();
 
   Value left = operands[0];
   Value right = operands[1];
@@ -121,7 +120,6 @@ public:
       return failure();
 
     auto linneaType = resType.cast<MatrixType>();
-    Location loc = op->getLoc();
     RankedTensorType builtinTensorWithProperty =
         RankedTensorType::get(linneaType.getDims(), linneaType.getElementType(),
                               linneaType.getProperty());

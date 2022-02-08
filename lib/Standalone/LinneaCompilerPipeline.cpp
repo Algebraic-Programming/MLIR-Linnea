@@ -66,6 +66,10 @@ void LinneaCompilerPipeline::runOnOperation() {
   // --finalizing-bufferize
   pm.addNestedPass<FuncOp>(
       mlir::bufferization::createFinalizingBufferizePass());
+  // Remove extra copy operations introduced by bufferization.
+  // We will remove this pass once bufferization is fixed.
+  // --remove-extra-copy-operations.
+  pm.addPass(createLinneaCopyRemoval());
   // --convert-linalg-to-loops
   pm.addNestedPass<FuncOp>(createConvertLinalgToLoopsPass());
   // --convert-vector-to-scf

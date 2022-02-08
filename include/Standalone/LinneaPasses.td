@@ -58,4 +58,9 @@ def LinneaCompiler : Pass<"linnea-compiler", "ModuleOp"> {
                            "vector::VectorDialect"];
 }
 
+def LinneaCopyRemoval : Pass<"remove-extra-copy-operations", "ModuleOp"> {
+  let summary = "Remove extra copy operations introduced by bufferization";
+  let constructor = "mlir::linnea::createLinneaCopyRemoval()";
+}
+
 #endif
