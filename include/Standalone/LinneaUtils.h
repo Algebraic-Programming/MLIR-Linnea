@@ -11,15 +11,12 @@
 
 namespace mlir {
 class Type;
-};
-
-namespace mlir::linnea {
-class LinneaMatrixEncodingAttr;
-};
+}
 
 namespace mlir {
 namespace linnea {
 
+class LinneaMatrixEncodingAttr;
 LinneaMatrixEncodingAttr getLinneaTensorEncoding(Type type);
 LinneaMatrixEncodingAttr getLinneaMatrixEncoding(Type type);
 
