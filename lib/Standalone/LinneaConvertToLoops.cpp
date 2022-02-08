@@ -79,9 +79,9 @@ static void buildLoopNestTriangularImpl(PatternRewriter &rewriter,
       rewriter, loc, lbs, ubs, steps,
       [&](OpBuilder &b, Location loc, ValueRange localIvs) {
         Value outerLoopIvCast =
-            b.create<arith::IndexCastOp>(loc, localIvs[0], b.getI64Type());
+            b.create<arith::IndexCastOp>(loc, b.getI64Type(), localIvs[0]);
         Value innerLoopIvCast =
-            b.create<arith::IndexCastOp>(loc, localIvs[1], b.getI64Type());
+            b.create<arith::IndexCastOp>(loc, b.getI64Type(), localIvs[1]);
         Value cond = b.create<arith::CmpIOp>(loc, arith::CmpIPredicate::sge,
                                              outerLoopIvCast, innerLoopIvCast);
         auto ifOp = b.create<scf::IfOp>(loc, cond,

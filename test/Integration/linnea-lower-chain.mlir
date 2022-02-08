@@ -3,7 +3,7 @@
 // RUN: ./chain &> chain.ref.out
 //
 // RUN: standalone-opt %s \
-// RUN: --comprehensive-properties-propagation --linnea-func-type-conversion \
+// RUN: --properties-propagation --linnea-func-type-conversion \
 // RUN: --convert-linnea-to-linalg --convert-linnea-to-loops \ 
 // RUN: --linnea-finalize-func-type-conversion --canonicalize --linalg-bufferize \ 
 // RUN: --func-bufferize --arith-bufferize --tensor-bufferize \
@@ -16,7 +16,7 @@
 // RUN: FileCheck %s
 //
 // RUN: standalone-opt %s \
-// RUN: --comprehensive-properties-propagation --linnea-func-type-conversion \
+// RUN: --properties-propagation --linnea-func-type-conversion \
 // RUN: --convert-linnea-to-linalg --convert-linnea-to-loops \ 
 // RUN: --linnea-finalize-func-type-conversion --canonicalize --linalg-bufferize \ 
 // RUN: --func-bufferize --arith-bufferize --tensor-bufferize \

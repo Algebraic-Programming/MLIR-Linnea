@@ -11,7 +11,7 @@
 
 include "mlir/Pass/PassBase.td"
 
-def LinneaConvertToLinalg : FunctionPass<"convert-linnea-to-linalg"> {
+def LinneaConvertToLinalg : Pass<"convert-linnea-to-linalg", "FuncOp"> {
   let summary = "Lower linnea operations to linalg";
   let constructor = "mlir::linnea::createConvertLinneaToLinalgPass()";
   let dependentDialects = ["linalg::LinalgDialect", "tensor::TensorDialect"];
@@ -28,11 +28,11 @@ def LinneaConvertToLoops : Pass<"convert-linnea-to-loops", "ModuleOp"> {
                            "vector::VectorDialect"];
 }
 
-def LinneaComprehensivePropertyPropagation :
-    Pass<"comprehensive-properties-propagation", "ModuleOp"> {
+def LinneaPropertyPropagation :
+    Pass<"properties-propagation", "ModuleOp"> {
   let summary = "property propagation";
   let description = [{ todo }];
-  let constructor = "mlir::linnea::createLinneaComprehensivePropertyPropagationPass()";
+  let constructor = "mlir::linnea::createLinneaPropertyPropagationPass()";
 }
 
 def LinneaFuncTypeConversion : Pass<"linnea-func-type-conversion", "ModuleOp"> {

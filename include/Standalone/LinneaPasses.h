@@ -18,8 +18,7 @@
 namespace mlir {
 namespace linnea {
 std::unique_ptr<OperationPass<FuncOp>> createConvertLinneaToLinalgPass();
-std::unique_ptr<OperationPass<ModuleOp>>
-createLinneaComprehensivePropertyPropagationPass();
+std::unique_ptr<OperationPass<ModuleOp>> createLinneaPropertyPropagationPass();
 std::unique_ptr<OperationPass<ModuleOp>> createConvertLinneaToLoopsPass();
 std::unique_ptr<OperationPass<ModuleOp>> createLinneaFuncTypeConversion();
 std::unique_ptr<OperationPass<ModuleOp>>

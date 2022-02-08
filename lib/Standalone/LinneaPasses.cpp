@@ -27,9 +27,8 @@ using namespace mlir::linnea::expr;
 
 namespace {
 
-struct LinneaComprehensivePropertyPropagation
-    : public LinneaComprehensivePropertyPropagationBase<
-          LinneaComprehensivePropertyPropagation> {
+struct LinneaPropertyPropagation
+    : public LinneaPropertyPropagationBase<LinneaPropertyPropagation> {
   void runOnOperation() override;
 };
 
@@ -54,7 +53,7 @@ static FunctionType getFunctionType(FuncOp funcOp, TypeRange argumentTypes,
   return FunctionType::get(funcOp.getContext(), argumentTypes, resultTypes);
 }
 
-void LinneaComprehensivePropertyPropagation::runOnOperation() {
+void LinneaPropertyPropagation::runOnOperation() {
   ModuleOp module = getOperation();
   SmallVector<Operation *> toErase;
   WalkResult res = module.walk([&](EquationOp eqOp) -> WalkResult {
@@ -141,6 +140,6 @@ void LinneaComprehensivePropertyPropagation::runOnOperation() {
 } // namespace
 
 std::unique_ptr<OperationPass<ModuleOp>>
-mlir::linnea::createLinneaComprehensivePropertyPropagationPass() {
-  return std::make_unique<LinneaComprehensivePropertyPropagation>();
+mlir::linnea::createLinneaPropertyPropagationPass() {
+  return std::make_unique<LinneaPropertyPropagation>();
 }

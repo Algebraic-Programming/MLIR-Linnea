@@ -246,7 +246,7 @@ static void setupFinalization(ConversionTarget &target,
 }
 
 struct ConvertToLinalg : public LinneaConvertToLinalgBase<ConvertToLinalg> {
-  void runOnFunction() override {
+  void runOnOperation() override {
 
     RewritePatternSet patterns(&getContext());
     TypeConverter typeConverter;
@@ -272,8 +272,8 @@ struct ConvertToLinalg : public LinneaConvertToLinalgBase<ConvertToLinalg> {
 
     populateLinneaToLinalgPattern(patterns, typeConverter);
 
-    if (failed(
-            applyPartialConversion(getFunction(), target, std::move(patterns))))
+    if (failed(applyPartialConversion(getOperation(), target,
+                                      std::move(patterns))))
       signalPassFailure();
   }
 };
