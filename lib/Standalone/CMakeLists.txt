@@ -10,6 +10,7 @@ add_mlir_dialect_library(MLIRLinnea
         LinneaUtilsExpr.cpp
         LinneaConvertToLoops.cpp
         LinneaConvertToLinalg.cpp
+        LinneaCompilerPipeline.cpp
         LinneaTypeConversion.cpp
         LinneaFinalizeTypeConversion.cpp
 

@@ -45,4 +45,17 @@ def LinneaFinalizeFuncTypeConversion : Pass<"linnea-finalize-func-type-conversio
   let constructor = "mlir::linnea::createLinneaFinalizeFuncTypeConversion()";
 }
 
+def LinneaCompiler : Pass<"linnea-compiler", "ModuleOp"> {
+  let summary = "Build linnea compiler pipeline";
+  let constructor = "mlir::linnea::createLinneaCompilerPipeline()";
+  let dependentDialects = ["scf::SCFDialect",
+                           "memref::MemRefDialect",
+                           "bufferization::BufferizationDialect",
+                           "arith::ArithmeticDialect",
+                           "linalg::LinalgDialect",
+                           "tensor::TensorDialect",
+                           "LLVM::LLVMDialect",
+                           "vector::VectorDialect"];
+}
+
 #endif
