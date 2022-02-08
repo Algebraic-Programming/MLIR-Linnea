@@ -7,7 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #ifndef LINNEA_UTILS_H
-#define LINNEA_UTISL_H
+#define LINNEA_UTILS_H
 
 namespace mlir {
 class Type;
