@@ -71,8 +71,6 @@ bool UnaryExpr::isLowerTriangular() const {
   case UnaryExprKind::INVERSE:
     // TODO: do we need also the full rank?
     return child->isLowerTriangular() && child->isFullRank();
-  default:
-    assert(0 && "UNK");
   }
   return false;
 }
