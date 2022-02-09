@@ -91,8 +91,6 @@ bool UnaryExpr::isSymmetric() const {
   case UnaryExprKind::TRANSPOSE:
   case UnaryExprKind::INVERSE:
     return child->isSymmetric() || child->isSPD();
-  default:
-    assert(0 && "UNK");
   }
   return false;
 }
@@ -103,8 +101,6 @@ bool UnaryExpr::isFullRank() const {
   case UnaryExprKind::TRANSPOSE:
   case UnaryExprKind::INVERSE:
     return child->isFullRank();
-  default:
-    assert(0 && "UNK");
   }
   return false;
 }
