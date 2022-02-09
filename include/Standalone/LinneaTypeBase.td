@@ -24,6 +24,54 @@ def LinneaTerm : Linnea_Type<"Term"> {
   }];
 }
 
+def LinneaSymbolicMatrixIdentity : Linnea_Type<"Identity"> {
+  let mnemonic = "identity";
+  
+  let summary = "An identity matrix type.";
+  let description = [{
+    The identity matrix.
+  }];
+  let genVerifyDecl = 1;
+  
+  let parameters = (ins
+    ArrayRefParameter<"int64_t", "dimensions" 
+                     >:$dims,
+    "Type":$elementType
+  );
+  
+  let parser = [{
+    if ($_parser.parseLess())
+      return Type();
+    ArrayAttr dimensions;
+    if ($_parser.parseAttribute(dimensions))
+      return Type();
+    SmallVector<int64_t, 2> dims;
+    for (size_t i = 0, e = dimensions.size(); i < e; i++) {
+      auto intAttr = dimensions[i].dyn_cast<IntegerAttr>();
+      if (!intAttr) {
+        $_parser.emitError($_parser.getNameLoc(),
+                          "expect int attribute for identity type");
+        return Type();
+      }
+      dims.push_back(intAttr.getInt());
+    }
+    
+    if ($_parser.parseComma())
+      return Type();
+    
+    Type elementType;
+    if ($_parser.parseType(elementType))
+      return Type();
+    
+    if ($_parser.parseGreater())
+      return Type();
+
+    return IdentityType::getChecked([&$_parser] { 
+      return $_parser.emitError($_parser.getCurrentLocation()); },
+             $_ctxt, dims, elementType);
+  }];
+} 
+
 def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
   let mnemonic = "matrix";
 
