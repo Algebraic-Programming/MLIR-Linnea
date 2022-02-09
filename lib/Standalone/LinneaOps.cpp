@@ -182,3 +182,35 @@ void InverseOpLow::getCanonicalizationPatterns(RewritePatternSet &results,
                                                MLIRContext *context) {
   results.insert<DoubleInverse>(context);
 }
+
+namespace {
+
+struct MultiplyWithIdentity : public OpRewritePattern<MulOpLow> {
+  using OpRewritePattern<MulOpLow>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(MulOpLow op,
+                                PatternRewriter &rewriter) const override {
+    Type left = op.left().getType();
+    Type right = op.right().getType();
+    if (auto it = left.dyn_cast_or_null<IdentityType>()) {
+      Value result = op.output();
+      result.replaceAllUsesWith(op.right());
+      rewriter.eraseOp(op);
+      return success();
+    }
+    if (auto it = right.dyn_cast_or_null<IdentityType>()) {
+      Value result = op.output();
+      result.replaceAllUsesWith(op.left());
+      rewriter.eraseOp(op);
+      return success();
+    }
+    return failure();
+  }
+};
+
+} // end namespace
+
+void MulOpLow::getCanonicalizationPatterns(RewritePatternSet &results,
+                                           MLIRContext *context) {
+  results.insert<MultiplyWithIdentity>(context);
+}

@@ -227,11 +227,11 @@ def Linnea_MulOpLow : Linnea_Op<"mul.low", [NoSideEffect]> {
         ```
     }];
 
-    let arguments = (ins AnyLinneaType:$a, AnyLinneaType:$b);
+    let arguments = (ins AnyLinneaType:$left, AnyLinneaType:$right);
     let results = (outs AnyLinneaType:$output);
 
     let assemblyFormat = [{
-      $a `,` $b attr-dict `:` type($a) `,` type($b) `->` type($output)
+      $left `,` $right attr-dict `:` type($left) `,` type($right) `->` type($output)
     }];
 
     let builders = [
@@ -239,6 +239,8 @@ def Linnea_MulOpLow : Linnea_Op<"mul.low", [NoSideEffect]> {
     ];
 
     let verifier = [{ return ::verifyMulOp(*this); }];
+
+    let hasCanonicalizer = 1;
 }
 
 #endif // LINNEA_OPS

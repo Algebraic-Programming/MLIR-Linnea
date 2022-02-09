@@ -14,7 +14,7 @@ using namespace mlir::linnea::expr;
 using namespace std;
 
 //===----------------------------------------------------------------------===//
-// Operand
+// Matrix
 //===----------------------------------------------------------------------===//
 
 template <Expr::ExprProperty P>
@@ -24,25 +24,45 @@ bool isX(const Operand *operand) {
                      [](Expr::ExprProperty p) { return p == P; });
 }
 
-bool Operand::isUpperTriangular() const {
+bool Matrix::isUpperTriangular() const {
   return isX<ExprProperty::UPPER_TRIANGULAR>(this);
 }
 
-bool Operand::isLowerTriangular() const {
+bool Matrix::isLowerTriangular() const {
   return isX<ExprProperty::LOWER_TRIANGULAR>(this);
 }
 
-bool Operand::isSquare() const { return isX<ExprProperty::SQUARE>(this); }
+bool Matrix::isSquare() const { return isX<ExprProperty::SQUARE>(this); }
 
-bool Operand::isSymmetric() const { return isX<ExprProperty::SYMMETRIC>(this); }
+bool Matrix::isSymmetric() const { return isX<ExprProperty::SYMMETRIC>(this); }
 
-bool Operand::isFullRank() const { return isX<ExprProperty::FULL_RANK>(this); }
+bool Matrix::isFullRank() const { return isX<ExprProperty::FULL_RANK>(this); }
 
-bool Operand::isSPD() const { return isX<ExprProperty::SPD>(this); }
+bool Matrix::isSPD() const { return isX<ExprProperty::SPD>(this); }
 
-bool Operand::isFactored() const { return isX<ExprProperty::FACTORED>(this); }
+bool Matrix::isFactored() const { return isX<ExprProperty::FACTORED>(this); }
 
-bool Operand::isGeneral() const { return isX<ExprProperty::GENERAL>(this); }
+bool Matrix::isGeneral() const { return isX<ExprProperty::GENERAL>(this); }
+
+//===----------------------------------------------------------------------===//
+// Identity
+//===----------------------------------------------------------------------===//
+
+bool Identity::isUpperTriangular() const { return false; }
+
+bool Identity::isLowerTriangular() const { return false; }
+
+bool Identity::isSquare() const { return isX<ExprProperty::SQUARE>(this); }
+
+bool Identity::isSymmetric() const { return false; }
+
+bool Identity::isFullRank() const { return false; }
+
+bool Identity::isSPD() const { return false; }
+
+bool Identity::isFactored() const { return true; }
+
+bool Identity::isGeneral() const { return true; }
 
 //===----------------------------------------------------------------------===//
 // UnaryExpr

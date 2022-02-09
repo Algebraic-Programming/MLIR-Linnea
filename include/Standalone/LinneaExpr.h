@@ -249,16 +249,6 @@ public:
   // get the dimensionality of the ouput for the current expression.
   std::vector<int64_t> getResultDimensions() const override;
 
-  // query properties.
-  bool isUpperTriangular() const override;
-  bool isLowerTriangular() const override;
-  bool isSquare() const override;
-  bool isSymmetric() const override;
-  bool isFullRank() const override;
-  bool isSPD() const override;
-  bool isFactored() const override;
-  bool isGeneral() const override;
-
   static bool classof(const Expr *expr) {
     return expr->getKind() == ExprKind::OPERAND;
   };
@@ -281,6 +271,16 @@ public:
     return false;
   };
 
+  // query properties.
+  bool isUpperTriangular() const override;
+  bool isLowerTriangular() const override;
+  bool isSquare() const override;
+  bool isSymmetric() const override;
+  bool isFullRank() const override;
+  bool isSPD() const override;
+  bool isFactored() const override;
+  bool isGeneral() const override;
+
 private:
   MatrixKind kind;
 };
@@ -297,6 +297,16 @@ public:
         return true;
     return false;
   }
+
+  // query properties.
+  bool isUpperTriangular() const override;
+  bool isLowerTriangular() const override;
+  bool isSquare() const override;
+  bool isSymmetric() const override;
+  bool isFullRank() const override;
+  bool isSPD() const override;
+  bool isFactored() const override;
+  bool isGeneral() const override;
 };
 
 /// Helper class to translate from our internal representation

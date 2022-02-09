@@ -81,7 +81,7 @@ public:
   LogicalResult
   matchAndRewrite(MulOpLow op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    ValueRange operands = {adaptor.a(), adaptor.b()};
+    ValueRange operands = {adaptor.left(), adaptor.right()};
     Value result = emitLinalgMatrix(op, operands, rewriter, getTypeConverter(),
                                     op->getResults());
     assert(result != nullptr && "must be non null");

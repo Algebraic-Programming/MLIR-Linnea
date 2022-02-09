@@ -464,21 +464,54 @@ convert(std::vector<Expr::ExprProperty> properties) {
 //===----------------------------------------------------------------------===//
 
 Expr *ExprBuilder::buildOperandImpl(Value val) {
-  assert(val.getType().cast<MatrixType>() && "expect matrixType");
+
   if (contains(val))
     return lookup(val);
 
-  auto matrixType = val.getType().cast<MatrixType>();
-  auto properties = convert(
-      matrixType.getProperty().cast<LinneaMatrixEncodingAttr>().getEncoding());
-  auto size = matrixType.getDims();
-  std::string id = "A" + std::to_string(getNextId());
-  Expr *operand = new Matrix(id, size);
-  operand->setProperties(properties);
+  Expr *operand = nullptr;
+  if (auto matrixType = val.getType().dyn_cast_or_null<MatrixType>()) {
+    auto properties = convert(matrixType.getProperty()
+                                  .cast<LinneaMatrixEncodingAttr>()
+                                  .getEncoding());
+    auto size = matrixType.getDims();
+    std::string id = "A" + std::to_string(getNextId());
+    operand = new Matrix(id, size);
+    operand->setProperties(properties);
+  } else if (auto identityType =
+                 val.getType().dyn_cast_or_null<IdentityType>()) {
+    auto size = identityType.getDims();
+    operand = new Identity(size);
+  } else {
+    llvm_unreachable("expect either a MatrixType or an IdentityType");
+  }
+
+  assert(operand && "must be non null");
   // map in both directions.
   map(val, operand);
   map(operand, val);
   return operand;
+}
+
+static mlir::Type getElementType(mlir::Type t) {
+  if (auto mt = t.dyn_cast_or_null<MatrixType>()) {
+    return mt.getElementType();
+  }
+  if (auto it = t.dyn_cast_or_null<IdentityType>()) {
+    return it.getElementType();
+  }
+  llvm_unreachable("expect only MatrixType or IdentityType");
+}
+
+static int64_t getDimSizeAtPos(mlir::Type t, size_t pos) {
+  if (auto mt = t.dyn_cast_or_null<MatrixType>()) {
+    assert(pos < mt.getDims().size());
+    return mt.getDims()[pos];
+  }
+  if (auto it = t.dyn_cast_or_null<IdentityType>()) {
+    assert(pos < it.getDims().size());
+    return it.getDims()[pos];
+  }
+  llvm_unreachable("expect only MatrixType or IdentityType");
 }
 
 mlir::Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
@@ -487,15 +520,16 @@ mlir::Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
   auto children = expr->getChildren();
   for (int i = 0, e = children.size(); i < e; i++)
     operands.push_back(buildIRImpl(loc, builder, children[i]));
-  MatrixType first = operands[0].getType().cast<MatrixType>();
-  MatrixType last = operands[operands.size() - 1].getType().cast<MatrixType>();
   SmallVector<LinneaMatrixEncodingAttr::MatrixProperty> properties =
       convert(expr->getAndSetProperties());
-  SmallVector<int64_t> dims = {first.getDims()[0], last.getDims()[1]};
+  Type elementType = getElementType(operands[0].getType());
+  SmallVector<int64_t> dims = {
+      getDimSizeAtPos(operands[0].getType(), 0),
+      getDimSizeAtPos(operands[operands.size() - 1].getType(), 1)};
   MatrixType result = MatrixType::get(
       builder.getContext(),
       LinneaMatrixEncodingAttr::get(builder.getContext(), properties), dims,
-      first.getElementType());
+      elementType);
   return builder.create<MulOpLow>(loc, result, operands);
 }
 
