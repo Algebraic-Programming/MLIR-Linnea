@@ -21,371 +21,9 @@ using namespace std;
 
 thread_local int ExprBuilder::operandId = 0;
 
-// TODO: make more llvm friendly (do not use cout).
-
-// TODO: we can use the same set of enums between MLIR and the side data
-// structure.
-std::vector<Expr::ExprProperty>
-convert(llvm::ArrayRef<LinneaMatrixEncodingAttr::MatrixProperty> properties) {
-  vector<Expr::ExprProperty> result;
-  for (auto property : properties) {
-    switch (property) {
-    case LinneaMatrixEncodingAttr::MatrixProperty::General:
-      result.push_back(Expr::ExprProperty::GENERAL);
-      break;
-    case LinneaMatrixEncodingAttr::MatrixProperty::FullRank:
-      result.push_back(Expr::ExprProperty::FULL_RANK);
-      break;
-    case LinneaMatrixEncodingAttr::MatrixProperty::Diagonal:
-      result.push_back(Expr::ExprProperty::DIAGONAL);
-      break;
-    case LinneaMatrixEncodingAttr::MatrixProperty::UnitDiagonal:
-      result.push_back(Expr::ExprProperty::UNIT_DIAGONAL);
-      break;
-    case LinneaMatrixEncodingAttr::MatrixProperty::LowerTriangular:
-      result.push_back(Expr::ExprProperty::LOWER_TRIANGULAR);
-      break;
-    case LinneaMatrixEncodingAttr::MatrixProperty::UpperTriangular:
-      result.push_back(Expr::ExprProperty::UPPER_TRIANGULAR);
-      break;
-    case LinneaMatrixEncodingAttr::MatrixProperty::Symmetric:
-      result.push_back(Expr::ExprProperty::SYMMETRIC);
-      break;
-    case LinneaMatrixEncodingAttr::MatrixProperty::SPD:
-      result.push_back(Expr::ExprProperty::SPD);
-      break;
-    case LinneaMatrixEncodingAttr::MatrixProperty::SPSD:
-      result.push_back(Expr::ExprProperty::SPSD);
-      break;
-    case LinneaMatrixEncodingAttr::MatrixProperty::Identity:
-      result.push_back(Expr::ExprProperty::IDENTITY);
-      break;
-    case LinneaMatrixEncodingAttr::MatrixProperty::Square:
-      result.push_back(Expr::ExprProperty::SQUARE);
-      break;
-    case LinneaMatrixEncodingAttr::MatrixProperty::Factored:
-      result.push_back(Expr::ExprProperty::FACTORED);
-      break;
-    }
-  }
-  return result;
-}
-
-llvm::SmallVector<LinneaMatrixEncodingAttr::MatrixProperty>
-convert(std::vector<Expr::ExprProperty> properties) {
-  llvm::SmallVector<LinneaMatrixEncodingAttr::MatrixProperty> result;
-  for (auto property : properties) {
-    switch (property) {
-    case Expr::ExprProperty::GENERAL:
-      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::General);
-      break;
-    case Expr::ExprProperty::FULL_RANK:
-      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::FullRank);
-      break;
-    case Expr::ExprProperty::DIAGONAL:
-      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Diagonal);
-      break;
-    case Expr::ExprProperty::UNIT_DIAGONAL:
-      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::UnitDiagonal);
-      break;
-    case Expr::ExprProperty::LOWER_TRIANGULAR:
-      result.push_back(
-          LinneaMatrixEncodingAttr::MatrixProperty::LowerTriangular);
-      break;
-    case Expr::ExprProperty::UPPER_TRIANGULAR:
-      result.push_back(
-          LinneaMatrixEncodingAttr::MatrixProperty::UpperTriangular);
-      break;
-    case Expr::ExprProperty::SYMMETRIC:
-      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Symmetric);
-      break;
-    case Expr::ExprProperty::SPD:
-      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::SPD);
-      break;
-    case Expr::ExprProperty::SPSD:
-      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::SPSD);
-      break;
-    case Expr::ExprProperty::IDENTITY:
-      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Identity);
-      break;
-    case Expr::ExprProperty::SQUARE:
-      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Square);
-      break;
-    case Expr::ExprProperty::FACTORED:
-      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Factored);
-      break;
-    }
-  }
-  return result;
-}
-
-Expr *ExprBuilder::buildOperandImpl(Value val) {
-  assert(val.getType().cast<MatrixType>() && "expect matrixType");
-  if (contains(val))
-    return lookup(val);
-
-  auto matrixType = val.getType().cast<MatrixType>();
-  auto properties = convert(
-      matrixType.getProperty().cast<LinneaMatrixEncodingAttr>().getEncoding());
-  auto size = matrixType.getDims();
-  std::string id = "A" + std::to_string(getNextId());
-  Expr *operand = new Operand(id, size);
-  operand->setProperties(properties);
-  // map in both directions.
-  map(val, operand);
-  map(operand, val);
-  return operand;
-}
-
-mlir::Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
-                                      NaryExpr *expr) {
-  SmallVector<Value> operands;
-  auto children = expr->getChildren();
-  for (int i = 0, e = children.size(); i < e; i++)
-    operands.push_back(buildIRImpl(loc, builder, children[i]));
-  MatrixType first = operands[0].getType().cast<MatrixType>();
-  MatrixType last = operands[operands.size() - 1].getType().cast<MatrixType>();
-  SmallVector<LinneaMatrixEncodingAttr::MatrixProperty> properties =
-      convert(expr->getAndSetProperties());
-  SmallVector<int64_t> dims = {first.getDims()[0], last.getDims()[1]};
-  MatrixType result = MatrixType::get(
-      builder.getContext(),
-      LinneaMatrixEncodingAttr::get(builder.getContext(), properties), dims,
-      first.getElementType());
-  return builder.create<MulOpLow>(loc, result, operands);
-}
-
-mlir::Value ExprBuilder::buildTransposeImpl(Location loc, OpBuilder &builder,
-                                            UnaryExpr *expr) {
-  return nullptr;
-}
-
-mlir::Value ExprBuilder::buildInverseImpl(Location loc, OpBuilder &builder,
-                                          UnaryExpr *expr) {
-  return nullptr;
-}
-
-mlir::Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder,
-                                     Expr *root) {
-  if (root) {
-    if (auto naryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
-      switch (naryExpr->getKind()) {
-      case NaryExpr::NaryExprKind::MUL:
-        return buildMulImpl(loc, builder, naryExpr);
-        break;
-      default:
-        assert(0 && "UNK");
-      }
-    }
-    if (auto unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(root)) {
-      switch (unaryExpr->getKind()) {
-      case UnaryExpr::UnaryExprKind::TRANSPOSE:
-        return buildTransposeImpl(loc, builder, unaryExpr);
-        break;
-      case UnaryExpr::UnaryExprKind::INVERSE:
-        return buildInverseImpl(loc, builder, unaryExpr);
-        break;
-      default:
-        assert(0 && "UNK");
-      }
-    }
-    if (auto operand = llvm::dyn_cast_or_null<Operand>(root)) {
-      return exprMap[operand];
-    }
-  }
-  assert(0 && "UNKN");
-  return nullptr;
-}
-
-mlir::Value ExprBuilder::buildIR(Location loc, OpBuilder &builder, Expr *root) {
-  return buildIRImpl(loc, builder, root);
-}
-
-Expr *ExprBuilder::buildExprImpl(Value val) {
-  // 'val' comes is a basic block arg or the result
-  // of a fillOp. Build operand directly.
-  if (auto blockArg = val.dyn_cast_or_null<BlockArgument>()) {
-    return buildOperandImpl(blockArg);
-  }
-  Operation *defOp = val.getDefiningOp();
-  assert(defOp && "must be valid");
-  if (auto fillOp = dyn_cast_or_null<mlir::linnea::FillOp>(defOp)) {
-    return buildOperandImpl(fillOp.result());
-  }
-  // 'val' is the result of another linnea operations, recurse
-  // untill we get a basic block arg or a result of a fillOp.
-  if (auto mulOp = dyn_cast_or_null<mlir::linnea::MulOpHigh>(defOp)) {
-    std::vector<Expr *> children;
-    for (Value operand : mulOp.getOperands()) {
-      children.push_back(buildExprImpl(operand));
-    }
-    return variadicMul(children, /*fold*/ true);
-  }
-  if (auto transOp = dyn_cast_or_null<mlir::linnea::TransposeOp>(defOp)) {
-    Expr *child = buildExprImpl(transOp.getOperand());
-    return trans(child);
-  }
-  if (auto invOp = dyn_cast_or_null<mlir::linnea::InverseOp>(defOp)) {
-    Expr *child = buildExprImpl(invOp.getOperand());
-    return inv(child);
-  }
-  llvm_unreachable("operation not handled");
-  return nullptr;
-}
-
-Expr *ExprBuilder::buildLinneaExpr(Value val) { return buildExprImpl(val); }
-
-vector<int64_t> Operand::getResultDimensions() const { return shape; }
-
-/// Return the size of the unary expr operand.
-vector<int64_t> UnaryExpr::getResultDimensions() const {
-  if (this->getKind() == UnaryExprKind::INVERSE)
-    return this->getChild()->getResultDimensions();
-  else { // transpose.
-    vector<int64_t> dims = this->getChild()->getResultDimensions();
-    assert(dims.size() == 2 && "expect two dimensions");
-    std::swap(dims[0], dims[1]);
-    return dims;
-  }
-  assert(0 && "unreachable");
-  return {};
-}
-
-/// Return the size of the nary expr operand.
-vector<int64_t> NaryExpr::getResultDimensions() const {
-  if (this->getKind() == NaryExprKind::MUL) {
-    auto children = this->getChildren();
-    assert(children.size() >= 2 && "two or more children expcted");
-    int64_t leftDim = children[0]->getResultDimensions()[0];
-    int64_t rightDim = children[children.size() - 1]->getResultDimensions()[1];
-    return {leftDim, rightDim};
-  }
-  assert(0 && "unreachable");
-}
-
-/// check if `expr` has `property`.
-template <typename T>
-bool Expr::hasProperty(T *expr, Expr::ExprProperty property) {
-  return (expr->inferredProperties).count(property) != 0;
-}
-
-/// Query each property on `expr`.
-// TODO: find a better way to have a class of properties.
-// (i.e., triangular implies square but you may also want to have multiple types
-// of triangular matrices). Passing all the properties to later conversions is
-// annoying.
-template <typename T>
-void Expr::setPropertiesImpl(T *expr) {
-  // if the lookup fails check if the expr has the given property.
-  if (!hasProperty<T>(expr, Expr::ExprProperty::GENERAL) && expr->isGeneral())
-    expr->inferredProperties.insert(Expr::ExprProperty::GENERAL);
-  if (!hasProperty<T>(expr, Expr::ExprProperty::UPPER_TRIANGULAR) &&
-      expr->isUpperTriangular())
-    expr->inferredProperties.insert(Expr::ExprProperty::UPPER_TRIANGULAR);
-  if (!hasProperty<T>(expr, Expr::ExprProperty::UPPER_TRIANGULAR) &&
-      expr->isLowerTriangular())
-    expr->inferredProperties.insert(Expr::ExprProperty::LOWER_TRIANGULAR);
-  // if (!hasProperty<T>(expr, Expr::ExprProperty::SQUARE) && expr->isSquare())
-  //  expr->inferredProperties.insert(Expr::ExprProperty::SQUARE);
-  if (!hasProperty<T>(expr, Expr::ExprProperty::SYMMETRIC) &&
-      expr->isSymmetric())
-    expr->inferredProperties.insert(Expr::ExprProperty::SYMMETRIC);
-  // if (!hasProperty<T>(expr, Expr::ExprProperty::FULL_RANK) &&
-  //    expr->isFullRank())
-  //  expr->inferredProperties.insert(Expr::ExprProperty::FULL_RANK);
-  if (!hasProperty<T>(expr, Expr::ExprProperty::SPD) && expr->isSPD())
-    expr->inferredProperties.insert(Expr::ExprProperty::SPD);
-}
-
-/// Return a vector of inferred properties by calling `setPropertiesImpl`.
-vector<Expr::ExprProperty> UnaryExpr::getAndSetProperties() {
-  vector<Expr::ExprProperty> inferredPropertiesAsVec;
-  setPropertiesImpl<UnaryExpr>(this);
-  for (auto property : inferredProperties)
-    inferredPropertiesAsVec.push_back(property);
-  return inferredPropertiesAsVec;
-}
-
-/// Return a vector of inferred properties by calling `setPropertiesImpl`.
-vector<Expr::ExprProperty> NaryExpr::getAndSetProperties() {
-  vector<Expr::ExprProperty> inferredPropertiesAsVec;
-  setPropertiesImpl<NaryExpr>(this);
-  for (auto property : inferredProperties)
-    inferredPropertiesAsVec.push_back(property);
-  return inferredPropertiesAsVec;
-}
-
-/// Return a vector of properties for the current operand.
-vector<Expr::ExprProperty> Operand::getProperties() const {
-  vector<Expr::ExprProperty> inferredPropertiesAsVec;
-  for (auto property : inferredProperties)
-    inferredPropertiesAsVec.push_back(property);
-  return inferredPropertiesAsVec;
-}
-
-ScopedContext *&ScopedContext::getCurrentScopedContext() {
-  thread_local ScopedContext *context = nullptr;
-  return context;
-}
-
-ScopedContext::~ScopedContext() {
-  for (auto expr : liveRefs)
-    delete expr;
-}
-
-/// Check if the shape is square.
-bool hasSquareShape(const vector<int64_t> &shape) {
-  assert(shape.size() >= 1 && "must be >= 1");
-  if (shape.size() == 1)
-    return true;
-  return all_of(shape.begin(), shape.end(),
-                [&](int dim) { return dim == shape[0]; });
-}
-
-Operand::Operand(string name, vector<int64_t> shape)
-    : ScopedExpr(ExprKind::OPERAND), name(name), shape(shape) {
-  if (hasSquareShape(shape))
-    this->setProperties({Expr::ExprProperty::SQUARE});
-}
-
-/// Set properties for the current operand.
-void Operand::setProperties(std::vector<Expr::ExprProperty> properties) {
-  for (auto property : properties) {
-    if (property == Expr::ExprProperty::LOWER_TRIANGULAR && !this->isSquare()) {
-      llvm::errs()
-          << "A triangular matrix is a special kind of square matrix\n";
-      continue;
-    }
-    if (property == Expr::ExprProperty::UPPER_TRIANGULAR && !this->isSquare()) {
-      llvm::errs()
-          << "A triangular matrix is a special kind of square matrix\n";
-      continue;
-    }
-    if (property == Expr::ExprProperty::SYMMETRIC && !this->isSquare()) {
-      llvm::errs() << "A symmetric matrix is a special kind of square matrix\n";
-      continue;
-    }
-    inferredProperties.insert(property);
-  }
-}
-
-void ScopedContext::print() {
-  cout << "#live refs: " << liveRefs.size() << "\n";
-  int operands = 0;
-  int unaries = 0;
-  int binaries = 0;
-  for (Expr *expr : liveRefs) {
-    if (llvm::isa<Operand>(expr))
-      operands++;
-    if (llvm::isa<UnaryExpr>(expr))
-      unaries++;
-    if (llvm::isa<NaryExpr>(expr))
-      binaries++;
-  }
-  cout << "#operands : " << operands << "\n";
-  cout << "#unaries : " << unaries << "\n";
-  cout << "#binaries : " << binaries << "\n";
-}
+//===----------------------------------------------------------------------===//
+// Utils
+//===----------------------------------------------------------------------===//
 
 /// print an array of expression properties.
 static void printProperties(vector<Expr::ExprProperty> properties) {
@@ -430,49 +68,6 @@ static void printShape(vector<int64_t> shape) {
     if (i != e - 1)
       cout << ", ";
   }
-}
-
-#define LEVEL_SPACES 2
-
-/// Walk a generic expression.
-void Expr::walk(int level) const {
-  if (auto binaryOp = llvm::dyn_cast_or_null<NaryExpr>(this)) {
-    switch (binaryOp->getKind()) {
-    case NaryExpr::NaryExprKind::MUL:
-      cout << string(level, ' ') << "(*\n";
-      break;
-    case NaryExpr::NaryExprKind::ADD:
-      cout << string(level, ' ') << "(+\n";
-      break;
-    default:
-      cout << "UNK";
-    }
-    for (const Expr *child : binaryOp->getChildren()) {
-      child->walk(level + LEVEL_SPACES);
-      cout << " \n";
-    }
-  } // binaryOp
-  if (auto unaryOp = llvm::dyn_cast_or_null<UnaryExpr>(this)) {
-    switch (unaryOp->getKind()) {
-    case UnaryExpr::UnaryExprKind::TRANSPOSE:
-      cout << string(level, ' ') << "transpose(";
-      break;
-    case UnaryExpr::UnaryExprKind::INVERSE:
-      cout << string(level, ' ') << "inverse(";
-      break;
-    default:
-      cout << "UNK";
-    }
-    unaryOp->getChild()->walk(level);
-    cout << string(level, ' ') << ")";
-  } // unaryOp
-  if (auto operand = llvm::dyn_cast_or_null<Operand>(this)) {
-    cout << string(level, ' ') << operand->getName() << " [";
-    printProperties(operand->getProperties());
-    cout << "] [";
-    printShape(operand->getShape());
-    cout << "]";
-  } // operand
 }
 
 static vector<long> getPVector(vector<Expr *> exprs) {
@@ -768,7 +363,439 @@ long Expr::getMCPFlops() {
   return m[1][m.size() - 1];
 }
 
+// TODO: we can use the same set of enums between MLIR and the side data
+// structure.
+std::vector<Expr::ExprProperty>
+convert(llvm::ArrayRef<LinneaMatrixEncodingAttr::MatrixProperty> properties) {
+  vector<Expr::ExprProperty> result;
+  for (auto property : properties) {
+    switch (property) {
+    case LinneaMatrixEncodingAttr::MatrixProperty::General:
+      result.push_back(Expr::ExprProperty::GENERAL);
+      break;
+    case LinneaMatrixEncodingAttr::MatrixProperty::FullRank:
+      result.push_back(Expr::ExprProperty::FULL_RANK);
+      break;
+    case LinneaMatrixEncodingAttr::MatrixProperty::Diagonal:
+      result.push_back(Expr::ExprProperty::DIAGONAL);
+      break;
+    case LinneaMatrixEncodingAttr::MatrixProperty::UnitDiagonal:
+      result.push_back(Expr::ExprProperty::UNIT_DIAGONAL);
+      break;
+    case LinneaMatrixEncodingAttr::MatrixProperty::LowerTriangular:
+      result.push_back(Expr::ExprProperty::LOWER_TRIANGULAR);
+      break;
+    case LinneaMatrixEncodingAttr::MatrixProperty::UpperTriangular:
+      result.push_back(Expr::ExprProperty::UPPER_TRIANGULAR);
+      break;
+    case LinneaMatrixEncodingAttr::MatrixProperty::Symmetric:
+      result.push_back(Expr::ExprProperty::SYMMETRIC);
+      break;
+    case LinneaMatrixEncodingAttr::MatrixProperty::SPD:
+      result.push_back(Expr::ExprProperty::SPD);
+      break;
+    case LinneaMatrixEncodingAttr::MatrixProperty::SPSD:
+      result.push_back(Expr::ExprProperty::SPSD);
+      break;
+    case LinneaMatrixEncodingAttr::MatrixProperty::Identity:
+      result.push_back(Expr::ExprProperty::IDENTITY);
+      break;
+    case LinneaMatrixEncodingAttr::MatrixProperty::Square:
+      result.push_back(Expr::ExprProperty::SQUARE);
+      break;
+    case LinneaMatrixEncodingAttr::MatrixProperty::Factored:
+      result.push_back(Expr::ExprProperty::FACTORED);
+      break;
+    }
+  }
+  return result;
+}
+
+llvm::SmallVector<LinneaMatrixEncodingAttr::MatrixProperty>
+convert(std::vector<Expr::ExprProperty> properties) {
+  llvm::SmallVector<LinneaMatrixEncodingAttr::MatrixProperty> result;
+  for (auto property : properties) {
+    switch (property) {
+    case Expr::ExprProperty::GENERAL:
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::General);
+      break;
+    case Expr::ExprProperty::FULL_RANK:
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::FullRank);
+      break;
+    case Expr::ExprProperty::DIAGONAL:
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Diagonal);
+      break;
+    case Expr::ExprProperty::UNIT_DIAGONAL:
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::UnitDiagonal);
+      break;
+    case Expr::ExprProperty::LOWER_TRIANGULAR:
+      result.push_back(
+          LinneaMatrixEncodingAttr::MatrixProperty::LowerTriangular);
+      break;
+    case Expr::ExprProperty::UPPER_TRIANGULAR:
+      result.push_back(
+          LinneaMatrixEncodingAttr::MatrixProperty::UpperTriangular);
+      break;
+    case Expr::ExprProperty::SYMMETRIC:
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Symmetric);
+      break;
+    case Expr::ExprProperty::SPD:
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::SPD);
+      break;
+    case Expr::ExprProperty::SPSD:
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::SPSD);
+      break;
+    case Expr::ExprProperty::IDENTITY:
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Identity);
+      break;
+    case Expr::ExprProperty::SQUARE:
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Square);
+      break;
+    case Expr::ExprProperty::FACTORED:
+      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Factored);
+      break;
+    }
+  }
+  return result;
+}
+
+//===----------------------------------------------------------------------===//
+// ExprBuilder
+//===----------------------------------------------------------------------===//
+
+Expr *ExprBuilder::buildOperandImpl(Value val) {
+  assert(val.getType().cast<MatrixType>() && "expect matrixType");
+  if (contains(val))
+    return lookup(val);
+
+  auto matrixType = val.getType().cast<MatrixType>();
+  auto properties = convert(
+      matrixType.getProperty().cast<LinneaMatrixEncodingAttr>().getEncoding());
+  auto size = matrixType.getDims();
+  std::string id = "A" + std::to_string(getNextId());
+  Expr *operand = new Operand(id, size);
+  operand->setProperties(properties);
+  // map in both directions.
+  map(val, operand);
+  map(operand, val);
+  return operand;
+}
+
+mlir::Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
+                                      NaryExpr *expr) {
+  SmallVector<Value> operands;
+  auto children = expr->getChildren();
+  for (int i = 0, e = children.size(); i < e; i++)
+    operands.push_back(buildIRImpl(loc, builder, children[i]));
+  MatrixType first = operands[0].getType().cast<MatrixType>();
+  MatrixType last = operands[operands.size() - 1].getType().cast<MatrixType>();
+  SmallVector<LinneaMatrixEncodingAttr::MatrixProperty> properties =
+      convert(expr->getAndSetProperties());
+  SmallVector<int64_t> dims = {first.getDims()[0], last.getDims()[1]};
+  MatrixType result = MatrixType::get(
+      builder.getContext(),
+      LinneaMatrixEncodingAttr::get(builder.getContext(), properties), dims,
+      first.getElementType());
+  return builder.create<MulOpLow>(loc, result, operands);
+}
+
+mlir::Value ExprBuilder::buildTransposeImpl(Location loc, OpBuilder &builder,
+                                            UnaryExpr *expr) {
+  return nullptr;
+}
+
+mlir::Value ExprBuilder::buildInverseImpl(Location loc, OpBuilder &builder,
+                                          UnaryExpr *expr) {
+  return nullptr;
+}
+
+mlir::Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder,
+                                     Expr *root) {
+  if (root) {
+    if (auto naryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
+      switch (naryExpr->getKind()) {
+      case NaryExpr::NaryExprKind::MUL:
+        return buildMulImpl(loc, builder, naryExpr);
+        break;
+      default:
+        assert(0 && "UNK");
+      }
+    }
+    if (auto unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(root)) {
+      switch (unaryExpr->getKind()) {
+      case UnaryExpr::UnaryExprKind::TRANSPOSE:
+        return buildTransposeImpl(loc, builder, unaryExpr);
+        break;
+      case UnaryExpr::UnaryExprKind::INVERSE:
+        return buildInverseImpl(loc, builder, unaryExpr);
+        break;
+      default:
+        assert(0 && "UNK");
+      }
+    }
+    if (auto operand = llvm::dyn_cast_or_null<Operand>(root)) {
+      return exprMap[operand];
+    }
+  }
+  assert(0 && "UNKN");
+  return nullptr;
+}
+
+mlir::Value ExprBuilder::buildIR(Location loc, OpBuilder &builder, Expr *root) {
+  return buildIRImpl(loc, builder, root);
+}
+
+Expr *ExprBuilder::buildExprImpl(Value val) {
+  // 'val' comes is a basic block arg or the result
+  // of a fillOp. Build operand directly.
+  if (auto blockArg = val.dyn_cast_or_null<BlockArgument>()) {
+    return buildOperandImpl(blockArg);
+  }
+  Operation *defOp = val.getDefiningOp();
+  assert(defOp && "must be valid");
+  if (auto fillOp = dyn_cast_or_null<mlir::linnea::FillOp>(defOp)) {
+    return buildOperandImpl(fillOp.result());
+  }
+  // 'val' is the result of another linnea operations, recurse
+  // untill we get a basic block arg or a result of a fillOp.
+  if (auto mulOp = dyn_cast_or_null<mlir::linnea::MulOpHigh>(defOp)) {
+    std::vector<Expr *> children;
+    for (Value operand : mulOp.getOperands()) {
+      children.push_back(buildExprImpl(operand));
+    }
+    return variadicMul(children, /*fold*/ true);
+  }
+  if (auto transOp = dyn_cast_or_null<mlir::linnea::TransposeOp>(defOp)) {
+    Expr *child = buildExprImpl(transOp.getOperand());
+    return trans(child);
+  }
+  if (auto invOp = dyn_cast_or_null<mlir::linnea::InverseOp>(defOp)) {
+    Expr *child = buildExprImpl(invOp.getOperand());
+    return inv(child);
+  }
+  llvm_unreachable("operation not handled");
+  return nullptr;
+}
+
+Expr *ExprBuilder::buildLinneaExpr(Value val) { return buildExprImpl(val); }
+
+//===----------------------------------------------------------------------===//
+// Expr
+//===----------------------------------------------------------------------===//
+
+/// check if `expr` has `property`.
+template <typename T>
+bool Expr::hasProperty(T *expr, Expr::ExprProperty property) {
+  return (expr->inferredProperties).count(property) != 0;
+}
+
+/// Query each property on `expr`.
+// TODO: find a better way to have a class of properties.
+// (i.e., triangular implies square but you may also want to have multiple types
+// of triangular matrices). Passing all the properties to later conversions is
+// annoying.
+template <typename T>
+void Expr::setPropertiesImpl(T *expr) {
+  // if the lookup fails check if the expr has the given property.
+  if (!hasProperty<T>(expr, Expr::ExprProperty::GENERAL) && expr->isGeneral())
+    expr->inferredProperties.insert(Expr::ExprProperty::GENERAL);
+  if (!hasProperty<T>(expr, Expr::ExprProperty::UPPER_TRIANGULAR) &&
+      expr->isUpperTriangular())
+    expr->inferredProperties.insert(Expr::ExprProperty::UPPER_TRIANGULAR);
+  if (!hasProperty<T>(expr, Expr::ExprProperty::UPPER_TRIANGULAR) &&
+      expr->isLowerTriangular())
+    expr->inferredProperties.insert(Expr::ExprProperty::LOWER_TRIANGULAR);
+  // if (!hasProperty<T>(expr, Expr::ExprProperty::SQUARE) && expr->isSquare())
+  //  expr->inferredProperties.insert(Expr::ExprProperty::SQUARE);
+  if (!hasProperty<T>(expr, Expr::ExprProperty::SYMMETRIC) &&
+      expr->isSymmetric())
+    expr->inferredProperties.insert(Expr::ExprProperty::SYMMETRIC);
+  // if (!hasProperty<T>(expr, Expr::ExprProperty::FULL_RANK) &&
+  //    expr->isFullRank())
+  //  expr->inferredProperties.insert(Expr::ExprProperty::FULL_RANK);
+  if (!hasProperty<T>(expr, Expr::ExprProperty::SPD) && expr->isSPD())
+    expr->inferredProperties.insert(Expr::ExprProperty::SPD);
+}
+
+#define LEVEL_SPACES 2
+
+/// Walk a generic expression.
+void Expr::walk(int level) const {
+  if (auto binaryOp = llvm::dyn_cast_or_null<NaryExpr>(this)) {
+    switch (binaryOp->getKind()) {
+    case NaryExpr::NaryExprKind::MUL:
+      cout << string(level, ' ') << "(*\n";
+      break;
+    case NaryExpr::NaryExprKind::ADD:
+      cout << string(level, ' ') << "(+\n";
+      break;
+    default:
+      cout << "UNK";
+    }
+    for (const Expr *child : binaryOp->getChildren()) {
+      child->walk(level + LEVEL_SPACES);
+      cout << " \n";
+    }
+  } // binaryOp
+  if (auto unaryOp = llvm::dyn_cast_or_null<UnaryExpr>(this)) {
+    switch (unaryOp->getKind()) {
+    case UnaryExpr::UnaryExprKind::TRANSPOSE:
+      cout << string(level, ' ') << "transpose(";
+      break;
+    case UnaryExpr::UnaryExprKind::INVERSE:
+      cout << string(level, ' ') << "inverse(";
+      break;
+    default:
+      cout << "UNK";
+    }
+    unaryOp->getChild()->walk(level);
+    cout << string(level, ' ') << ")";
+  } // unaryOp
+  if (auto operand = llvm::dyn_cast_or_null<Operand>(this)) {
+    cout << string(level, ' ') << operand->getName() << " [";
+    printProperties(operand->getProperties());
+    cout << "] [";
+    printShape(operand->getShape());
+    cout << "]";
+  } // operand
+}
+
 Expr *Expr::simplify() {
   auto p = runMCP(this);
   return p.newExpr;
+}
+
+//===----------------------------------------------------------------------===//
+// UnaryExpr
+//===----------------------------------------------------------------------===//
+
+/// Return a vector of inferred properties by calling `setPropertiesImpl`.
+vector<Expr::ExprProperty> UnaryExpr::getAndSetProperties() {
+  vector<Expr::ExprProperty> inferredPropertiesAsVec;
+  setPropertiesImpl<UnaryExpr>(this);
+  for (auto property : inferredProperties)
+    inferredPropertiesAsVec.push_back(property);
+  return inferredPropertiesAsVec;
+}
+
+/// Return the size of the unary expr operand.
+vector<int64_t> UnaryExpr::getResultDimensions() const {
+  if (this->getKind() == UnaryExprKind::INVERSE)
+    return this->getChild()->getResultDimensions();
+  else { // transpose.
+    vector<int64_t> dims = this->getChild()->getResultDimensions();
+    assert(dims.size() == 2 && "expect two dimensions");
+    std::swap(dims[0], dims[1]);
+    return dims;
+  }
+  assert(0 && "unreachable");
+  return {};
+}
+
+//===----------------------------------------------------------------------===//
+// NaryExpr
+//===----------------------------------------------------------------------===//
+
+/// Return a vector of inferred properties by calling `setPropertiesImpl`.
+vector<Expr::ExprProperty> NaryExpr::getAndSetProperties() {
+  vector<Expr::ExprProperty> inferredPropertiesAsVec;
+  setPropertiesImpl<NaryExpr>(this);
+  for (auto property : inferredProperties)
+    inferredPropertiesAsVec.push_back(property);
+  return inferredPropertiesAsVec;
+}
+
+/// Return the size of the nary expr operand.
+vector<int64_t> NaryExpr::getResultDimensions() const {
+  if (this->getKind() == NaryExprKind::MUL) {
+    auto children = this->getChildren();
+    assert(children.size() >= 2 && "two or more children expcted");
+    int64_t leftDim = children[0]->getResultDimensions()[0];
+    int64_t rightDim = children[children.size() - 1]->getResultDimensions()[1];
+    return {leftDim, rightDim};
+  }
+  assert(0 && "unreachable");
+}
+
+//===----------------------------------------------------------------------===//
+// ScopedContext
+//===----------------------------------------------------------------------===//
+
+ScopedContext *&ScopedContext::getCurrentScopedContext() {
+  thread_local ScopedContext *context = nullptr;
+  return context;
+}
+
+ScopedContext::~ScopedContext() {
+  for (auto expr : liveRefs)
+    delete expr;
+}
+
+void ScopedContext::print() {
+  cout << "#live refs: " << liveRefs.size() << "\n";
+  int operands = 0;
+  int unaries = 0;
+  int binaries = 0;
+  for (Expr *expr : liveRefs) {
+    if (llvm::isa<Operand>(expr))
+      operands++;
+    if (llvm::isa<UnaryExpr>(expr))
+      unaries++;
+    if (llvm::isa<NaryExpr>(expr))
+      binaries++;
+  }
+  cout << "#operands : " << operands << "\n";
+  cout << "#unaries : " << unaries << "\n";
+  cout << "#binaries : " << binaries << "\n";
+}
+
+//===----------------------------------------------------------------------===//
+// Operand
+//===----------------------------------------------------------------------===//
+
+/// Check if the shape is square.
+bool hasSquareShape(const vector<int64_t> &shape) {
+  assert(shape.size() >= 1 && "must be >= 1");
+  if (shape.size() == 1)
+    return true;
+  return all_of(shape.begin(), shape.end(),
+                [&](int dim) { return dim == shape[0]; });
+}
+
+Operand::Operand(string name, vector<int64_t> shape)
+    : ScopedExpr(ExprKind::OPERAND), name(name), shape(shape) {
+  if (hasSquareShape(shape))
+    this->setProperties({Expr::ExprProperty::SQUARE});
+}
+
+/// Set properties for the current operand.
+void Operand::setProperties(std::vector<Expr::ExprProperty> properties) {
+  for (auto property : properties) {
+    if (property == Expr::ExprProperty::LOWER_TRIANGULAR && !this->isSquare()) {
+      llvm::errs()
+          << "A triangular matrix is a special kind of square matrix\n";
+      continue;
+    }
+    if (property == Expr::ExprProperty::UPPER_TRIANGULAR && !this->isSquare()) {
+      llvm::errs()
+          << "A triangular matrix is a special kind of square matrix\n";
+      continue;
+    }
+    if (property == Expr::ExprProperty::SYMMETRIC && !this->isSquare()) {
+      llvm::errs() << "A symmetric matrix is a special kind of square matrix\n";
+      continue;
+    }
+    inferredProperties.insert(property);
+  }
+}
+
+/// Get the shape of the operand.
+vector<int64_t> Operand::getResultDimensions() const { return shape; }
+
+/// Return a vector of properties for the current operand.
+vector<Expr::ExprProperty> Operand::getProperties() const {
+  vector<Expr::ExprProperty> inferredPropertiesAsVec;
+  for (auto property : inferredProperties)
+    inferredPropertiesAsVec.push_back(property);
+  return inferredPropertiesAsVec;
 }
