@@ -1,19 +1,16 @@
-// RUN: standalone-opt %s --split-input-file --canonicalize | FileCheck %s
-// XFAIL: *
+// RUN: standalone-opt %s --properties-propagation --canonicalize | FileCheck %s
 
-// CHECK-LABEL: func @bar(%{{.*}}: !linnea.matrix<["square"], [32,64]>)
-func @bar(%arg0 : !linnea.matrix<["square"], [32,64]>) {
-  // CHECK: return
-  %0 = linnea.inverse %arg0 : !linnea.matrix<["square"], [32,64]> -> !linnea.matrix<["square"], [64,32]>
-  %1 = linnea.inverse %0 : !linnea.matrix<["square"],[64,32]> -> !linnea.matrix<["square"], [32,64]>
-  return
-}
-
-// -----
-
-func @bar(%A : !linnea.matrix<["square", "fullrank"], [2,2]>, %S : !linnea.matrix<["spd"], [2,2]>) -> !linnea.matrix<["spd"], [2,2]>{
-  %0 = linnea.inverse %S : !linnea.matrix<["spd"], [2,2]> -> !linnea.matrix<["spd"], [2,2]>
-  %1 = linnea.transpose %A : !linnea.matrix<["square", "fullrank"], [2,2]> -> !linnea.matrix<["square", "fullrank"], [2,2]>
-  %2 = linnea.mul %1, %0, %A : !linnea.matrix<["square", "fullrank"], [2,2]>, !linnea.matrix<["spd"], [2,2]>, !linnea.matrix<["square", "fullrank"], [2,2]> -> !linnea.matrix<["spd"], [2,2]>
-  return %2 : !linnea.matrix<["spd"], [2,2]>
+// CHECK-LABEL: @bar
+// CHECK-SAME: %[[arg0:[a-zA-Z0-9]+]]: !linnea.matrix<#linnea.property<["square"]>, [32, 32], f32>
+func @bar(%arg0 : !linnea.matrix<#linnea.property<["square"]>, [32,32], f32>) -> !linnea.term {
+  
+  %0 = linnea.equation {
+    %1 = linnea.inverse.high %arg0 : !linnea.matrix<#linnea.property<["square"]>, [32,32], f32> 
+      -> !linnea.matrix<#linnea.property<["square"]>, [32,32], f32>
+    %2 = linnea.inverse.high %1 : !linnea.matrix<#linnea.property<["square"]>,[32,32], f32> 
+      -> !linnea.term
+    linnea.yield %2 : !linnea.term
+  }
+  // CHECK: return %[[arg0:[a-zA-Z0-9]+]] : !linnea.matrix<#linnea.property<["square"]>, [32, 32], f32>
+  return %0 : !linnea.term
 }

@@ -501,12 +501,14 @@ mlir::Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
 
 mlir::Value ExprBuilder::buildTransposeImpl(Location loc, OpBuilder &builder,
                                             UnaryExpr *expr) {
+  assert(0 && "not implemented");
   return nullptr;
 }
 
 mlir::Value ExprBuilder::buildInverseImpl(Location loc, OpBuilder &builder,
                                           UnaryExpr *expr) {
-  return nullptr;
+  Value operand = buildIRImpl(loc, builder, expr->getChild());
+  return builder.create<InverseOpLow>(loc, operand.getType(), operand);
 }
 
 mlir::Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder,
@@ -569,7 +571,7 @@ Expr *ExprBuilder::buildExprImpl(Value val) {
     Expr *child = buildExprImpl(transOp.getOperand());
     return trans(child);
   }
-  if (auto invOp = dyn_cast_or_null<mlir::linnea::InverseOp>(defOp)) {
+  if (auto invOp = dyn_cast_or_null<mlir::linnea::InverseOpHigh>(defOp)) {
     Expr *child = buildExprImpl(invOp.getOperand());
     return inv(child);
   }

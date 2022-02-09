@@ -26,7 +26,8 @@ def Linnea_InitOp : Linnea_Op<"init", [NoSideEffect]> {
   let assemblyFormat = "`[` $sizes `]` attr-dict `:` type($result)";
 }
 
-def Linnea_CastToBuiltinTensorOp : Linnea_Op<"cast_to_builtin_tensor", [NoSideEffect]> {
+def Linnea_CastToBuiltinTensorOp : Linnea_Op<"cast_to_builtin_tensor", 
+                                            [NoSideEffect, SameOperandsAndResultShape]> {
   let summary = "Convert a `RankedTensorType` with a linnea attribute to a builtin `tensor`";
   let arguments = (ins AnyTensor:$input);
   let results = (outs AnyTensor:$output);
@@ -37,7 +38,8 @@ def Linnea_CastToBuiltinTensorOp : Linnea_Op<"cast_to_builtin_tensor", [NoSideEf
   let hasCanonicalizer = 1;
 }
 
-def Linnea_CastFromBuiltinTensorOp : Linnea_Op<"cast_from_builtin_tensor", [NoSideEffect]> {
+def Linnea_CastFromBuiltinTensorOp : Linnea_Op<"cast_from_builtin_tensor", 
+                                              [NoSideEffect, SameOperandsAndResultShape]> {
   let summary = "Convert a `RankedTensorType` to a `RankedTensorType` with linnea attribute";
   let arguments = (ins AnyTensor:$input);
   let results = (outs AnyTensor:$output);
@@ -46,7 +48,8 @@ def Linnea_CastFromBuiltinTensorOp : Linnea_Op<"cast_from_builtin_tensor", [NoSi
   }];
 }
 
-def Linnea_ToBuiltinTensorOp : Linnea_Op<"to_builtin_tensor"> {
+def Linnea_ToBuiltinTensorOp : Linnea_Op<"to_builtin_tensor", 
+                                        [NoSideEffect]> {
   let summary = "Convert a `LinneaSymbolicMatrix` to a builtin `tensor`";
   let arguments = (ins AnyLinneaType:$operand);
   let results = (outs AnyTensor:$result);
@@ -55,7 +58,8 @@ def Linnea_ToBuiltinTensorOp : Linnea_Op<"to_builtin_tensor"> {
   }];
 }
 
-def Linnea_FromBuiltinTensorOp : Linnea_Op<"from_builtin_tensor"> {
+def Linnea_FromBuiltinTensorOp : Linnea_Op<"from_builtin_tensor", 
+                                          [NoSideEffect]> {
   let summary = "Convert a `tensor` to a `LinneaSymbolicMatrix`";
   let arguments = (ins AnyTensor:$operand);
   let results = (outs LinneaSymbolicMatrix:$result);
@@ -64,7 +68,7 @@ def Linnea_FromBuiltinTensorOp : Linnea_Op<"from_builtin_tensor"> {
   }];
 }
 
-def Linnea_FillOp : Linnea_Op<"fill"> {
+def Linnea_FillOp : Linnea_Op<"fill", [NoSideEffect]> {
   let summary = "The `linnea.fillOp` fill a linnea container with a given value";
   let arguments = (ins
     AnyTypeOf<[AnyFloat, AnySignlessInteger]>:$value,
@@ -113,14 +117,15 @@ def Linnea_YieldOp : Linnea_Op<"yield",
   }];
 }
 
-def Linnea_InverseOp : Linnea_Op<"inverse", [HasParent<"EquationOp">]> {
-    let summary = "Add doc.";
+def Linnea_InverseOpLow : Linnea_Op<"inverse.low", [NoSideEffect]> {
+    let summary = "Compute inverse";
     let description = [{
-    
+      It is a low-level linnea operation (after property
+      propagation and can live outisde a `linnea.equation`.
     }];
 
     let arguments = (ins AnyLinneaType:$input);
-    let results = (outs LinneaTerm:$output);
+    let results = (outs AnyLinneaType:$output);
 
     let assemblyFormat = [{
       $input attr-dict `:` type($input) `->` type($output)
@@ -133,6 +138,28 @@ def Linnea_InverseOp : Linnea_Op<"inverse", [HasParent<"EquationOp">]> {
     let verifier = [{ return ::verifyInverseOp(*this); }];
 
     let hasCanonicalizer = 1;
+}
+
+def Linnea_InverseOpHigh : Linnea_Op<"inverse.high", 
+                                    [HasParent<"EquationOp">, NoSideEffect]> {
+    let summary = "Compute inverse";
+    let description = [{
+      It is an high-level linnea operation. It live
+      only within a `linnea.equation`.
+    }];
+
+    let arguments = (ins AnyLinneaType:$input);
+    let results = (outs AnyLinneaType:$output);
+
+    let assemblyFormat = [{
+      $input attr-dict `:` type($input) `->` type($output)
+    }];
+
+    let builders = [
+      OpBuilder<(ins "Value":$input)>
+    ];
+
+    let verifier = [{ return ::verifyInverseOp(*this); }];
 }
 
 def Linnea_TransposeOp : Linnea_Op<"transpose", [HasParent<"EquationOp">]> {
@@ -155,7 +182,8 @@ def Linnea_TransposeOp : Linnea_Op<"transpose", [HasParent<"EquationOp">]> {
     let verifier = [{ return ::verifyTransposeOp(*this); }];
 }
 
-def Linnea_MulOpHigh : Linnea_Op<"mul.high", [HasParent<"EquationOp">]> {
+def Linnea_MulOpHigh : Linnea_Op<"mul.high", 
+                                [HasParent<"EquationOp">, NoSideEffect]> {
     let summary = "Variadic matrix multiplication";
     let description = [{
         The `linnea.mul` represents a variadic multiplication.
@@ -185,7 +213,7 @@ def Linnea_MulOpHigh : Linnea_Op<"mul.high", [HasParent<"EquationOp">]> {
     let verifier = [{ return ::verifyMulOp(*this); }];
 }
 
-def Linnea_MulOpLow : Linnea_Op<"mul.low"> {
+def Linnea_MulOpLow : Linnea_Op<"mul.low", [NoSideEffect]> {
     let summary = "Matrix multiplication";
     let description = [{
         The `linnea.mul` represents a 2d multiplication.

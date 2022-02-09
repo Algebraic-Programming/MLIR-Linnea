@@ -109,9 +109,14 @@ static ParseResult parseFillOp(OpAsmParser &parser, OperationState &result) {
 }
 
 //===----------------------------------------------------------------------===//
-// InverseOp
+// InverseOpHigh
 //===----------------------------------------------------------------------===//
-static LogicalResult verifyInverseOp(InverseOp op) { return success(); }
+static LogicalResult verifyInverseOp(InverseOpHigh op) { return success(); }
+
+//===----------------------------------------------------------------------===//
+// InverseOpLow
+//===----------------------------------------------------------------------===//
+static LogicalResult verifyInverseOp(InverseOpLow op) { return success(); }
 
 //===----------------------------------------------------------------------===//
 // TransposeOp
@@ -151,15 +156,15 @@ static void print(OpAsmPrinter &printer, EquationOp op) {
 
 namespace {
 
-struct DoubleInverse : public OpRewritePattern<InverseOp> {
-  using OpRewritePattern<InverseOp>::OpRewritePattern;
+struct DoubleInverse : public OpRewritePattern<InverseOpLow> {
+  using OpRewritePattern<InverseOpLow>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(InverseOp op,
+  LogicalResult matchAndRewrite(InverseOpLow op,
                                 PatternRewriter &rewriter) const override {
 
     // Look the input chain of the current inverseOp.
     Value inverseInput = op.getOperand();
-    InverseOp inverseInputOp = inverseInput.getDefiningOp<InverseOp>();
+    InverseOpLow inverseInputOp = inverseInput.getDefiningOp<InverseOpLow>();
 
     // If the input comes from another transposeOp
     // simplify otherwise return.
@@ -173,7 +178,7 @@ struct DoubleInverse : public OpRewritePattern<InverseOp> {
 
 } // end namespace
 
-void InverseOp::getCanonicalizationPatterns(RewritePatternSet &results,
-                                            MLIRContext *context) {
+void InverseOpLow::getCanonicalizationPatterns(RewritePatternSet &results,
+                                               MLIRContext *context) {
   results.insert<DoubleInverse>(context);
 }
