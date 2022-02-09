@@ -1,6 +1,12 @@
 # TODO
 - linnea fillOp using assembly format (again)
+- https://docs.oracle.com/cd/E19957-01/806-3566/plug_matrices.html
 
+- API
+numpy.tril() API
+numpy.triu() API
+numpy.diag() API
+numpy.identity() API
 
 # An out-of-tree dialect template for MLIR
 
