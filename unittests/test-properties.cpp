@@ -7,7 +7,7 @@ using namespace mlir::linnea::expr;
 // must fails: a triangular matrix is a special kind of square matrix.
 TEST(Property, LowerTriangular) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 10});
+  auto *A = new Matrix("A", {20, 10});
   A->setProperties({Expr::ExprProperty::LOWER_TRIANGULAR});
   EXPECT_EQ(A->isLowerTriangular(), false);
 }
@@ -16,14 +16,14 @@ TEST(Property, LowerTriangular) {
 // transpose.
 TEST(Property, Symmetric) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 10});
+  auto *A = new Matrix("A", {20, 10});
   A->setProperties({Expr::ExprProperty::SYMMETRIC});
   EXPECT_EQ(A->isSymmetric(), false);
 }
 
 TEST(Property, TriangularInverse) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 20});
+  auto *A = new Matrix("A", {20, 20});
   A->setProperties(
       {Expr::ExprProperty::LOWER_TRIANGULAR, Expr::ExprProperty::FULL_RANK});
   auto expr = inv(A);
@@ -32,17 +32,17 @@ TEST(Property, TriangularInverse) {
 
 TEST(Property, InferPropertyWhenBuildingObj) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 20});
+  auto *A = new Matrix("A", {20, 20});
   EXPECT_EQ(A->isSquare(), true);
-  auto *B = new Operand("B", {30, 20});
+  auto *B = new Matrix("B", {30, 20});
   EXPECT_EQ(B->isSquare(), false);
 }
 
 // Any matrix congruent to a symmetric matrix is again symmetric
 TEST(Property, CongruentMul) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {30, 20});
-  auto *B = new Operand("B", {20, 20});
+  auto *A = new Matrix("A", {30, 20});
+  auto *B = new Matrix("B", {20, 20});
   B->setProperties({Expr::ExprProperty::SYMMETRIC});
   auto expr = mul(A, B, trans(A));
   EXPECT_EQ(expr->isSymmetric(), true);
@@ -51,7 +51,7 @@ TEST(Property, CongruentMul) {
 // If A is Symmetric so is A^n
 TEST(Property, SymmetricPower) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 20});
+  auto *A = new Matrix("A", {20, 20});
   A->setProperties({Expr::ExprProperty::SYMMETRIC});
   auto expr = mul(A, A, A);
   EXPECT_EQ(expr->isSymmetric(), true);
@@ -60,7 +60,7 @@ TEST(Property, SymmetricPower) {
 // If A is Lower (Upper) triangular then also A^n has the same property
 TEST(Property, TriangularPowerLower) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 20});
+  auto *A = new Matrix("A", {20, 20});
   A->setProperties({Expr::ExprProperty::LOWER_TRIANGULAR});
   auto *expr = mul(A, A, A);
   EXPECT_EQ(expr->isLowerTriangular(), true);
@@ -69,7 +69,7 @@ TEST(Property, TriangularPowerLower) {
 
 TEST(Property, TriangularPowerUpper) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 20});
+  auto *A = new Matrix("A", {20, 20});
   A->setProperties({Expr::ExprProperty::UPPER_TRIANGULAR});
   auto *expr = mul(A, A, A);
   EXPECT_EQ(expr->isUpperTriangular(), true);
@@ -79,8 +79,8 @@ TEST(Property, TriangularPowerUpper) {
 // Expect lowerTriangular as all operands of the mul are LT.
 TEST(Property, AllLowerTriangular) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 20});
-  auto *B = new Operand("B", {20, 20});
+  auto *A = new Matrix("A", {20, 20});
+  auto *B = new Matrix("B", {20, 20});
   A->setProperties({Expr::ExprProperty::LOWER_TRIANGULAR});
   B->setProperties({Expr::ExprProperty::LOWER_TRIANGULAR});
   auto expr = mul(A, B, A);
@@ -92,9 +92,9 @@ TEST(Property, AllLowerTriangular) {
 // triangular matrix.
 TEST(Property, PropagationRulesUpperTimesUpper) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 20});
+  auto *A = new Matrix("A", {20, 20});
   A->setProperties({Expr::ExprProperty::UPPER_TRIANGULAR});
-  auto *B = new Operand("B", {20, 20});
+  auto *B = new Matrix("B", {20, 20});
   B->setProperties({Expr::ExprProperty::UPPER_TRIANGULAR});
   auto *M = mul(A, B);
   EXPECT_EQ(M->isUpperTriangular(), true);
@@ -102,9 +102,9 @@ TEST(Property, PropagationRulesUpperTimesUpper) {
 
 TEST(Property, PropagationRulesLowerTimesLower) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 20});
+  auto *A = new Matrix("A", {20, 20});
   A->setProperties({Expr::ExprProperty::LOWER_TRIANGULAR});
-  auto *B = new Operand("B", {20, 20});
+  auto *B = new Matrix("B", {20, 20});
   B->setProperties({Expr::ExprProperty::LOWER_TRIANGULAR});
   auto aTimesB = mul(A, B);
   EXPECT_EQ(aTimesB->isLowerTriangular(), true);
@@ -118,7 +118,7 @@ TEST(Property, PropagationRulesLowerTimesLower) {
 // triangular matrix.
 TEST(Property, PropagationRulesTransposeUpper) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 20});
+  auto *A = new Matrix("A", {20, 20});
   A->setProperties({Expr::ExprProperty::UPPER_TRIANGULAR});
   auto T = trans(A);
   EXPECT_EQ(T->isLowerTriangular(), true);
@@ -126,7 +126,7 @@ TEST(Property, PropagationRulesTransposeUpper) {
 
 TEST(Property, PropagationRulesTransposeLower) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 20});
+  auto *A = new Matrix("A", {20, 20});
   A->setProperties({Expr::ExprProperty::LOWER_TRIANGULAR});
   auto T = trans(A);
   EXPECT_EQ(T->isUpperTriangular(), true);
@@ -134,7 +134,7 @@ TEST(Property, PropagationRulesTransposeLower) {
 
 TEST(Property, PropagationRulesTransposeMultipleTimes) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 20});
+  auto *A = new Matrix("A", {20, 20});
   A->setProperties({Expr::ExprProperty::UPPER_TRIANGULAR});
   auto T = trans(trans(A));
   EXPECT_EQ(T->isUpperTriangular(), true);
@@ -144,7 +144,7 @@ TEST(Property, PropagationRulesTransposeMultipleTimes) {
 
 TEST(Property, PropagationRulesIsFullRank) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 20});
+  auto *A = new Matrix("A", {20, 20});
   A->setProperties({Expr::ExprProperty::FULL_RANK});
   auto T = trans(A);
   EXPECT_EQ(T->isFullRank(), true);
@@ -156,7 +156,7 @@ TEST(Property, PropagationRulesIsFullRank) {
 
 TEST(Property, PropagationRulesIsSPD) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 20});
+  auto *A = new Matrix("A", {20, 20});
   A->setProperties({Expr::ExprProperty::FULL_RANK});
   auto SPD = mul(trans(A), A);
   EXPECT_EQ(SPD->isSPD(), true);
@@ -164,7 +164,7 @@ TEST(Property, PropagationRulesIsSPD) {
 
 TEST(Property, SymmetricInverse) {
   ScopedContext ctx;
-  auto *A = new Operand("A", {20, 20});
+  auto *A = new Matrix("A", {20, 20});
   A->setProperties(
       {Expr::ExprProperty::SYMMETRIC, Expr::ExprProperty::FULL_RANK});
   auto expr = inv(A);

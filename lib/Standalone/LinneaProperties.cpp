@@ -81,8 +81,6 @@ bool UnaryExpr::isSquare() const {
   case UnaryExprKind::TRANSPOSE:
   case UnaryExprKind::INVERSE:
     return child->isSquare();
-  default:
-    assert(0 && "UNK");
   }
   return false;
 }

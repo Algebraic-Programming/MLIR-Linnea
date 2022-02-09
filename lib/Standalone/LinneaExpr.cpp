@@ -473,7 +473,7 @@ Expr *ExprBuilder::buildOperandImpl(Value val) {
       matrixType.getProperty().cast<LinneaMatrixEncodingAttr>().getEncoding());
   auto size = matrixType.getDims();
   std::string id = "A" + std::to_string(getNextId());
-  Expr *operand = new Operand(id, size);
+  Expr *operand = new Matrix(id, size);
   operand->setProperties(properties);
   // map in both directions.
   map(val, operand);
@@ -762,8 +762,8 @@ bool hasSquareShape(const vector<int64_t> &shape) {
                 [&](int dim) { return dim == shape[0]; });
 }
 
-Operand::Operand(string name, vector<int64_t> shape)
-    : ScopedExpr(ExprKind::OPERAND), name(name), shape(shape) {
+Operand::Operand(string name, vector<int64_t> shape, ExprKind kind)
+    : ScopedExpr(kind), name(name), shape(shape) {
   if (hasSquareShape(shape))
     this->setProperties({Expr::ExprProperty::SQUARE});
 }
@@ -798,4 +798,13 @@ vector<Expr::ExprProperty> Operand::getProperties() const {
   for (auto property : inferredProperties)
     inferredPropertiesAsVec.push_back(property);
   return inferredPropertiesAsVec;
+}
+
+//===----------------------------------------------------------------------===//
+// Matrix
+//===----------------------------------------------------------------------===//
+
+Matrix::Matrix(string name, vector<int64_t> shape)
+    : Operand(name, shape, ExprKind::MATRIX) {
+  assert(shape.size() == 2 && "expect shape of size 2");
 }

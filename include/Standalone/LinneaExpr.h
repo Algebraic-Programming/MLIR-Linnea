@@ -49,7 +49,7 @@ private:
 /// Generic expr of type BINARY, UNARY or OPERAND.
 class Expr {
 public:
-  enum class ExprKind { BINARY, UNARY, OPERAND, NARY };
+  enum class ExprKind { BINARY, UNARY, MATRIX, NARY };
   enum class ExprProperty {
     GENERAL,
     FACTORED,
@@ -94,7 +94,7 @@ public:
   // get result dimension.
   virtual std::vector<int64_t> getResultDimensions() const = 0;
 
-  // properties.
+  // query properties.
   virtual bool isUpperTriangular() const = 0;
   virtual bool isLowerTriangular() const = 0;
   virtual bool isSquare() const = 0;
@@ -116,7 +116,7 @@ protected:
   Expr(ExprKind kind) : kind(kind), inferredProperties({}){};
 };
 
-/// ScopedExpr
+/// ScopedExpr to automatically manage allocation/deallocation.
 template <class T>
 class ScopedExpr : public Expr {
 
@@ -159,7 +159,7 @@ public:
   // return the children.
   std::vector<Expr *> getChildren() const { return children; }
 
-  // properties.
+  // query properties.
   bool isUpperTriangular() const override;
   bool isLowerTriangular() const override;
   bool isSquare() const override;
@@ -203,7 +203,7 @@ public:
   // return the only child.
   Expr *getChild() const { return child; };
 
-  // properties.
+  // query properties.
   bool isSquare() const override;
   bool isSymmetric() const override;
   bool isUpperTriangular() const override;
@@ -229,7 +229,7 @@ private:
 
 public:
   Operand() = delete;
-  Operand(std::string name, std::vector<int64_t> shape);
+  Operand(std::string name, std::vector<int64_t> shape, ExprKind kind);
   std::string getName() const { return name; };
   std::vector<int64_t> getShape() const { return shape; };
 
@@ -244,7 +244,7 @@ public:
   // get the dimensionality of the ouput for the current expression.
   std::vector<int64_t> getResultDimensions() const override;
 
-  // properties
+  // query properties.
   bool isUpperTriangular() const override;
   bool isLowerTriangular() const override;
   bool isSquare() const override;
@@ -254,11 +254,26 @@ public:
   bool isFactored() const override;
   bool isGeneral() const override;
 
+  // TODO: extend this if needed when needed (i.e., once vector or scalar are
+  // added).
   static bool classof(const Expr *expr) {
-    return expr->getKind() == ExprKind::OPERAND;
+    return expr->getKind() == ExprKind::MATRIX;
   };
 };
 
+/// Matrix operand.
+class Matrix : public Operand {
+public:
+  Matrix() = delete;
+  Matrix(std::string name, std::vector<int64_t> shape);
+
+  static bool classof(const Expr *expr) {
+    return expr->getKind() == ExprKind::MATRIX;
+  };
+};
+
+/// Helper class to translate from our internal representation
+/// to MLIR IR and vice versa.
 class ExprBuilder {
 private:
   static thread_local int operandId;
