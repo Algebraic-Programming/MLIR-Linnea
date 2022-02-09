@@ -3,7 +3,7 @@ name: Build and test
 on: [push, pull_request]
 
 env:
-  LLVM_COMMIT: 64b918852c09db6461d4c4c97df288c7b7fee865
+  LLVM_COMMIT: 0d4b6f1f4b7b5f20698aae42a616b1bb3e18ef85
   CMAKE_FLAGS: '-DCMAKE_LINKER=lld -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DMLIR_DIR=$GITHUB_WORKSPACE/llvm-project/prefix/lib/cmake/mlir/ -DLLVM_DIR=$GITHUB_WORKSPACE/llvm-project/prefix/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=$GITHUB_WORKSPACE/llvm-project/build/bin/llvm-lit'
 
 jobs:
