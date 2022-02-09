@@ -762,8 +762,8 @@ bool hasSquareShape(const vector<int64_t> &shape) {
                 [&](int dim) { return dim == shape[0]; });
 }
 
-Operand::Operand(string name, vector<int64_t> shape, ExprKind kind)
-    : ScopedExpr(kind), name(name), shape(shape) {
+Operand::Operand(string name, vector<int64_t> shape, OperandKind kind)
+    : ScopedExpr(ExprKind::OPERAND), name(name), shape(shape), kind(kind) {
   if (hasSquareShape(shape))
     this->setProperties({Expr::ExprProperty::SQUARE});
 }
@@ -804,7 +804,14 @@ vector<Expr::ExprProperty> Operand::getProperties() const {
 // Matrix
 //===----------------------------------------------------------------------===//
 
-Matrix::Matrix(string name, vector<int64_t> shape)
-    : Operand(name, shape, ExprKind::MATRIX) {
+Matrix::Matrix(string name, vector<int64_t> shape, MatrixKind kind)
+    : Operand(name, shape, OperandKind::MATRIX), kind(kind) {
   assert(shape.size() == 2 && "expect shape of size 2");
 }
+
+//===----------------------------------------------------------------------===//
+// Identity
+//===----------------------------------------------------------------------===//
+
+Identity::Identity(vector<int64_t> shape)
+    : Matrix("I", shape, MatrixKind::IDENTITY) {}

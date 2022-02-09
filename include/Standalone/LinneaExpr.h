@@ -49,7 +49,7 @@ private:
 /// Generic expr of type BINARY, UNARY or OPERAND.
 class Expr {
 public:
-  enum class ExprKind { BINARY, UNARY, MATRIX, NARY };
+  enum class ExprKind { BINARY, UNARY, OPERAND, NARY };
   enum class ExprProperty {
     GENERAL,
     FACTORED,
@@ -223,15 +223,20 @@ public:
 
 /// Generic operand (i.e., matrix or vector).
 class Operand : public ScopedExpr<Operand> {
+public:
+  enum class OperandKind { MATRIX };
+
 private:
   std::string name;
   std::vector<int64_t> shape;
+  OperandKind kind;
 
 public:
   Operand() = delete;
-  Operand(std::string name, std::vector<int64_t> shape, ExprKind kind);
+  Operand(std::string name, std::vector<int64_t> shape, OperandKind kind);
   std::string getName() const { return name; };
   std::vector<int64_t> getShape() const { return shape; };
+  OperandKind getKind() const { return kind; };
 
   std::vector<Expr::ExprProperty> getProperties() const;
 
@@ -254,22 +259,44 @@ public:
   bool isFactored() const override;
   bool isGeneral() const override;
 
-  // TODO: extend this if needed when needed (i.e., once vector or scalar are
-  // added).
   static bool classof(const Expr *expr) {
-    return expr->getKind() == ExprKind::MATRIX;
+    return expr->getKind() == ExprKind::OPERAND;
   };
 };
 
 /// Matrix operand.
 class Matrix : public Operand {
 public:
+  enum class MatrixKind { GENERAL, IDENTITY };
+
   Matrix() = delete;
-  Matrix(std::string name, std::vector<int64_t> shape);
+  Matrix(std::string name, std::vector<int64_t> shape,
+         MatrixKind kind = MatrixKind::GENERAL);
+  MatrixKind getKind() const { return kind; };
 
   static bool classof(const Expr *expr) {
-    return expr->getKind() == ExprKind::MATRIX;
+    if (const Operand *op = llvm::dyn_cast_or_null<Operand>(expr))
+      if (op->getKind() == OperandKind::MATRIX)
+        return true;
+    return false;
   };
+
+private:
+  MatrixKind kind;
+};
+
+/// Identity.
+class Identity : public Matrix {
+public:
+  Identity() = delete;
+  Identity(std::vector<int64_t> shape);
+
+  static bool classof(const Expr *expr) {
+    if (const Matrix *m = llvm::dyn_cast_or_null<Matrix>(expr))
+      if (m->getKind() == MatrixKind::IDENTITY)
+        return true;
+    return false;
+  }
 };
 
 /// Helper class to translate from our internal representation
