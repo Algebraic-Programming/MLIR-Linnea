@@ -186,7 +186,7 @@ def Linnea_MulOpHigh : Linnea_Op<"mul.high",
                                 [HasParent<"EquationOp">, NoSideEffect]> {
     let summary = "Variadic matrix multiplication";
     let description = [{
-        The `linnea.mul` represents a variadic multiplication.
+        The `linnea.mul.high` represents a variadic multiplication.
         It is an high-level linnea operation which must be nested within
         a linnea.equation operation.
 
@@ -216,7 +216,7 @@ def Linnea_MulOpHigh : Linnea_Op<"mul.high",
 def Linnea_MulOpLow : Linnea_Op<"mul.low", [NoSideEffect]> {
     let summary = "Matrix multiplication";
     let description = [{
-        The `linnea.mul` represents a 2d multiplication.
+        The `linnea.mul.low` represents a 2d multiplication.
         It is an low-level linnea operation ready to be converted
         1:1 with linalg.generic.
 
@@ -241,6 +241,65 @@ def Linnea_MulOpLow : Linnea_Op<"mul.low", [NoSideEffect]> {
     let verifier = [{ return ::verifyMulOp(*this); }];
 
     let hasCanonicalizer = 1;
+}
+
+def Linnea_AddOpHigh : Linnea_Op<"add.high", 
+                                [HasParent<"EquationOp">, NoSideEffect]> {
+    let summary = "Variadic matrix addition";
+    let description = [{
+        The `linnea.add.high` represents a variadic addition.
+        It is an high-level linnea operation which must be nested within
+        a linnea.equation operation.
+
+        Example:
+
+        ```mlir
+        { // linnea.equation
+          %2 = linnea.add %0, %1, %2 : (...)
+        } // end linnea.equation
+        ```
+    }];
+
+    let arguments = (ins Variadic<AnyLinneaType>:$input);
+    let results = (outs AnyLinneaType:$output);
+
+    let assemblyFormat = [{
+      $input attr-dict `:` type($input) `->` type($output)
+    }];
+
+    let builders = [
+      OpBuilder<(ins "ValueRange":$input)>
+    ];
+
+    let verifier = [{ return ::verifyAddOp(*this); }];
+}
+
+def Linnea_AddOpLow : Linnea_Op<"add.low", [NoSideEffect]> {
+    let summary = "Matrix addition";
+    let description = [{
+        The `linnea.add.low` represents a 2d addition.
+        It is an low-level linnea operation ready to be converted
+        1:1 with linalg.generic.
+
+        Example:
+
+        ```mlir
+          %2 = linnea.mul %0, %1 : (...)
+        ```
+    }];
+
+    let arguments = (ins AnyLinneaType:$left, AnyLinneaType:$right);
+    let results = (outs AnyLinneaType:$output);
+
+    let assemblyFormat = [{
+      $left `,` $right attr-dict `:` type($left) `,` type($right) `->` type($output)
+    }];
+
+    let builders = [
+      OpBuilder<(ins "ValueRange":$input)>
+    ];
+
+    let verifier = [{ return ::verifyAddOp(*this); }];
 }
 
 #endif // LINNEA_OPS

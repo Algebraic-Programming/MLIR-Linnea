@@ -130,6 +130,12 @@ static LogicalResult verifyMulOp(MulOpHigh op) { return success(); }
 static LogicalResult verifyMulOp(MulOpLow op) { return success(); }
 
 //===----------------------------------------------------------------------===//
+// AddOp (low/high)
+//===----------------------------------------------------------------------===//
+static LogicalResult verifyAddOp(AddOpHigh op) { return success(); }
+static LogicalResult verifyAddOp(AddOpLow op) { return success(); }
+
+//===----------------------------------------------------------------------===//
 // EquationOp
 //===----------------------------------------------------------------------===//
 static ParseResult parseEquationOp(OpAsmParser &parser,
