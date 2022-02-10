@@ -24,6 +24,9 @@ def LinneaTerm : Linnea_Type<"Term"> {
   }];
 }
 
+// TODO: Make this more modular. In some way LinneaSymbolicMatrixIdentity
+// should derive from LinneaSymbolicMatrix.  See shapedType in MLIR.
+
 def LinneaSymbolicMatrixIdentity : Linnea_Type<"Identity"> {
   let mnemonic = "identity";
   
