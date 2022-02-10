@@ -15,6 +15,7 @@
 #include <iostream>
 #include <limits>
 
+using namespace mlir;
 using namespace mlir::linnea::expr;
 using namespace mlir::linnea;
 using namespace std;
@@ -492,7 +493,7 @@ Expr *ExprBuilder::buildOperandImpl(Value val) {
   return operand;
 }
 
-static mlir::Type getElementType(mlir::Type t) {
+static Type getElementType(Type t) {
   if (auto mt = t.dyn_cast_or_null<MatrixType>()) {
     return mt.getElementType();
   }
@@ -502,7 +503,7 @@ static mlir::Type getElementType(mlir::Type t) {
   llvm_unreachable("expect only MatrixType or IdentityType");
 }
 
-static int64_t getDimSizeAtPos(mlir::Type t, size_t pos) {
+static int64_t getDimSizeAtPos(Type t, size_t pos) {
   if (auto mt = t.dyn_cast_or_null<MatrixType>()) {
     assert(pos < mt.getDims().size());
     return mt.getDims()[pos];
@@ -514,8 +515,8 @@ static int64_t getDimSizeAtPos(mlir::Type t, size_t pos) {
   llvm_unreachable("expect only MatrixType or IdentityType");
 }
 
-mlir::Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
-                                      NaryExpr *expr) {
+Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
+                                NaryExpr *expr) {
   SmallVector<Value> operands;
   auto children = expr->getChildren();
   for (int i = 0, e = children.size(); i < e; i++)
@@ -533,20 +534,19 @@ mlir::Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
   return builder.create<MulOpLow>(loc, result, operands);
 }
 
-mlir::Value ExprBuilder::buildTransposeImpl(Location loc, OpBuilder &builder,
-                                            UnaryExpr *expr) {
+Value ExprBuilder::buildTransposeImpl(Location loc, OpBuilder &builder,
+                                      UnaryExpr *expr) {
   assert(0 && "not implemented");
   return nullptr;
 }
 
-mlir::Value ExprBuilder::buildInverseImpl(Location loc, OpBuilder &builder,
-                                          UnaryExpr *expr) {
+Value ExprBuilder::buildInverseImpl(Location loc, OpBuilder &builder,
+                                    UnaryExpr *expr) {
   Value operand = buildIRImpl(loc, builder, expr->getChild());
   return builder.create<InverseOpLow>(loc, operand.getType(), operand);
 }
 
-mlir::Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder,
-                                     Expr *root) {
+Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder, Expr *root) {
   if (root) {
     if (auto naryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
       switch (naryExpr->getKind()) {
@@ -577,7 +577,7 @@ mlir::Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder,
   return nullptr;
 }
 
-mlir::Value ExprBuilder::buildIR(Location loc, OpBuilder &builder, Expr *root) {
+Value ExprBuilder::buildIR(Location loc, OpBuilder &builder, Expr *root) {
   return buildIRImpl(loc, builder, root);
 }
 
@@ -589,23 +589,23 @@ Expr *ExprBuilder::buildExprImpl(Value val) {
   }
   Operation *defOp = val.getDefiningOp();
   assert(defOp && "must be valid");
-  if (auto fillOp = dyn_cast_or_null<mlir::linnea::FillOp>(defOp)) {
+  if (auto fillOp = dyn_cast_or_null<linnea::FillOp>(defOp)) {
     return buildOperandImpl(fillOp.result());
   }
   // 'val' is the result of another linnea operations, recurse
   // untill we get a basic block arg or a result of a fillOp.
-  if (auto mulOp = dyn_cast_or_null<mlir::linnea::MulOpHigh>(defOp)) {
+  if (auto mulOp = dyn_cast_or_null<linnea::MulOpHigh>(defOp)) {
     std::vector<Expr *> children;
     for (Value operand : mulOp.getOperands()) {
       children.push_back(buildExprImpl(operand));
     }
     return variadicMul(children, /*fold*/ true);
   }
-  if (auto transOp = dyn_cast_or_null<mlir::linnea::TransposeOp>(defOp)) {
+  if (auto transOp = dyn_cast_or_null<linnea::TransposeOp>(defOp)) {
     Expr *child = buildExprImpl(transOp.getOperand());
     return trans(child);
   }
-  if (auto invOp = dyn_cast_or_null<mlir::linnea::InverseOpHigh>(defOp)) {
+  if (auto invOp = dyn_cast_or_null<linnea::InverseOpHigh>(defOp)) {
     Expr *child = buildExprImpl(invOp.getOperand());
     return inv(child);
   }
