@@ -10,6 +10,7 @@
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaPasses.h"
 #include "Standalone/LinneaUtils.h"
+#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
 #include "mlir/Dialect/Linalg/Passes.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
@@ -56,7 +57,8 @@ static Value constantZero(OpBuilder &builder, Location loc, Type tp) {
 }
 
 static void buildLoopNestTriangularImpl(PatternRewriter &rewriter,
-                                        linalg::FillOp op, Value destMemRef) {
+                                        linalg::FillOp op, Value destMemRef,
+                                        arith::CmpIPredicate predicate) {
   RankedTensorType outputTensor =
       op.output().getType().cast<RankedTensorType>();
   Location loc = op->getLoc();
@@ -82,8 +84,8 @@ static void buildLoopNestTriangularImpl(PatternRewriter &rewriter,
             b.create<arith::IndexCastOp>(loc, b.getI64Type(), localIvs[0]);
         Value innerLoopIvCast =
             b.create<arith::IndexCastOp>(loc, b.getI64Type(), localIvs[1]);
-        Value cond = b.create<arith::CmpIOp>(loc, arith::CmpIPredicate::sge,
-                                             outerLoopIvCast, innerLoopIvCast);
+        Value cond = b.create<arith::CmpIOp>(loc, predicate, outerLoopIvCast,
+                                             innerLoopIvCast);
         auto ifOp = b.create<scf::IfOp>(loc, cond,
                                         /*hasElseRegion*/ true);
         b.setInsertionPointToStart(&ifOp.getThenRegion().front());
@@ -101,7 +103,15 @@ static void buildLoopNest(PatternRewriter &rewriter, linalg::FillOp op,
   if (encoding.size() == 1 &&
       encoding[0] ==
           LinneaMatrixEncodingAttr::MatrixProperty::LowerTriangular) {
-    buildLoopNestTriangularImpl(rewriter, op, destMemRef);
+    buildLoopNestTriangularImpl(rewriter, op, destMemRef,
+                                arith::CmpIPredicate::sge);
+    return;
+  }
+  if (encoding.size() == 1 &&
+      encoding[0] ==
+          LinneaMatrixEncodingAttr::MatrixProperty::UpperTriangular) {
+    buildLoopNestTriangularImpl(rewriter, op, destMemRef,
+                                arith::CmpIPredicate::sle);
     return;
   }
   buildLoopNestImpl(rewriter, op, destMemRef);

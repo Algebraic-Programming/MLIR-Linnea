@@ -64,9 +64,15 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
   RankedTensorType outputType =
       typeConverter->convertType(results[0].getType()).cast<RankedTensorType>();
 
+  // Materialize result.
   Value buffer = rewriter.create<linalg::InitTensorOp>(
       loc, outputType, ArrayRef<Value>({}),
       rewriter.getI64ArrayAttr(outputType.getShape()));
+
+  // Fill result buffer with 0.
+  Attribute resultZeroAttr = rewriter.getZeroAttr(outputType.getElementType());
+  Value zero = rewriter.create<arith::ConstantOp>(loc, resultZeroAttr);
+  buffer = rewriter.create<linalg::FillOp>(loc, zero, buffer).getResult(0);
 
   return rewriter
       .create<linalg::MatmulOp>(loc, TypeRange{outputType},
