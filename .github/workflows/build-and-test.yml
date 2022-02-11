@@ -30,8 +30,6 @@ jobs:
         uses: actions/checkout@v2
         with:
           path: 'mlir-standalone-template'
-      - name: Install GTEST
-        run: sudo apt-get install libgtest-dev && cd /usr/src/googletest && sudo cmake CMakeLists.txt && sudo make install 
       - name: Cache LLVM
         id: cache-llvm
         uses: actions/cache@v2
