@@ -560,8 +560,6 @@ Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder, Expr *root) {
       case UnaryExpr::UnaryExprKind::INVERSE:
         return buildInverseImpl(loc, builder, unaryExpr);
         break;
-      default:
-        assert(0 && "UNK");
       }
     }
     if (auto operand = llvm::dyn_cast_or_null<Operand>(root)) {
@@ -660,8 +658,6 @@ void Expr::walk(int level) const {
     case NaryExpr::NaryExprKind::ADD:
       cout << string(level, ' ') << "(+\n";
       break;
-    default:
-      cout << "UNK";
     }
     for (const Expr *child : binaryOp->getChildren()) {
       child->walk(level + LEVEL_SPACES);
@@ -676,8 +672,6 @@ void Expr::walk(int level) const {
     case UnaryExpr::UnaryExprKind::INVERSE:
       cout << string(level, ' ') << "inverse(";
       break;
-    default:
-      cout << "UNK";
     }
     unaryOp->getChild()->walk(level);
     cout << string(level, ' ') << ")";
