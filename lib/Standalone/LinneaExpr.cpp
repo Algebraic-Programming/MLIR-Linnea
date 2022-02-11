@@ -519,6 +519,7 @@ Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
                                 NaryExpr *expr) {
   SmallVector<Value> operands;
   auto children = expr->getChildren();
+  assert(children.size() == 2 && "expect two children");
   for (int i = 0, e = children.size(); i < e; i++)
     operands.push_back(buildIRImpl(loc, builder, children[i]));
   SmallVector<LinneaMatrixEncodingAttr::MatrixProperty> properties =
