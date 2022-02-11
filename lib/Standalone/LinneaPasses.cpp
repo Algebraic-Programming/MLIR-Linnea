@@ -14,6 +14,7 @@
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/Pass/Pass.h"
 #include "llvm/Support/Debug.h"
+#include <stack>
 
 using namespace mlir;
 using namespace mlir::linnea;
@@ -56,20 +57,38 @@ static FunctionType getFunctionType(FuncOp funcOp, TypeRange argumentTypes,
 void LinneaPropertyPropagation::runOnOperation() {
   ModuleOp module = getOperation();
   SmallVector<Operation *> toErase;
-  WalkResult res = module.walk([&](EquationOp eqOp) -> WalkResult {
-    // get terminator. Start building expression terms from the yield op.
-    Region &region = eqOp.getBody();
-    Operation *terminator = region.front().getTerminator();
-    Value termOperand = terminator->getOperand(0);
 
-    {
-      using namespace mlir::linnea::expr;
-      ScopedContext ctx;
-      ExprBuilder exprBuilder;
+  std::stack<EquationOp> frontier;
+  module.walk([&](EquationOp eqOp) { frontier.push(eqOp); });
+
+  if (frontier.empty())
+    return;
+
+  {
+    using namespace mlir::linnea::expr;
+    ScopedContext ctx;
+    ExprBuilder exprBuilder;
+
+    while (!frontier.empty()) {
+      EquationOp eqOp = frontier.top();
+      frontier.pop();
+
+      if (exprBuilder.isAlreadyVisited(eqOp)) {
+        if (eqOp->hasOneUse()) {
+          toErase.push_back(eqOp);
+          continue;
+        }
+        eqOp->emitError("Nested equation op must have a single use");
+        return;
+      }
+
+      Region &region = eqOp.getBody();
+      Operation *terminator = region.front().getTerminator();
+      Value termOperand = terminator->getOperand(0);
       Expr *root = exprBuilder.buildLinneaExpr(termOperand);
 
-      // simplify the expression.
       root = root->simplify();
+      // root->walk();
       LLVM_DEBUG(DBGS() << "Simplified expression: \n"; root->walk(););
 
       OpBuilder builder(eqOp->getContext());
@@ -80,18 +99,11 @@ void LinneaPropertyPropagation::runOnOperation() {
       resultEqOp.replaceAllUsesWith(rootVal);
       toErase.push_back(eqOp);
     }
-
-    return WalkResult::advance();
-  });
-
-  if (res.wasInterrupted()) {
-    signalPassFailure();
-    return;
   }
 
   // adjust at function boundaries.
   // TODO: fix also callee as in comprehensive bufferization pass.
-  res = module.walk([](FuncOp funcOp) -> WalkResult {
+  WalkResult res = module.walk([](FuncOp funcOp) -> WalkResult {
     if (!llvm::any_of(funcOp.getType().getInputs(), isaLinneaTerm) &&
         !llvm::any_of(funcOp.getType().getResults(), isaLinneaTerm))
       return WalkResult::advance();

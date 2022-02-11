@@ -602,6 +602,12 @@ Expr *ExprBuilder::buildExprImpl(Value val) {
     Expr *child = buildExprImpl(invOp.getOperand());
     return inv(child);
   }
+  if (auto eqOp = dyn_cast_or_null<linnea::EquationOp>(defOp)) {
+    Region &region = eqOp.getBody();
+    Operation *terminator = region.front().getTerminator();
+    visited.insert(eqOp.getOperation());
+    return buildExprImpl(terminator->getOperand(0));
+  }
   llvm_unreachable("operation not handled");
   return nullptr;
 }

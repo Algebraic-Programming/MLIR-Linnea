@@ -51,7 +51,7 @@ inline Expr *inv(Expr *child) {
 }
 
 inline Expr *trans(Expr *child) {
-  return unaryExpr<UnaryExpr::UnaryExpr::UnaryExprKind::TRANSPOSE>(child);
+  return unaryExpr<UnaryExpr::UnaryExprKind::TRANSPOSE>(child);
 }
 
 } // end namespace expr.

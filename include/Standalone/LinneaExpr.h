@@ -320,6 +320,9 @@ private:
   // map from expr to value.
   llvm::DenseMap<Expr *, Value> exprMap;
 
+  // already visited equation operations.
+  llvm::DenseSet<Operation *> visited;
+
   // return the next id for the operand.
   int getNextId() { return operandId++; };
 
@@ -330,13 +333,12 @@ private:
   Expr *buildOperandImpl(mlir::Value type);
 
   // build mul/transpose/inverse.
-  mlir::Value buildIRImpl(Location loc, OpBuilder &builder, Expr *root);
-  mlir::Value buildMulImpl(Location loc, OpBuilder &builder, NaryExpr *expr);
-  mlir::Value buildTransposeImpl(Location loc, OpBuilder &builder,
-                                 UnaryExpr *expr);
-  mlir::Value buildInverseImpl(Location loc, OpBuilder &builder,
-                               UnaryExpr *expr);
+  Value buildIRImpl(Location loc, OpBuilder &builder, Expr *root);
+  Value buildMulImpl(Location loc, OpBuilder &builder, NaryExpr *expr);
+  Value buildTransposeImpl(Location loc, OpBuilder &builder, UnaryExpr *expr);
+  Value buildInverseImpl(Location loc, OpBuilder &builder, UnaryExpr *expr);
 
+public:
   // map 'from' to 'to'.
   void map(Value from, Expr *to) { valueMap[from] = to; };
   void map(Expr *from, Value to) { exprMap[from] = to; };
@@ -344,6 +346,7 @@ private:
   // check if 'from' is available in valueMap.
   bool contains(Value from) const { return valueMap.count(from); };
   bool contains(Expr *from) const { return exprMap.count(from); };
+  bool isAlreadyVisited(Operation *op) { return visited.count(op); };
 
   // return value given 'from' key (must be available).
   Expr *lookup(Value from) {
@@ -355,9 +358,8 @@ private:
     return exprMap[from];
   }
 
-public:
   Expr *buildLinneaExpr(mlir::Value value);
-  mlir::Value buildIR(Location loc, OpBuilder &builder, Expr *root);
+  Value buildIR(Location loc, OpBuilder &builder, Expr *root);
 
   ExprBuilder() = default;
 };
