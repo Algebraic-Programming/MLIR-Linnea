@@ -398,9 +398,6 @@ convert(llvm::ArrayRef<LinneaMatrixEncodingAttr::MatrixProperty> properties) {
     case LinneaMatrixEncodingAttr::MatrixProperty::SPSD:
       result.push_back(Expr::ExprProperty::SPSD);
       break;
-    case LinneaMatrixEncodingAttr::MatrixProperty::Identity:
-      result.push_back(Expr::ExprProperty::IDENTITY);
-      break;
     case LinneaMatrixEncodingAttr::MatrixProperty::Square:
       result.push_back(Expr::ExprProperty::SQUARE);
       break;
@@ -445,9 +442,6 @@ convert(std::vector<Expr::ExprProperty> properties) {
       break;
     case Expr::ExprProperty::SPSD:
       result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::SPSD);
-      break;
-    case Expr::ExprProperty::IDENTITY:
-      result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Identity);
       break;
     case Expr::ExprProperty::SQUARE:
       result.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Square);

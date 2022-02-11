@@ -64,8 +64,6 @@ def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
         mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::SPD);
       else if (strVal == "spds")
         mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::SPSD);
-      else if (strVal == "identity")
-        mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Identity);
       else if (strVal == "square")
         mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Square);
       else if (strVal == "factored")
@@ -94,8 +92,7 @@ def LinneaMatrixEncodingAttr : Linnea_Attr<"LinneaMatrixEncoding"> {
       Symmetric,
       Square,
       SPD,
-      SPSD,
-      Identity
+      SPSD
     };
   }];
 }

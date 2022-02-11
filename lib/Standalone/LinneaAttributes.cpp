@@ -74,9 +74,6 @@ void LinneaMatrixEncodingAttr::print(AsmPrinter &printer) const {
     case MatrixProperty::Square:
       printer << "\"square\"";
       break;
-    case MatrixProperty::Identity:
-      printer << "\"identity\"";
-      break;
     }
     if (i != e - 1)
       printer << ", ";
