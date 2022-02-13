@@ -54,14 +54,24 @@ void CastToBuiltinTensorOp::getCanonicalizationPatterns(
 //===----------------------------------------------------------------------===//
 // FillOp
 //===----------------------------------------------------------------------===//
-static LogicalResult verifyFillOp(FillOp op) { return success(); }
+LogicalResult FillOp::verify() { return success(); }
 
 void FillOp::build(OpBuilder &builder, OperationState &result, Value value,
                    Value output) {
   build(builder, result, output.getType(), value, output);
 }
 
-static ParseResult parseFillOp(OpAsmParser &parser, OperationState &result) {
+void FillOp::print(OpAsmPrinter &printer) {
+  printer << "(";
+  printer << value() << ", ";
+  printer << output();
+  printer << ") : ";
+  printer << value().getType();
+  printer << ", ";
+  printer << output().getType();
+}
+
+ParseResult FillOp::parse(OpAsmParser &parser, OperationState &result) {
   if (parser.parseLParen())
     return failure();
 
@@ -111,35 +121,34 @@ static ParseResult parseFillOp(OpAsmParser &parser, OperationState &result) {
 //===----------------------------------------------------------------------===//
 // InverseOpHigh
 //===----------------------------------------------------------------------===//
-static LogicalResult verifyInverseOp(InverseOpHigh op) { return success(); }
+LogicalResult InverseOpHigh::verify() { return success(); }
 
 //===----------------------------------------------------------------------===//
 // InverseOpLow
 //===----------------------------------------------------------------------===//
-static LogicalResult verifyInverseOp(InverseOpLow op) { return success(); }
+LogicalResult InverseOpLow::verify() { return success(); }
 
 //===----------------------------------------------------------------------===//
 // TransposeOp
 //===----------------------------------------------------------------------===//
-static LogicalResult verifyTransposeOp(TransposeOp op) { return success(); }
+LogicalResult TransposeOp::verify() { return success(); }
 
 //===----------------------------------------------------------------------===//
 // MulOp (low/high)
 //===----------------------------------------------------------------------===//
-static LogicalResult verifyMulOp(MulOpHigh op) { return success(); }
-static LogicalResult verifyMulOp(MulOpLow op) { return success(); }
+LogicalResult MulOpHigh::verify() { return success(); }
+LogicalResult MulOpLow::verify() { return success(); }
 
 //===----------------------------------------------------------------------===//
 // AddOp (low/high)
 //===----------------------------------------------------------------------===//
-static LogicalResult verifyAddOp(AddOpHigh op) { return success(); }
-static LogicalResult verifyAddOp(AddOpLow op) { return success(); }
+LogicalResult AddOpHigh::verify() { return success(); }
+LogicalResult AddOpLow::verify() { return success(); }
 
 //===----------------------------------------------------------------------===//
 // EquationOp
 //===----------------------------------------------------------------------===//
-static ParseResult parseEquationOp(OpAsmParser &parser,
-                                   OperationState &result) {
+ParseResult EquationOp::parse(OpAsmParser &parser, OperationState &result) {
   // Parse the body region.
   Region *body = result.addRegion();
   if (parser.parseRegion(*body))
@@ -152,9 +161,9 @@ static ParseResult parseEquationOp(OpAsmParser &parser,
   return success();
 }
 
-static void print(OpAsmPrinter &printer, EquationOp op) {
+void EquationOp::print(OpAsmPrinter &printer) {
   // Print the region.
-  printer.printRegion(op.getBody());
+  printer.printRegion(getBody());
 }
 
 #define GET_OP_CLASSES

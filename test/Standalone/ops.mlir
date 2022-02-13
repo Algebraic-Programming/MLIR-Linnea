@@ -37,7 +37,7 @@ func @bar(%arg0: !linnea.matrix<#linnea.property<["general"]>,[32,32], f32>) {
 
 // CHECK-LABEL: func @bar(
 func @bar(%arg0: !linnea.matrix<#linnea.property<["general"]>,[32,32], f32>, %arg1: f32) {
-  // CHECK: %{{.*}} = "linnea.fill"
+  // CHECK: %{{.*}} = linnea.fill
   linnea.fill(%arg1, %arg0) : f32, !linnea.matrix<#linnea.property<["general"]>,[32,32], f32>
   return
 }

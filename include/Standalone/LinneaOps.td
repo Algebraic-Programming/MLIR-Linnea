@@ -79,8 +79,8 @@ def Linnea_FillOp : Linnea_Op<"fill", [NoSideEffect]> {
     OpBuilder<(ins "Value":$value, "Value":$output)>
   ];
   
-  let verifier = [{ return ::verifyFillOp(*this); }];
-  let parser = [{ return ::parse$cppClass(parser, result); }];
+  let hasCustomAssemblyFormat = 1;
+  let hasVerifier = 1;
 }
 
 def Linnea_EquationOp : Linnea_Op<"equation", 
@@ -103,8 +103,7 @@ def Linnea_EquationOp : Linnea_Op<"equation",
     Region &getBody() { return getOperation()->getRegion(0); }
   }];
 
-  let parser = [{ return ::parse$cppClass(parser, result); }];
-  let printer = [{ return ::print(p, *this); }];
+  let hasCustomAssemblyFormat = 1;
 }
 
 def Linnea_YieldOp : Linnea_Op<"yield", 
@@ -135,7 +134,7 @@ def Linnea_InverseOpLow : Linnea_Op<"inverse.low", [NoSideEffect]> {
       OpBuilder<(ins "Value":$input)>
     ];
 
-    let verifier = [{ return ::verifyInverseOp(*this); }];
+    let hasVerifier = 1;
 
     let hasCanonicalizer = 1;
 }
@@ -159,7 +158,7 @@ def Linnea_InverseOpHigh : Linnea_Op<"inverse.high",
       OpBuilder<(ins "Value":$input)>
     ];
 
-    let verifier = [{ return ::verifyInverseOp(*this); }];
+    let hasVerifier = 1;
 }
 
 def Linnea_TransposeOp : Linnea_Op<"transpose", [HasParent<"EquationOp">]> {
@@ -179,7 +178,7 @@ def Linnea_TransposeOp : Linnea_Op<"transpose", [HasParent<"EquationOp">]> {
       OpBuilder<(ins "Value":$input)>
     ];
 
-    let verifier = [{ return ::verifyTransposeOp(*this); }];
+    let hasVerifier = 1;
 }
 
 def Linnea_MulOpHigh : Linnea_Op<"mul.high", 
@@ -210,7 +209,7 @@ def Linnea_MulOpHigh : Linnea_Op<"mul.high",
       OpBuilder<(ins "ValueRange":$input)>
     ];
 
-    let verifier = [{ return ::verifyMulOp(*this); }];
+    let hasVerifier = 1;
 }
 
 def Linnea_MulOpLow : Linnea_Op<"mul.low", [NoSideEffect]> {
@@ -238,7 +237,7 @@ def Linnea_MulOpLow : Linnea_Op<"mul.low", [NoSideEffect]> {
       OpBuilder<(ins "ValueRange":$input)>
     ];
 
-    let verifier = [{ return ::verifyMulOp(*this); }];
+    let hasVerifier = 1;
 
     let hasCanonicalizer = 1;
 }
@@ -271,7 +270,7 @@ def Linnea_AddOpHigh : Linnea_Op<"add.high",
       OpBuilder<(ins "ValueRange":$input)>
     ];
 
-    let verifier = [{ return ::verifyAddOp(*this); }];
+    let hasVerifier = 1;
 }
 
 def Linnea_AddOpLow : Linnea_Op<"add.low", [NoSideEffect]> {
@@ -299,7 +298,7 @@ def Linnea_AddOpLow : Linnea_Op<"add.low", [NoSideEffect]> {
       OpBuilder<(ins "ValueRange":$input)>
     ];
 
-    let verifier = [{ return ::verifyAddOp(*this); }];
+    let hasVerifier = 1;
 }
 
 #endif // LINNEA_OPS
