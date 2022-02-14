@@ -14,6 +14,7 @@
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/Pass/Pass.h"
 #include "llvm/Support/Debug.h"
+#include <queue>
 #include <stack>
 
 using namespace mlir;
@@ -60,6 +61,7 @@ void LinneaPropertyPropagation::runOnOperation() {
 
   std::stack<EquationOp> frontier;
   module.walk([&](EquationOp eqOp) { frontier.push(eqOp); });
+  std::stack<std::pair<EquationOp, Expr *>> simplifiedExpressions;
 
   if (frontier.empty())
     return;
@@ -74,32 +76,38 @@ void LinneaPropertyPropagation::runOnOperation() {
       frontier.pop();
 
       if (exprBuilder.isAlreadyVisited(eqOp)) {
-        if (eqOp->hasOneUse()) {
           toErase.push_back(eqOp);
           continue;
-        }
-        eqOp->emitError("Nested equation op must have a single use");
-        return;
       }
 
       Region &region = eqOp.getBody();
       Operation *terminator = region.front().getTerminator();
       Value termOperand = terminator->getOperand(0);
-      Expr *root = exprBuilder.buildLinneaExpr(termOperand);
+      Expr *root =
+          exprBuilder.buildLinneaExpr(termOperand, eqOp.getOperation());
 
+      // root->walk();
       root = root->simplify();
       // root->walk();
       LLVM_DEBUG(DBGS() << "Simplified expression: \n"; root->walk(););
+      simplifiedExpressions.push({eqOp, root});
+      toErase.push_back(eqOp);
+    }
 
+    while (!simplifiedExpressions.empty()) {
+      auto simplifiedExpr = simplifiedExpressions.top();
+      simplifiedExpressions.pop();
+      EquationOp eqOp = simplifiedExpr.first;
       OpBuilder builder(eqOp->getContext());
       OpBuilder::InsertionGuard guard(builder);
       builder.setInsertionPointAfter(eqOp);
-      Value rootVal = exprBuilder.buildIR(eqOp->getLoc(), builder, root);
+      Value rootVal =
+          exprBuilder.buildIR(eqOp->getLoc(), builder, simplifiedExpr.second);
       Value resultEqOp = eqOp.getResult();
       resultEqOp.replaceAllUsesWith(rootVal);
-      toErase.push_back(eqOp);
     }
-  }
+
+  } // scoped context.
 
   // adjust at function boundaries.
   // TODO: fix also callee as in comprehensive bufferization pass.

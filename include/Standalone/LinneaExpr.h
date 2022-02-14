@@ -327,10 +327,10 @@ private:
   int getNextId() { return operandId++; };
 
   // build entire expr.
-  Expr *buildExprImpl(mlir::Value val);
+  Expr *buildExprImpl(Value val, Operation *op);
 
   // build operand as expr.
-  Expr *buildOperandImpl(mlir::Value type);
+  Expr *buildOperandImpl(Value val);
 
   // build mul/transpose/inverse.
   Value buildIRImpl(Location loc, OpBuilder &builder, Expr *root);
@@ -358,7 +358,7 @@ public:
     return exprMap[from];
   }
 
-  Expr *buildLinneaExpr(mlir::Value value);
+  Expr *buildLinneaExpr(Value value, Operation *op);
   Value buildIR(Location loc, OpBuilder &builder, Expr *root);
 
   ExprBuilder() = default;

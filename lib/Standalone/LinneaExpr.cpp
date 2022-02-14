@@ -574,7 +574,17 @@ Value ExprBuilder::buildIR(Location loc, OpBuilder &builder, Expr *root) {
   return buildIRImpl(loc, builder, root);
 }
 
-Expr *ExprBuilder::buildExprImpl(Value val) {
+// The user of source should be a child of target, which is
+// another equationOp.
+static bool hasOnlyUser(Value source, Operation *target) {
+  for (Operation *user : source.getUsers()) {
+    if (user->getParentOp() != target)
+      return false;
+  }
+  return true;
+}
+
+Expr *ExprBuilder::buildExprImpl(Value val, Operation *currentOp) {
   // 'val' comes is a basic block arg or the result
   // of a fillOp. Build operand directly.
   if (auto blockArg = val.dyn_cast_or_null<BlockArgument>()) {
@@ -590,29 +600,52 @@ Expr *ExprBuilder::buildExprImpl(Value val) {
   if (auto mulOp = dyn_cast_or_null<linnea::MulOpHigh>(defOp)) {
     std::vector<Expr *> children;
     for (Value operand : mulOp.getOperands()) {
-      children.push_back(buildExprImpl(operand));
+      children.push_back(buildExprImpl(operand, currentOp));
     }
     return variadicMul(children, /*fold*/ true);
   }
   if (auto transOp = dyn_cast_or_null<linnea::TransposeOp>(defOp)) {
-    Expr *child = buildExprImpl(transOp.getOperand());
+    Expr *child = buildExprImpl(transOp.getOperand(), currentOp);
     return trans(child);
   }
   if (auto invOp = dyn_cast_or_null<linnea::InverseOpHigh>(defOp)) {
-    Expr *child = buildExprImpl(invOp.getOperand());
+    Expr *child = buildExprImpl(invOp.getOperand(), currentOp);
     return inv(child);
   }
   if (auto eqOp = dyn_cast_or_null<linnea::EquationOp>(defOp)) {
+    // fold the eqOp in currentOp as eqOp has currentOp
+    // as only user.
+    if (hasOnlyUser(eqOp.getResult(), currentOp)) {
+      Region &region = eqOp.getBody();
+      Operation *terminator = region.front().getTerminator();
+      visited.insert(eqOp.getOperation());
+      return buildExprImpl(terminator->getOperand(0), currentOp);
+    }
+    // current equation op (eqOp) is used by the 'currentOp' but it has
+    // multiple users. Build it and use the newly created value as operand for
+    // the 'currentOp'.
     Region &region = eqOp.getBody();
     Operation *terminator = region.front().getTerminator();
+    Value termOperand = terminator->getOperand(0);
+    Expr *root = buildLinneaExpr(termOperand, eqOp.getOperation());
+    OpBuilder builder(eqOp->getContext());
+    OpBuilder::InsertionGuard guard(builder);
+    builder.setInsertionPointAfter(eqOp);
+    Value rootVal = buildIR(eqOp->getLoc(), builder, root);
+    Value resultEqOp = eqOp.getResult();
+    resultEqOp.replaceAllUsesWith(rootVal);
+
+    // insert to visited to generate it only once.
     visited.insert(eqOp.getOperation());
-    return buildExprImpl(terminator->getOperand(0));
+    return buildOperandImpl(rootVal);
   }
   llvm_unreachable("operation not handled");
   return nullptr;
 }
 
-Expr *ExprBuilder::buildLinneaExpr(Value val) { return buildExprImpl(val); }
+Expr *ExprBuilder::buildLinneaExpr(Value val, Operation *op) {
+  return buildExprImpl(val, op);
+}
 
 //===----------------------------------------------------------------------===//
 // Expr
