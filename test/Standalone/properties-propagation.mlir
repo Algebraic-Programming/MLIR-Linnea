@@ -1,6 +1,6 @@
 // RUN: standalone-opt %s --properties-propagation | FileCheck %s
 module {
-  // CHECK: entry
+  // CHECK: lorenzo
   func @entry() {
 
     %c5 = arith.constant 5 : index
@@ -30,7 +30,11 @@ module {
         !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>,
         !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>,
         !linnea.term -> !linnea.term
-      linnea.yield %2 : !linnea.term
+      %3 = linnea.mul.high %Cf, %Df, %2 :
+        !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>,
+        !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>,
+        !linnea.term -> !linnea.term
+      linnea.yield %3 : !linnea.term
     }
 
     linnea.print %1 : !linnea.term
