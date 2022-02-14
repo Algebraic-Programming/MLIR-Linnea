@@ -1,6 +1,8 @@
 # TODO
 - linnea fillOp using assembly format (again)
 - https://docs.oracle.com/cd/E19957-01/806-3566/plug_matrices.html
+- http://blog.ezyang.com/2019/05/pytorch-internals/
+- https://ezyang.github.io/stride-visualizer/index.html
 
 - API
 numpy.tril() API
