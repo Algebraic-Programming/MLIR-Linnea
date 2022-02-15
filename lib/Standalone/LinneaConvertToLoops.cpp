@@ -188,13 +188,16 @@ public:
   }
 };
 
+/// Converter for a linalg.matmulOp.
+// TODO: duplicated code see AddOpConverter. Also it just introduce
+// some cast. Do we really need it?
 struct MatmulOpConverter : public OpRewritePattern<linalg::MatmulOp> {
 public:
   using OpRewritePattern<linalg::MatmulOp>::OpRewritePattern;
   LogicalResult matchAndRewrite(linalg::MatmulOp op,
                                 PatternRewriter &rewriter) const override {
-    assert(op.outputs().size() == 1);
-    assert(op.inputs().size() == 2);
+    assert(op.outputs().size() == 1 && "expect single ouptut");
+    assert(op.inputs().size() == 2 && "expect two inputs");
 
     auto encoding = getLinneaTensorEncoding(op.outputs()[0].getType());
     if (!encoding)
@@ -215,14 +218,81 @@ public:
   }
 };
 
+static inline bool isMLIRFloatType(mlir::Type t) {
+  return t.isF16() || t.isF32() || t.isF64();
+}
+
+static inline bool isMLIRIntType(mlir::Type t) {
+  return t.isInteger(2) || t.isInteger(4) || t.isInteger(8) ||
+         t.isInteger(16) || t.isInteger(32) || t.isInteger(64);
+}
+
+template <typename FOpTy, typename IOpTy>
+static Value buildBinaryOpFromValues(OpBuilder builder, Value left, Value right,
+                                     Location loc, Type t) {
+  if (isMLIRFloatType(t))
+    return builder.create<FOpTy>(loc, left, right);
+  else if (isMLIRIntType(t))
+    return builder.create<IOpTy>(loc, left, right);
+  else
+    llvm_unreachable("unsupported type");
+}
+
+/// Converter for linalg::GenericOp (coming from a linnea add).
+// TODO: again too much code duplication.
+struct AddOpConverter : public OpRewritePattern<linalg::GenericOp> {
+public:
+  using OpRewritePattern<linalg::GenericOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(linalg::GenericOp op,
+                                PatternRewriter &rewriter) const override {
+    assert(op.outputs().size() == 1 && "expect single output");
+    assert(op.inputs().size() == 2 && "expect two inputs");
+
+    auto encoding = getLinneaTensorEncoding(op.outputs()[0].getType());
+    if (!encoding)
+      return failure();
+
+    Location loc = op->getLoc();
+    Value A = castToTensor(op.inputs()[0], rewriter, loc);
+    Value B = castToTensor(op.inputs()[1], rewriter, loc);
+    Value C = castToTensor(op.outputs()[0], rewriter, loc);
+
+    // build affine map for add operation.
+    using MapList = ArrayRef<ArrayRef<AffineExpr>>;
+    auto infer = [](MapList m) { return AffineMap::inferFromExprList(m); };
+    AffineExpr m, n;
+    bindDims(op->getContext(), m, n);
+    auto addMap = infer({{m, n}, {m, n}, {m, n}});
+
+    // iterator for add operation.
+    llvm::SmallVector<StringRef, 3> iter = {"parallel", "parallel"};
+
+    Value dest =
+        rewriter
+            .create<linalg::GenericOp>(
+                loc, TypeRange{C.getType()}, ValueRange{A, B}, C, addMap, iter,
+                [&](OpBuilder &nestedBuilder, Location nestedLoc,
+                    ValueRange args) {
+                  Value add =
+                      buildBinaryOpFromValues<arith::AddFOp, arith::AddIOp>(
+                          nestedBuilder, args[0], args[1], nestedLoc,
+                          args[2].getType());
+                  nestedBuilder.create<linalg::YieldOp>(nestedLoc, add);
+                })
+            ->getResult(0);
+    rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>(op, C.getType(), dest);
+    return success();
+  }
+};
+
 struct ConvertToLoops : public LinneaConvertToLoopsBase<ConvertToLoops> {
 
   void runOnOperation() override {
 
     ModuleOp module = getOperation();
     RewritePatternSet patterns(module.getContext());
-    patterns.add<FillOpConverter, MatmulOpConverter, InitOpConverter>(
-        patterns.getContext());
+    patterns.add<FillOpConverter, MatmulOpConverter, AddOpConverter,
+                 InitOpConverter>(patterns.getContext());
     (void)applyPatternsAndFoldGreedily(module, std::move(patterns));
   }
 };

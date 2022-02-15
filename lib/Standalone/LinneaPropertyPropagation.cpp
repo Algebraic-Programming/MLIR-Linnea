@@ -87,9 +87,10 @@ void LinneaPropertyPropagation::runOnOperation() {
           exprBuilder.buildLinneaExpr(termOperand, eqOp.getOperation());
 
       // root->walk();
+      LLVM_DEBUG(DBGS() << "Before simplify ---> \n"; root->walk(););
       root = root->simplify();
+      LLVM_DEBUG(DBGS() << "After simplify ---> \n"; root->walk(););
       // root->walk();
-      LLVM_DEBUG(DBGS() << "Simplified expression: \n"; root->walk(););
       simplifiedExpressions.push({eqOp, root});
       toErase.push_back(eqOp);
     }

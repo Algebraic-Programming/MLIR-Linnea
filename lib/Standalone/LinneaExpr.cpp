@@ -116,6 +116,7 @@ static void printOptimalParens(const vector<vector<long>> &s, size_t i,
 static void collectOperandsImpl(Expr *node, vector<Expr *> &operands) {
   if (node) {
     if (auto binaryOp = llvm::dyn_cast_or_null<NaryExpr>(node)) {
+      assert(binaryOp->getKind() == NaryExpr::NaryExprKind::MUL);
       for (auto child : binaryOp->getChildren()) {
         collectOperandsImpl(child, operands);
       }
@@ -509,10 +510,12 @@ static int64_t getDimSizeAtPos(Type t, size_t pos) {
   llvm_unreachable("expect only MatrixType or IdentityType");
 }
 
-Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
-                                NaryExpr *expr) {
+template <typename OP>
+Value ExprBuilder::buildBinaryOpImpl(Location loc, OpBuilder &builder,
+                                     NaryExpr *expr) {
   SmallVector<Value> operands;
   auto children = expr->getChildren();
+  // at this point the NaryExpr is expected to have 2 children.
   assert(children.size() == 2 && "expect two children");
   for (int i = 0, e = children.size(); i < e; i++)
     operands.push_back(buildIRImpl(loc, builder, children[i]));
@@ -526,19 +529,14 @@ Value ExprBuilder::buildMulImpl(Location loc, OpBuilder &builder,
       builder.getContext(),
       LinneaMatrixEncodingAttr::get(builder.getContext(), properties), dims,
       elementType);
-  return builder.create<MulOpLow>(loc, result, operands);
+  return builder.create<OP>(loc, result, operands);
 }
 
-Value ExprBuilder::buildTransposeImpl(Location loc, OpBuilder &builder,
-                                      UnaryExpr *expr) {
-  assert(0 && "not implemented");
-  return nullptr;
-}
-
-Value ExprBuilder::buildInverseImpl(Location loc, OpBuilder &builder,
+template <typename OP>
+Value ExprBuilder::buildUnaryOpImpl(Location loc, OpBuilder &builder,
                                     UnaryExpr *expr) {
   Value operand = buildIRImpl(loc, builder, expr->getChild());
-  return builder.create<InverseOpLow>(loc, operand.getType(), operand);
+  return builder.create<OP>(loc, operand.getType(), operand);
 }
 
 Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder, Expr *root) {
@@ -546,27 +544,28 @@ Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder, Expr *root) {
     if (auto naryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
       switch (naryExpr->getKind()) {
       case NaryExpr::NaryExprKind::MUL:
-        return buildMulImpl(loc, builder, naryExpr);
+        return buildBinaryOpImpl<MulOpLow>(loc, builder, naryExpr);
         break;
-      default:
-        assert(0 && "UNK");
+      case NaryExpr::NaryExprKind::ADD:
+        return buildBinaryOpImpl<AddOpLow>(loc, builder, naryExpr);
+        break;
       }
     }
     if (auto unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(root)) {
       switch (unaryExpr->getKind()) {
       case UnaryExpr::UnaryExprKind::TRANSPOSE:
-        return buildTransposeImpl(loc, builder, unaryExpr);
+        return buildUnaryOpImpl<TransposeOp>(loc, builder, unaryExpr);
         break;
       case UnaryExpr::UnaryExprKind::INVERSE:
-        return buildInverseImpl(loc, builder, unaryExpr);
+        return buildUnaryOpImpl<InverseOpLow>(loc, builder, unaryExpr);
         break;
       }
     }
     if (auto operand = llvm::dyn_cast_or_null<Operand>(root)) {
-      return exprMap[operand];
+      return lookup(operand);
     }
   }
-  assert(0 && "UNKN");
+  assert(0 && "Expression not supported");
   return nullptr;
 }
 
@@ -633,6 +632,7 @@ Expr *ExprBuilder::buildExprImpl(Value val, Operation *currentOp) {
     Operation *terminator = region.front().getTerminator();
     Value termOperand = terminator->getOperand(0);
     Expr *root = buildLinneaExpr(termOperand, eqOp.getOperation());
+    root = root->simplify();
     OpBuilder builder(eqOp->getContext());
     OpBuilder::InsertionGuard guard(builder);
     builder.setInsertionPointAfter(eqOp);
@@ -694,8 +694,8 @@ void Expr::setPropertiesImpl(T *expr) {
 
 /// Walk a generic expression.
 void Expr::walk(int level) const {
-  if (auto binaryOp = llvm::dyn_cast_or_null<NaryExpr>(this)) {
-    switch (binaryOp->getKind()) {
+  if (auto naryExpr = llvm::dyn_cast_or_null<NaryExpr>(this)) {
+    switch (naryExpr->getKind()) {
     case NaryExpr::NaryExprKind::MUL:
       cout << string(level, ' ') << "(*\n";
       break;
@@ -703,7 +703,7 @@ void Expr::walk(int level) const {
       cout << string(level, ' ') << "(+\n";
       break;
     }
-    for (const Expr *child : binaryOp->getChildren()) {
+    for (const Expr *child : naryExpr->getChildren()) {
       child->walk(level + LEVEL_SPACES);
       cout << " \n";
     }
@@ -729,10 +729,45 @@ void Expr::walk(int level) const {
   } // operand
 }
 
-Expr *Expr::simplify() {
-  auto p = runMCP(this);
-  return p.newExpr;
+// XXX: See how we can re-enable matrix chain reordering for mul.
+static Expr *simplifyImpl(Expr *root) {
+  if (root) {
+    if (auto naryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
+      auto children = naryExpr->getChildren();
+      assert(children.size() >= 2);
+      Expr *leftChild = simplifyImpl(children[0]);
+      Expr *rightChild = simplifyImpl(children[1]);
+      switch (naryExpr->getKind()) {
+      case NaryExpr::NaryExprKind::MUL: {
+        Expr *mul = variadicMul({leftChild, rightChild}, false);
+        for (size_t i = 2; i < children.size(); i++)
+          mul = variadicMul({mul, simplifyImpl(children[i])}, false);
+        return mul;
+      }
+      case NaryExpr::NaryExprKind::ADD: {
+        Expr *add = variadicAdd({leftChild, rightChild}, false);
+        for (size_t i = 2; i < children.size(); i++)
+          add = variadicAdd({add, simplifyImpl(children[i])}, false);
+        return add;
+      }
+      }
+    }
+    if (auto unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(root)) {
+      auto child = simplifyImpl(unaryExpr->getChild());
+      switch (unaryExpr->getKind()) {
+      case UnaryExpr::UnaryExprKind::TRANSPOSE:
+        return trans(child);
+      case UnaryExpr::UnaryExprKind::INVERSE:
+        return inv(child);
+      }
+    }
+    if (auto operand = llvm::dyn_cast_or_null<Operand>(root))
+      return operand;
+  }
+  llvm_unreachable("expect root to be non null");
 }
+
+Expr *Expr::simplify() { return simplifyImpl(this); }
 
 //===----------------------------------------------------------------------===//
 // UnaryExpr

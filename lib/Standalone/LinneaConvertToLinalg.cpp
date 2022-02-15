@@ -56,7 +56,7 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
                               ResultRange results) {
   assert(operands.size() == 2 && "expect two operands");
   assert(results.size() == 1 && "expect one output");
-  auto loc = op->getLoc();
+  Location loc = op->getLoc();
 
   Value left = operands[0];
   Value right = operands[1];
@@ -74,7 +74,7 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
   buffer = rewriter.create<linalg::FillOp>(loc, zero, buffer).getResult(0);
 
   return rewriter
-      .create<linalg::MatmulOp>(loc, TypeRange{outputType},
+      .create<linalg::MatmulOp>(loc, TypeRange{buffer.getType()},
                                 ValueRange{left, right}, buffer)
       ->getResult(0);
 }
@@ -89,6 +89,67 @@ public:
     ValueRange operands = {adaptor.left(), adaptor.right()};
     Value result = emitLinalgMatrix(op, operands, rewriter, getTypeConverter(),
                                     op->getResults());
+    assert(result != nullptr && "must be non null");
+    rewriter.replaceOp(op, result);
+    return success();
+  }
+};
+
+static Value emitLinalgAdd(AddOpLow op, ValueRange operands,
+                           ConversionPatternRewriter &rewriter,
+                           TypeConverter *typeConverter, ResultRange results) {
+  assert(operands.size() == 2 && "expect two operands");
+  assert(results.size() == 1 && "expect one input");
+  Location loc = op->getLoc();
+
+  Value left = operands[0];
+  Value right = operands[1];
+  RankedTensorType outputType =
+      typeConverter->convertType(results[0].getType()).cast<RankedTensorType>();
+
+  // Materialize result.
+  Value buffer = rewriter.create<linalg::InitTensorOp>(
+      loc, outputType, ArrayRef<Value>({}),
+      rewriter.getI64ArrayAttr(outputType.getShape()));
+
+  // Fill result buffer with 0.
+  Attribute resultZeroAttr = rewriter.getZeroAttr(outputType.getElementType());
+  Value zero = rewriter.create<arith::ConstantOp>(loc, resultZeroAttr);
+  buffer = rewriter.create<linalg::FillOp>(loc, zero, buffer).getResult(0);
+
+  // build affine map for add operation.
+  using MapList = ArrayRef<ArrayRef<AffineExpr>>;
+  auto infer = [](MapList m) { return AffineMap::inferFromExprList(m); };
+  AffineExpr m, n;
+  bindDims(op->getContext(), m, n);
+  auto addMap = infer({{m, n}, {m, n}, {m, n}});
+
+  // iterator for add operation.
+  llvm::SmallVector<StringRef, 3> iter = {"parallel", "parallel"};
+
+  return rewriter
+      .create<linalg::GenericOp>(
+          loc, TypeRange{buffer.getType()}, ValueRange{left, right}, buffer,
+          addMap, iter,
+          [&](OpBuilder &nestedBuilder, Location nestedLoc, ValueRange args) {
+            Value add = buildBinaryOpFromValues<arith::AddFOp, arith::AddIOp>(
+                nestedBuilder, args[0], args[1], nestedLoc,
+                outputType.getElementType());
+            nestedBuilder.create<linalg::YieldOp>(nestedLoc, add);
+          })
+      ->getResult(0);
+}
+
+/// Linnea conversion rule for AddOpLow.
+class AddOpConverter : public OpConversionPattern<AddOpLow> {
+public:
+  using OpConversionPattern::OpConversionPattern;
+  LogicalResult
+  matchAndRewrite(AddOpLow op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    ValueRange operands = {adaptor.left(), adaptor.right()};
+    Value result = emitLinalgAdd(op, operands, rewriter, getTypeConverter(),
+                                 op->getResults());
     assert(result != nullptr && "must be non null");
     rewriter.replaceOp(op, result);
     return success();
@@ -186,9 +247,9 @@ public:
 // Populate patterns
 void populateLinneaToLinalgPattern(RewritePatternSet &patterns,
                                    TypeConverter &converter) {
-  patterns
-      .add<FillOpConverter, MulOpConverter, InitOpConverter, PrintOpConverter>(
-          converter, patterns.getContext());
+  patterns.add<FillOpConverter, MulOpConverter, InitOpConverter,
+               PrintOpConverter, AddOpConverter>(converter,
+                                                 patterns.getContext());
 }
 
 static void setupTypeConversion(ConversionTarget &target,

@@ -1,5 +1,5 @@
 // RUN: standalone-opt %s --linnea-compiler | \
-// RUN: mlir-cpu-runner \
+// RUN: %llvmbindir/bin/mlir-cpu-runner \
 // RUN:  -e entry -entry-point-result=void  \
 // RUN: -shared-libs=%llvmlibdir/libmlir_c_runner_utils%shlibext | \
 // RUN: FileCheck %s
@@ -19,7 +19,9 @@ module {
       %1 = linnea.mul.high %Af, %Bf :
         !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>,
         !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32> -> !linnea.term
-      linnea.yield %1 : !linnea.term
+      %2 = linnea.add.high %1, %1, %1 :
+        !linnea.term, !linnea.term, !linnea.term -> !linnea.term
+      linnea.yield %2 : !linnea.term
     }
 
     %fd = arith.constant 6.0 : f32
@@ -39,18 +41,18 @@ module {
     }
 
     //
-    // CHECK:     ( ( 25, 0, 0, 0, 0 ),
-    // CHECK-SAME:  ( 50, 25, 0, 0, 0 ),
-    // CHECK-SAME:  ( 75, 50, 25, 0, 0 ),
-    // CHECK-SAME:  ( 100, 75, 50, 25, 0 ),
-    // CHECK-SAME:  ( 125, 100, 75, 50, 25 ) )
+    // CHECK:     ( ( 75, 0, 0, 0, 0 ),
+    // CHECK-SAME:  ( 150, 75, 0, 0, 0 ),
+    // CHECK-SAME:  ( 225, 150, 75, 0, 0 ),
+    // CHECK-SAME:  ( 300, 225, 150, 75, 0 ),
+    // CHECK-SAME:  ( 375, 300, 225, 150, 75 ) )
     linnea.print %0 : !linnea.term
     //
-    // CHECK:     ( ( 61, 72, 108, 144, 180 ),
-    // CHECK-SAME:  ( 50, 61, 72, 108, 144 ),
-    // CHECK-SAME:  ( 75, 50, 61, 72, 108 ),
-    // CHECK-SAME:  ( 100, 75, 50, 61, 72 ),
-    // CHECK-SAME:  ( 125, 100, 75, 50, 61 ) )
+    // CHECK:     ( ( 111, 72, 108, 144, 180 ),
+    // CHECK-SAME:  ( 150, 111, 72, 108, 144 ),
+    // CHECK-SAME:  ( 225, 150, 111, 72, 108 ),
+    // CHECK-SAME:  ( 300, 225, 150, 111, 72 ),
+    // CHECK-SAME:  ( 375, 300, 225, 150, 111 ) )
     linnea.print %1 : !linnea.term
     
     return 

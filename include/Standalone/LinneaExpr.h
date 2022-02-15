@@ -332,11 +332,14 @@ private:
   // build operand as expr.
   Expr *buildOperandImpl(Value val);
 
-  // build mul/transpose/inverse.
   Value buildIRImpl(Location loc, OpBuilder &builder, Expr *root);
-  Value buildMulImpl(Location loc, OpBuilder &builder, NaryExpr *expr);
-  Value buildTransposeImpl(Location loc, OpBuilder &builder, UnaryExpr *expr);
-  Value buildInverseImpl(Location loc, OpBuilder &builder, UnaryExpr *expr);
+
+  // build linnea.mul/add.low.
+  template <typename OP>
+  Value buildBinaryOpImpl(Location loc, OpBuilder &builder, NaryExpr *expr);
+  // build linnea.transpose/inverse.low.
+  template <typename OP>
+  Value buildUnaryOpImpl(Location loc, OpBuilder &builder, UnaryExpr *expr);
 
 public:
   // map 'from' to 'to'.
@@ -358,10 +361,16 @@ public:
     return exprMap[from];
   }
 
+  // build a linnea symbolic expression from a Value
+  // by walking use-def chain.
   Expr *buildLinneaExpr(Value value, Operation *op);
+
+  // build mlir IR from a linnea symbolic expression
+  // by walking the expression.
   Value buildIR(Location loc, OpBuilder &builder, Expr *root);
 
   ExprBuilder() = default;
+  ExprBuilder(ExprBuilder &) = delete;
 };
 
 template <typename K>

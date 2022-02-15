@@ -135,21 +135,23 @@ bool UnaryExpr::isSPD() const {
 // NaryExpr
 //===----------------------------------------------------------------------===//
 
+// XXX: this is not true either. For exmaple
+// mul(lower_tri * upper_tri) is general.
 bool NaryExpr::isGeneral() const {
   auto kind = this->getKind();
   switch (kind) {
   // all the children must be general.
-  case NaryExpr::NaryExprKind::MUL: {
+  case NaryExpr::NaryExprKind::MUL:
+  case NaryExpr::NaryExprKind::ADD: {
     for (auto *child : this->getChildren()) {
       if (!child->isGeneral())
         return false;
     }
     return true;
   }
-  default:
-    assert(0 && "UNK");
   }
-  llvm_unreachable("Only MUL supported");
+  llvm_unreachable("Only MUL or ADD are supported");
+  return false;
 }
 
 bool NaryExpr::isFactored() const { return false; }
@@ -158,37 +160,39 @@ bool NaryExpr::isUpperTriangular() const {
   auto kind = this->getKind();
   switch (kind) {
   // all the children must be upper triangular.
-  case NaryExpr::NaryExprKind::MUL: {
+  case NaryExpr::NaryExprKind::MUL:
+  case NaryExpr::NaryExprKind::ADD: {
     for (auto *child : this->getChildren()) {
       if (!child->isUpperTriangular())
         return false;
     }
     return true;
   }
-  default:
-    assert(0 && "UNK");
   }
-  llvm_unreachable("Only MUL supported");
+  llvm_unreachable("Only MUL or ADD are supported");
 }
 
 bool NaryExpr::isLowerTriangular() const {
   auto kind = this->getKind();
   switch (kind) {
   // all the children must be lower triangular.
-  case NaryExpr::NaryExprKind::MUL: {
+  case NaryExpr::NaryExprKind::MUL:
+  case NaryExpr::NaryExprKind::ADD: {
     for (auto *child : this->getChildren()) {
       if (!child->isLowerTriangular())
         return false;
     }
     return true;
   }
-  default:
-    assert(0 && "UNK");
   }
-  llvm_unreachable("Only MUL supported");
+  llvm_unreachable("Only MUL or ADD are supported");
 }
 
 bool NaryExpr::isSquare() const {
+  // XXX: Fix this.
+  // [5x3] * [3x5] = [5x5]
+  // This is not true. Not all the children
+  // need to be square.
   for (auto child : this->getChildren())
     if (!child->isSquare())
       return false;
@@ -293,8 +297,9 @@ bool NaryExpr::isSPD() const {
   switch (kind) {
   case NaryExpr::NaryExprKind::MUL:
     return isSymmetricProduct(this, true);
-  default:
-    assert(0 && "UNK");
+  // TODO: implement me.
+  case NaryExpr::NaryExprKind::ADD:
+    return false;
   }
   llvm_unreachable("Only MUL supported");
 }
@@ -304,8 +309,9 @@ bool NaryExpr::isSymmetric() const {
   switch (kind) {
   case NaryExpr::NaryExprKind::MUL:
     return isSymmetricProduct(this);
-  default:
-    assert(0 && "UNK");
+  // TODO: implement me.
+  case NaryExpr::NaryExprKind::ADD:
+    return false;
   }
   llvm_unreachable("Only MUL supported");
 }
