@@ -6,10 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "Standalone/LinneaPasses.h"
 #include "Standalone/LinneaAttributes.h"
 #include "Standalone/LinneaExpr.h"
 #include "Standalone/LinneaOps.h"
+#include "Standalone/LinneaPasses.h"
 
 #include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/Pass/Pass.h"
@@ -76,8 +76,8 @@ void LinneaPropertyPropagation::runOnOperation() {
       frontier.pop();
 
       if (exprBuilder.isAlreadyVisited(eqOp)) {
-          toErase.push_back(eqOp);
-          continue;
+        toErase.push_back(eqOp);
+        continue;
       }
 
       Region &region = eqOp.getBody();

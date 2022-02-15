@@ -11,6 +11,7 @@
 #include <iostream>
 
 using namespace mlir::linnea::expr;
+using namespace llvm;
 using namespace std;
 
 static bool isTransposeOfImpl(const Expr *left, const Expr *right) {
@@ -109,7 +110,7 @@ static bool isSameImpl(const Expr *tree1, const Expr *tree2) {
 Expr *Operand::getNormalForm() { return this; }
 
 Expr *NaryExpr::getNormalForm() {
-  vector<Expr *> operands;
+  SmallVector<Expr *, 4> operands;
   for (auto child : this->getChildren())
     operands.push_back(child->getNormalForm());
   return variadicMul(operands, /*fold*/ true);
@@ -124,7 +125,7 @@ Expr *UnaryExpr::getNormalForm() {
     // when a mul is a child.
     if (NaryExpr *maybeMul = llvm::dyn_cast_or_null<NaryExpr>(child)) {
       assert(maybeMul->getKind() == NaryExpr::NaryExprKind::MUL);
-      vector<Expr *> normalFormOperands;
+      SmallVector<Expr *, 4> normalFormOperands;
       auto children = maybeMul->getChildren();
       int size = children.size();
       for (int i = size - 1; i >= 0; i--)
@@ -137,7 +138,7 @@ Expr *UnaryExpr::getNormalForm() {
     // when a mul is a child.
     if (NaryExpr *maybeMul = llvm::dyn_cast_or_null<NaryExpr>(child)) {
       assert(maybeMul->getKind() == NaryExpr::NaryExprKind::MUL);
-      vector<Expr *> normalFormOperands;
+      SmallVector<Expr *, 4> normalFormOperands;
       auto children = maybeMul->getChildren();
       int size = children.size();
       for (int i = size - 1; i >= 0; i--)

@@ -3,7 +3,7 @@ add_mlir_dialect_library(MLIRLinnea
         LinneaOps.cpp
         LinneaTypes.cpp
         LinneaAttributes.cpp
-        LinneaPasses.cpp
+        LinneaPropertyPropagation.cpp
         LinneaExpr.cpp
         LinneaProperties.cpp
         LinneaUtils.cpp

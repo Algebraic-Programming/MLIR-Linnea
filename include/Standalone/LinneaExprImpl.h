@@ -6,22 +6,22 @@ namespace linnea {
 namespace expr {
 
 template <NaryExpr::NaryExprKind K>
-Expr *variadicExpr(std::vector<Expr *> children, bool fold) {
+Expr *variadicExpr(ArrayRef<Expr *> children, bool fold) {
   if (fold) {
     // fold child expr inside.
     std::vector<Expr *> newChildren;
     int size = children.size();
     for (int i = size - 1; i >= 0; i--) {
-      if (auto childExpr = llvm::dyn_cast_or_null<NaryExpr>(children.at(i))) {
+      if (auto childExpr = llvm::dyn_cast_or_null<NaryExpr>(children[i])) {
         if (childExpr->getKind() != K) {
-          newChildren.insert(newChildren.begin(), children.at(i));
+          newChildren.insert(newChildren.begin(), children[i]);
           continue;
         }
         auto childrenOfChildExpr = childExpr->getChildren();
         newChildren.insert(newChildren.begin(), childrenOfChildExpr.begin(),
                            childrenOfChildExpr.end());
       } else
-        newChildren.insert(newChildren.begin(), children.at(i));
+        newChildren.insert(newChildren.begin(), children[i]);
     }
     return new NaryExpr(newChildren, K);
   }
@@ -33,11 +33,11 @@ Expr *variadicExpr(std::vector<Expr *> children, bool fold) {
   return result;
 }
 
-inline Expr *variadicMul(std::vector<Expr *> children, bool fold) {
+inline Expr *variadicMul(ArrayRef<Expr *> children, bool fold) {
   return variadicExpr<NaryExpr::NaryExprKind::MUL>(children, fold);
 }
 
-inline Expr *variadicAdd(std::vector<Expr *> children, bool fold) {
+inline Expr *variadicAdd(ArrayRef<Expr *> children, bool fold) {
   return variadicExpr<NaryExpr::NaryExprKind::ADD>(children, fold);
 }
 

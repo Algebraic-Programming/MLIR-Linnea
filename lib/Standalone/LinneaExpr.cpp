@@ -598,11 +598,16 @@ Expr *ExprBuilder::buildExprImpl(Value val, Operation *currentOp) {
   // 'val' is the result of another linnea operations, recurse
   // untill we get a basic block arg or a result of a fillOp.
   if (auto mulOp = dyn_cast_or_null<linnea::MulOpHigh>(defOp)) {
-    std::vector<Expr *> children;
-    for (Value operand : mulOp.getOperands()) {
+    SmallVector<Expr *, 4> children;
+    for (Value operand : mulOp.getOperands())
       children.push_back(buildExprImpl(operand, currentOp));
-    }
     return variadicMul(children, /*fold*/ true);
+  }
+  if (auto addOp = dyn_cast_or_null<linnea::AddOpHigh>(defOp)) {
+    SmallVector<Expr *, 4> children;
+    for (Value operand : addOp.getOperands())
+      children.push_back(buildExprImpl(operand, currentOp));
+    return variadicAdd(children, /*fold*/ true);
   }
   if (auto transOp = dyn_cast_or_null<linnea::TransposeOp>(defOp)) {
     Expr *child = buildExprImpl(transOp.getOperand(), currentOp);

@@ -11,6 +11,7 @@
 #include <algorithm>
 
 using namespace mlir::linnea::expr;
+using namespace llvm;
 using namespace std;
 
 //===----------------------------------------------------------------------===//
@@ -225,8 +226,8 @@ static bool isSymmetricProduct(const NaryExpr *op, bool checkSPD = false) {
     return op->getChildren()[0]->isSPD();
   else if (children.size() % 2 == 0) {
     size_t middle = children.size() / 2;
-    vector<Expr *> leftChildren;
-    vector<Expr *> rightChildren;
+    SmallVector<Expr *, 4> leftChildren;
+    SmallVector<Expr *, 4> rightChildren;
     for (size_t i = 0; i < children.size(); i++) {
       if (i < middle)
         leftChildren.push_back(children[i]);
@@ -254,8 +255,8 @@ static bool isSymmetricProduct(const NaryExpr *op, bool checkSPD = false) {
       return leftExpr->isTransposeOf(rightExpr);
   } else {
     size_t middle = children.size() / 2;
-    vector<Expr *> leftChildren;
-    vector<Expr *> rightChildren;
+    SmallVector<Expr *, 4> leftChildren;
+    SmallVector<Expr *, 4> rightChildren;
     Expr *middleExpr = nullptr;
     for (size_t i = 0; i < children.size(); i++) {
       if (i < middle)

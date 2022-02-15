@@ -2,14 +2,17 @@
 #define LINNEA_MUL_TEST
 
 #include "Standalone/LinneaExpr.h"
+#include "llvm/ADT/SmallVector.h"
 
 using namespace std;
+using namespace llvm;
 using namespace mlir::linnea::expr;
 
 namespace {
 template <typename... Args>
-vector<typename std::common_type<Args...>::type> varargToVector(Args... args) {
-  vector<typename std::common_type<Args...>::type> result;
+SmallVector<typename std::common_type<Args...>::type>
+varargToVector(Args... args) {
+  SmallVector<typename std::common_type<Args...>::type> result;
   result.reserve(sizeof...(Args));
   for (auto arg :
        {static_cast<typename std::common_type<Args...>::type>(args)...}) {
@@ -20,7 +23,7 @@ vector<typename std::common_type<Args...>::type> varargToVector(Args... args) {
 
 template <typename... Args>
 Expr *adderImpl(bool fold, Args... args) {
-  auto operands = varargToVector<Expr *>(args...);
+  SmallVector<Expr *, 4> operands = varargToVector<Expr *>(args...);
   assert(operands.size() >= 2 && "two or more operands");
   return variadicAdd(operands, fold);
 }
@@ -37,7 +40,7 @@ Expr *adder(bool arg, Args... args) {
 
 template <typename... Args>
 Expr *multiplierImpl(bool fold, Args... args) {
-  auto operands = varargToVector<Expr *>(args...);
+  SmallVector<Expr *> operands = varargToVector<Expr *>(args...);
   assert(operands.size() >= 2 && "two or more operands");
   return variadicMul(operands, fold);
 }
