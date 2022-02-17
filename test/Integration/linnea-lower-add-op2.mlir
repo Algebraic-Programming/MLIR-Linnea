@@ -1,5 +1,5 @@
 // RUN: standalone-opt %s --linnea-compiler | \
-// RUN: %llvmbindir/bin/mlir-cpu-runner \
+// RUN: mlir-cpu-runner \
 // RUN:  -e entry -entry-point-result=void  \
 // RUN: -shared-libs=%llvmlibdir/libmlir_c_runner_utils%shlibext | \
 // RUN: FileCheck %s

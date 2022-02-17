@@ -46,7 +46,7 @@ private:
   llvm::SmallSet<Expr *, 8> liveRefs;
 };
 
-/// Generic expr of type BINARY, UNARY or OPERAND.
+/// Generic expr of type BINARY, UNARY, NARY or OPERAND.
 class Expr {
 public:
   enum class ExprKind { BINARY, UNARY, OPERAND, NARY };
@@ -90,8 +90,9 @@ public:
   // normal form.
   virtual Expr *getNormalForm() = 0;
 
-  // get result dimension.
-  virtual std::vector<int64_t> getResultDimensions() const = 0;
+  // return the dimensions of the result. Since we are dealing
+  // with only matrices is a two-dimensional vector.
+  virtual SmallVector<int64_t, 2> getResultShape() const = 0;
 
   // query properties.
   virtual bool isUpperTriangular() const = 0;
@@ -153,7 +154,7 @@ public:
   Expr *getNormalForm() override;
 
   // get result dimension.
-  std::vector<int64_t> getResultDimensions() const override;
+  SmallVector<int64_t, 2> getResultShape() const override;
 
   // return the children.
   std::vector<Expr *> getChildren() const { return children; }
@@ -197,7 +198,7 @@ public:
   Expr *getNormalForm() override;
 
   // get result dimension.
-  std::vector<int64_t> getResultDimensions() const override;
+  SmallVector<int64_t, 2> getResultShape() const override;
 
   // return the only child.
   Expr *getChild() const { return child; };
@@ -227,14 +228,14 @@ public:
 
 private:
   std::string name;
-  std::vector<int64_t> shape;
+  SmallVector<int64_t, 2> shape;
   OperandKind kind;
 
 public:
   Operand() = delete;
-  Operand(std::string name, std::vector<int64_t> shape, OperandKind kind);
+  Operand(std::string name, SmallVector<int64_t, 2> shape, OperandKind kind);
   std::string getName() const { return name; };
-  std::vector<int64_t> getShape() const { return shape; };
+  SmallVector<int64_t, 2> getShape() const { return shape; };
   OperandKind getKind() const { return kind; };
 
   std::vector<Expr::ExprProperty> getProperties() const;
@@ -246,7 +247,7 @@ public:
   Expr *getNormalForm() override;
 
   // get the dimensionality of the ouput for the current expression.
-  std::vector<int64_t> getResultDimensions() const override;
+  SmallVector<int64_t, 2> getResultShape() const override;
 
   static bool classof(const Expr *expr) {
     return expr->getKind() == ExprKind::OPERAND;
@@ -259,7 +260,7 @@ public:
   enum class MatrixKind { GENERAL, IDENTITY };
 
   Matrix() = delete;
-  Matrix(std::string name, std::vector<int64_t> shape,
+  Matrix(std::string name, SmallVector<int64_t, 2> shape,
          MatrixKind kind = MatrixKind::GENERAL);
   MatrixKind getKind() const { return kind; };
 
@@ -288,7 +289,7 @@ private:
 class Identity : public Matrix {
 public:
   Identity() = delete;
-  Identity(std::vector<int64_t> shape);
+  Identity(SmallVector<int64_t, 2> shape);
 
   static bool classof(const Expr *expr) {
     if (const Matrix *m = llvm::dyn_cast_or_null<Matrix>(expr))

@@ -63,7 +63,7 @@ static void printProperties(vector<Expr::ExprProperty> properties) {
 }
 
 /// print the shape of the operand.
-static void printShape(vector<int64_t> shape) {
+static void printShape(ArrayRef<int64_t> shape) {
   for (size_t i = 0, e = shape.size(); i < e; i++) {
     cout << shape[i];
     if (i != e - 1)
@@ -469,14 +469,19 @@ Expr *ExprBuilder::buildOperandImpl(Value val) {
     auto properties = convert(matrixType.getProperty()
                                   .cast<LinneaMatrixEncodingAttr>()
                                   .getEncoding());
-    auto size = matrixType.getDims();
     std::string id = "A" + std::to_string(getNextId());
-    operand = new Matrix(id, size);
+    // FIXME: this is a terrible hack!
+    // MatrixType returns an ArrayRef but the constructor
+    // of Matrix or Identity takes a SmallVector.
+    vector<int64_t> dims = matrixType.getDims().vec();
+    SmallVector<int64_t, 2> dimsVec = {dims.begin(), dims.end()};
+    operand = new Matrix(id, dimsVec);
     operand->setProperties(properties);
   } else if (auto identityType =
                  val.getType().dyn_cast_or_null<IdentityType>()) {
-    auto size = identityType.getDims();
-    operand = new Identity(size);
+    vector<int64_t> dims = identityType.getDims().vec();
+    SmallVector<int64_t, 2> dimsVec = {dims.begin(), dims.end()};
+    operand = new Identity(dimsVec);
   } else {
     llvm_unreachable("expect either a MatrixType or an IdentityType");
   }
@@ -489,12 +494,10 @@ Expr *ExprBuilder::buildOperandImpl(Value val) {
 }
 
 static Type getElementType(Type t) {
-  if (auto mt = t.dyn_cast_or_null<MatrixType>()) {
+  if (auto mt = t.dyn_cast_or_null<MatrixType>())
     return mt.getElementType();
-  }
-  if (auto it = t.dyn_cast_or_null<IdentityType>()) {
+  if (auto it = t.dyn_cast_or_null<IdentityType>())
     return it.getElementType();
-  }
   llvm_unreachable("expect only MatrixType or IdentityType");
 }
 
@@ -565,7 +568,7 @@ Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder, Expr *root) {
       return lookup(operand);
     }
   }
-  assert(0 && "Expression not supported");
+  llvm_unreachable("Expression not supported!");
   return nullptr;
 }
 
@@ -583,6 +586,7 @@ static bool hasOnlyUser(Value source, Operation *target) {
   return true;
 }
 
+// Build symbolic expression following use-def chain for 'val'.
 Expr *ExprBuilder::buildExprImpl(Value val, Operation *currentOp) {
   // 'val' comes is a basic block arg or the result
   // of a fillOp. Build operand directly.
@@ -729,25 +733,128 @@ void Expr::walk(int level) const {
   } // operand
 }
 
-// XXX: See how we can re-enable matrix chain reordering for mul.
+static SmallVector<long, 8> getOperandSize(ArrayRef<Expr *> operands) {
+  SmallVector<long, 8> sizes;
+  for (Expr *operand : operands) {
+    SmallVector<int64_t, 2> shape = operand->getResultShape();
+    if (!sizes.size()) {
+      sizes.push_back(shape[0]);
+      sizes.push_back(shape[1]);
+    } else
+      sizes.push_back(shape[1]);
+  }
+  return sizes;
+}
+
+// Run matrix-chain optimization.
+static Expr *runMCO(ArrayRef<Expr *> operands) {
+
+  SmallVector<long, 8> pVector = getOperandSize(operands);
+  const size_t n = pVector.size();
+  vector<vector<long>> m(n, vector<long>(n, std::numeric_limits<long>::max()));
+  vector<vector<long>> s(n, vector<long>(n, std::numeric_limits<long>::max()));
+  // store symbolic temporary variables representing sub-chains.
+  vector<vector<Expr *>> tmps(n, vector<Expr *>(n, nullptr));
+
+  for (size_t i = 0; i < n - 1; i++)
+    tmps[i + 1][i + 1] = operands[i];
+
+#if DEBUG
+  cout << "\n\n-before-tmps-\n";
+  print(tmps, true);
+#endif
+
+  for (size_t i = 0; i < n; i++)
+    m[i][i] = 0;
+
+  size_t j = 0;
+  long q = 0;
+  for (size_t l = 2; l < n; l++) {
+    for (size_t i = 1; i < n - l + 1; i++) {
+      j = i + l - 1;
+      m[i][j] = std::numeric_limits<long>::max();
+      for (size_t k = i; k <= j - 1; k++) {
+
+        auto tmpexpr =
+            variadicMul({tmps[i][k], tmps[k + 1][j]}, /*fold*/ false);
+#if DEBUG
+        cout << "---\n";
+        walk(tmpexpr);
+        cout << "\n---\n\n";
+#endif
+        long cost = 0;
+        getKernelCostTopLevelExpr(tmpexpr, cost);
+        q = m[i][k] + m[k + 1][j] + cost;
+        if (q < m[i][j]) {
+          tmps[i][j] =
+              variadicMul({tmps[i][k], tmps[k + 1][j]}, /*fold*/ false);
+          m[i][j] = q;
+          s[i][j] = k;
+        }
+      }
+    }
+  }
+
+#if DEBUG
+  cout << "\n\n-after-tmps-\n";
+  print(tmps, true);
+  cout << "\n";
+  walk(tmps[1][tmps.size() - 1]);
+
+  cout << "\n\n-----s------\n";
+  int rows = s.size();
+  int cols = s[0].size();
+  for (int i = 0; i < rows; i++) {
+    for (int j = 0; j < cols; j++) {
+      if (s[i][j] == std::numeric_limits<long>::max())
+        cout << "- ";
+      else
+        cout << s[i][j] << " ";
+    }
+    cout << "\n";
+  }
+  cout << "\n-----m------\n";
+  rows = m.size();
+  cols = m[0].size();
+  for (int i = 0; i < rows; i++) {
+    for (int j = 0; j < cols; j++) {
+      if (m[i][j] == std::numeric_limits<long>::max())
+        cout << "- ";
+      else
+        cout << m[i][j] << " ";
+    }
+    cout << "\n";
+  }
+  cout << "\n";
+  printOptimalParens(s, 1, operands.size(), operands);
+  cout << "\n\n";
+#endif
+  return tmps[1][tmps.size() - 1];
+}
+
+// Optimize symbolic expression.
 static Expr *simplifyImpl(Expr *root) {
   if (root) {
     if (auto naryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
       auto children = naryExpr->getChildren();
-      assert(children.size() >= 2);
-      Expr *leftChild = simplifyImpl(children[0]);
-      Expr *rightChild = simplifyImpl(children[1]);
+      assert(children.size() >= 2 && "expect two or more children");
       switch (naryExpr->getKind()) {
       case NaryExpr::NaryExprKind::MUL: {
-        Expr *mul = variadicMul({leftChild, rightChild}, false);
-        for (size_t i = 2; i < children.size(); i++)
-          mul = variadicMul({mul, simplifyImpl(children[i])}, false);
-        return mul;
+        // Optimize each children then run MCO.
+        SmallVector<Expr *> simplifiedChildren;
+        for (size_t i = 0; i < children.size(); i++) {
+          simplifiedChildren.push_back(simplifyImpl(children[i]));
+        }
+        return runMCO(simplifiedChildren);
       }
       case NaryExpr::NaryExprKind::ADD: {
-        Expr *add = variadicAdd({leftChild, rightChild}, false);
+        // Optimize each children and rewrite the expression
+        // from variadic to binary.
+        Expr *leftChild = simplifyImpl(children[0]);
+        Expr *rightChild = simplifyImpl(children[1]);
+        Expr *add = variadicAdd({leftChild, rightChild}, /*fold*/ false);
         for (size_t i = 2; i < children.size(); i++)
-          add = variadicAdd({add, simplifyImpl(children[i])}, false);
+          add = variadicAdd({add, simplifyImpl(children[i])}, /*fold*/ false);
         return add;
       }
       }
@@ -783,17 +890,16 @@ vector<Expr::ExprProperty> UnaryExpr::getAndSetProperties() {
 }
 
 /// Return the size of the unary expr operand.
-vector<int64_t> UnaryExpr::getResultDimensions() const {
+SmallVector<int64_t, 2> UnaryExpr::getResultShape() const {
   if (this->getKind() == UnaryExprKind::INVERSE)
-    return this->getChild()->getResultDimensions();
+    return this->getChild()->getResultShape();
   else { // transpose.
-    vector<int64_t> dims = this->getChild()->getResultDimensions();
+    assert(this->getKind() == UnaryExprKind::TRANSPOSE);
+    SmallVector<int64_t, 2> dims = this->getChild()->getResultShape();
     assert(dims.size() == 2 && "expect two dimensions");
     std::swap(dims[0], dims[1]);
     return dims;
   }
-  assert(0 && "unreachable");
-  return {};
 }
 
 //===----------------------------------------------------------------------===//
@@ -810,15 +916,20 @@ vector<Expr::ExprProperty> NaryExpr::getAndSetProperties() {
 }
 
 /// Return the size of the nary expr operand.
-vector<int64_t> NaryExpr::getResultDimensions() const {
+SmallVector<int64_t, 2> NaryExpr::getResultShape() const {
   if (this->getKind() == NaryExprKind::MUL) {
     auto children = this->getChildren();
     assert(children.size() >= 2 && "two or more children expcted");
-    int64_t leftDim = children[0]->getResultDimensions()[0];
-    int64_t rightDim = children[children.size() - 1]->getResultDimensions()[1];
+    int64_t leftDim = children[0]->getResultShape()[0];
+    int64_t rightDim = children[children.size() - 1]->getResultShape()[1];
     return {leftDim, rightDim};
+  } else {
+    assert(this->getKind() == NaryExprKind::ADD);
+    // A matrix can only be added to (or subtracted from) another matrix if the
+    // two matrices have the same dimensions. Thus return the dimension of the
+    // first children.
+    return children[0]->getResultShape();
   }
-  assert(0 && "unreachable");
 }
 
 //===----------------------------------------------------------------------===//
@@ -858,7 +969,7 @@ void ScopedContext::print() {
 //===----------------------------------------------------------------------===//
 
 /// Check if the shape is square.
-bool hasSquareShape(const vector<int64_t> &shape) {
+bool hasSquareShape(ArrayRef<int64_t> shape) {
   assert(shape.size() >= 1 && "must be >= 1");
   if (shape.size() == 1)
     return true;
@@ -866,7 +977,7 @@ bool hasSquareShape(const vector<int64_t> &shape) {
                 [&](int dim) { return dim == shape[0]; });
 }
 
-Operand::Operand(string name, vector<int64_t> shape, OperandKind kind)
+Operand::Operand(string name, SmallVector<int64_t, 2> shape, OperandKind kind)
     : ScopedExpr(ExprKind::OPERAND), name(name), shape(shape), kind(kind) {
   if (hasSquareShape(shape))
     this->setProperties({Expr::ExprProperty::SQUARE});
@@ -894,7 +1005,7 @@ void Operand::setProperties(std::vector<Expr::ExprProperty> properties) {
 }
 
 /// Get the shape of the operand.
-vector<int64_t> Operand::getResultDimensions() const { return shape; }
+SmallVector<int64_t, 2> Operand::getResultShape() const { return shape; }
 
 /// Return a vector of properties for the current operand.
 vector<Expr::ExprProperty> Operand::getProperties() const {
@@ -908,7 +1019,7 @@ vector<Expr::ExprProperty> Operand::getProperties() const {
 // Matrix
 //===----------------------------------------------------------------------===//
 
-Matrix::Matrix(string name, vector<int64_t> shape, MatrixKind kind)
+Matrix::Matrix(string name, SmallVector<int64_t, 2> shape, MatrixKind kind)
     : Operand(name, shape, OperandKind::MATRIX), kind(kind) {
   assert(shape.size() == 2 && "expect shape of size 2");
 }
@@ -917,5 +1028,5 @@ Matrix::Matrix(string name, vector<int64_t> shape, MatrixKind kind)
 // Identity
 //===----------------------------------------------------------------------===//
 
-Identity::Identity(vector<int64_t> shape)
+Identity::Identity(SmallVector<int64_t, 2> shape)
     : Matrix("I", shape, MatrixKind::IDENTITY) {}

@@ -7,7 +7,7 @@ using namespace mlir::linnea::expr;
 TEST(Dimensions, Matrix) {
   ScopedContext ctx;
   auto *A = new Matrix("A", {30, 15});
-  auto dims = A->getResultDimensions();
+  auto dims = A->getResultShape();
   EXPECT_EQ(dims.size() == 2, true);
   EXPECT_EQ(dims[0] == 30, true);
   EXPECT_EQ(dims[1] == 15, true);
@@ -22,7 +22,7 @@ TEST(Dimensions, Nary) {
   auto *E = new Matrix("A5", {10, 20});
   auto *F = new Matrix("A6", {20, 25});
   auto *G = mul(A, mul(B, mul(C, mul(D, mul(E, F)))));
-  auto dims = G->getResultDimensions();
+  auto dims = G->getResultShape();
   EXPECT_EQ(dims.size() == 2, true);
   EXPECT_EQ(dims[0] == 30, true);
   EXPECT_EQ(dims[1] == 25, true);
@@ -32,7 +32,7 @@ TEST(Dimensions, Unary) {
   ScopedContext ctx;
   auto *A = new Matrix("A", {30, 15});
   auto *AT = trans(A);
-  auto dims = AT->getResultDimensions();
+  auto dims = AT->getResultShape();
   EXPECT_EQ(dims.size() == 2, true);
   EXPECT_EQ(dims[0] == 15, true);
   EXPECT_EQ(dims[1] == 30, true);

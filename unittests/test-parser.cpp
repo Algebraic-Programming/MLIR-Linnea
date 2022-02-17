@@ -11,7 +11,7 @@ namespace parser {
 struct ParsedOperand {
   string name;
   string type;
-  vector<int64_t> dims;
+  SmallVector<int64_t, 2> dims;
   vector<Expr::ExprProperty> properties;
   void dump();
   static Expr::ExprProperty convertProperty(string str);
@@ -351,7 +351,7 @@ bool Parser::parseOperand(ParsedOperand &operand) {
   operand.type = lex.getCurrTok().tokenAsString;
 
   // parse dimensions (32, 32). Only 2d atm.
-  vector<int64_t> dims;
+  SmallVector<int64_t, 2> dims;
   if (!lex.expect(TokenValue::LP))
     return false;
   if (!lex.expect(TokenValue::NUM))
