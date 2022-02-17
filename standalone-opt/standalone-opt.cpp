@@ -20,7 +20,6 @@
 #include "llvm/Support/ToolOutputFile.h"
 
 #include "Standalone/LinneaDialect.h"
-#include "Standalone/LinneaOpsDialect.cpp.inc"
 #include "Standalone/LinneaPasses.h"
 
 int main(int argc, char **argv) {

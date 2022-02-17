@@ -9,6 +9,7 @@
 #include "Standalone/LinneaDialect.h"
 #include "Standalone/LinneaAttributes.h"
 #include "Standalone/LinneaOps.h"
+#include "Standalone/LinneaOpsDialect.cpp.inc"
 #include "Standalone/LinneaTypes.h"
 #include "mlir/IR/DialectImplementation.h"
 

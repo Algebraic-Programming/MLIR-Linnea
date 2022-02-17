@@ -14,7 +14,6 @@
 #include "mlir/IR/OpDefinition.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
-
 #include "Standalone/LinneaTypes.h"
 
 #define GET_OP_CLASSES
