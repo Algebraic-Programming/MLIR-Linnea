@@ -18,6 +18,44 @@ extern "C" {
 
 MLIR_DECLARE_CAPI_DIALECT_REGISTRATION(Linnea, linnea);
 
+/// Attributes encoding.
+enum MlirLinneaMatrixEncoding {
+  MLIR_LINNEA_MATRIX_PROPERTY_GENERAL,
+  MLIR_LINNEA_MATRIX_PROPERTY_FULLRANK,
+  MLIR_LINNEA_MATRIX_PROPERTY_DIAGONAL,
+  MLIR_LINNEA_MATRIX_PROPERTY_UNITDIAGONAL,
+  MLIR_LINNEA_MATRIX_PROPERTY_LOWERTRIANGULAR,
+  MLIR_LINNEA_MATRIX_PROPERTY_UPPERTRIANGULAR,
+  MLIR_LINNEA_MATRIX_PROPERTY_SYMMETRIC,
+  MLIR_LINNEA_MATRIX_PROPERTY_SPD,
+  MLIR_LINNEA_MATRIX_PROPERTY_SPSD,
+  MLIR_LINNEA_MATRIX_PROPERTY_SQUARE,
+  MLIR_LINNEA_MATRIX_PROPERTY_FACTORED,
+};
+
+//===---------------------------------------------------------------------===//
+// LinneaMatrixEncodingAttr
+//===---------------------------------------------------------------------===//
+
+MLIR_CAPI_EXPORTED bool
+mlirAttributeIsLinneaMatrixEncodingAttr(MlirAttribute attr);
+
+MLIR_CAPI_EXPORTED MlirAttribute mlirLinneaAttributeMatrixEncodingAttrGet(
+    MlirContext ctx, intptr_t numProperties,
+    enum MlirLinneaMatrixEncoding const *properties);
+
+//===---------------------------------------------------------------------===//
+// MatrixType
+//===---------------------------------------------------------------------===//
+
+MLIR_CAPI_EXPORTED bool mlirTypeIsLinneaMatrixType(MlirType type);
+
+MLIR_CAPI_EXPORTED MlirType mlirLinneaMatrixTypeGet(MlirContext ctx,
+                                                    MlirAttribute attr,
+                                                    intptr_t rank,
+                                                    const int64_t *shape,
+                                                    MlirType elementType);
+
 #ifdef __cplusplus
 }
 #endif

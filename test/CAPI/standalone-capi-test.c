@@ -16,8 +16,9 @@
 
 int main(int argc, char **argv) {
   MlirContext ctx = mlirContextCreate();
-  // TODO: Create the dialect handles for the builtin dialects and avoid this.
-  // This adds dozens of MB of binary size over just the standalone dialect.
+
+  // CHECK-LABEL: testDialectRegistration
+  fprintf(stderr, "testDialectRegistration\n");
   mlirRegisterAllDialects(ctx);
   mlirDialectHandleRegisterDialect(mlirGetDialectHandle__linnea__(), ctx);
 
@@ -32,6 +33,15 @@ int main(int argc, char **argv) {
 
   // CHECK: %[[C:.*]] = arith.constant 2 : i32
   mlirOperationDump(op);
+
+  // CHECK-LABEL: testMatrixTypeAttr
+  fprintf(stderr, "testMatrixTypeAttr\n");
+  const char *originalAsm = "#linnea.property<[\"general\"]>>";
+  MlirAttribute originalAttr =
+      mlirAttributeParseGet(ctx, mlirStringRefCreateFromCString(originalAsm));
+  // CHECK: isa: 1
+  fprintf(stderr, "isa: %d\n",
+          mlirAttributeIsLinneaMatrixEncodingAttr(originalAttr));
 
   mlirModuleDestroy(module);
   mlirContextDestroy(ctx);
