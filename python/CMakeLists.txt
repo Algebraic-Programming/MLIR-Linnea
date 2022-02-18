@@ -3,6 +3,7 @@ include(AddMLIRPython)
 # Specifies that all MLIR packages are co-located under the `mlir_standalone`
 # top level package (the API has been embedded in a relocatable way).
 # TODO: Add an upstream cmake param for this vs having a global here.
+message (STATUS "-------------------------------------------------------")
 add_compile_definitions("MLIR_PYTHON_PACKAGE_PREFIX=mlir_standalone.")
 
 
@@ -36,7 +37,7 @@ declare_mlir_python_extension(StandalonePythonSources.Extension
 add_mlir_python_common_capi_library(StandalonePythonCAPI
   INSTALL_COMPONENT StandalonePythonModules
   INSTALL_DESTINATION python_packages/standalone/mlir_standalone/_mlir_libs
-  OUTPUT_DIRECTORY "${MLIR_BINARY_DIR}/python_packages/Standalone/mlir_standalone/_mlir_libs"
+  OUTPUT_DIRECTORY "${MLIR_BINARY_DIR}/python_packages/standalone/mlir_standalone/_mlir_libs"
   RELATIVE_INSTALL_ROOT "../../../.."
   DECLARED_SOURCES
     StandalonePythonSources
@@ -56,4 +57,5 @@ add_mlir_python_modules(StandalonePythonModules
   COMMON_CAPI_LINK_LIBS
     StandalonePythonCAPI
   )
+message (STATUS "-------------------------------------------------------")
 

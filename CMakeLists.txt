@@ -19,7 +19,11 @@ include(TableGen)
 include(AddLLVM)
 include(AddMLIR)
 include(HandleLLVMOptions)
-include(MLIRDetectPythonEnv)
+
+if(MLIR_ENABLE_BINDINGS_PYTHON)
+  include(MLIRDetectPythonEnv)
+  mlir_configure_python_dev_packages()
+endif()
 
 include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
@@ -32,22 +36,12 @@ set(LLVM_LIT_ARGS "-sv" CACHE STRING "lit default options")
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 include(sanitizers)
 
-set(MLIR_LINNEA_ENABLE_BINDINGS_PYTHON 0 CACHE BOOL
-       "Enables building of Python bindings.")
-
-# Python bindings
-if(MLIR_LINNEA_ENABLE_BINDINGS_PYTHON)
-  include(MLIRDetectPythonEnv)
-  mlir_configure_python_dev_packages()
-endif()
-
-if(MLIR_LINNEA_ENABLE_BINDINGS_PYTHON)
+add_subdirectory(include)
+add_subdirectory(lib)
+if(MLIR_ENABLE_BINDINGS_PYTHON)
   message(STATUS "Enabling Python API")
   add_subdirectory(python)
 endif()
-
-add_subdirectory(include)
-add_subdirectory(lib)
 add_subdirectory(test)
 
 # Unit test

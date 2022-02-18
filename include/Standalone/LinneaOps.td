@@ -9,9 +9,9 @@
 #ifndef LINNEA_OPS
 #define LINNEA_OPS
 
-include "LinneaDialect.td"
+include "Standalone/LinneaDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
-include "LinneaTypeBase.td" 
+include "Standalone/LinneaTypeBase.td" 
 
 def Linnea_PrintOp : Linnea_Op<"print"> {
   let summary = "print operation (for testing and debugging)";
