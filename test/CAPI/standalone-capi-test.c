@@ -36,12 +36,21 @@ int main(int argc, char **argv) {
 
   // CHECK-LABEL: testMatrixTypeAttr
   fprintf(stderr, "testMatrixTypeAttr\n");
-  const char *originalAsm = "#linnea.property<[\"general\"]>>";
-  MlirAttribute originalAttr =
-      mlirAttributeParseGet(ctx, mlirStringRefCreateFromCString(originalAsm));
+  const char *originalAsmAttr = "#linnea.property<[\"general\"]>>";
+  MlirAttribute originalAttr = mlirAttributeParseGet(
+      ctx, mlirStringRefCreateFromCString(originalAsmAttr));
   // CHECK: isa: 1
   fprintf(stderr, "isa: %d\n",
           mlirAttributeIsLinneaMatrixEncodingAttr(originalAttr));
+
+  // CHECK-LABEL: testMatrixType
+  fprintf(stderr, "testMatrixType\n");
+  const char *originalAmsType =
+      "!linnea.matrix<#linnea.property<[\"general\"]>, [32, 32], f32>";
+  MlirType originalType =
+      mlirTypeParseGet(ctx, mlirStringRefCreateFromCString(originalAmsType));
+  // CHECK: isa: 1
+  fprintf(stderr, "isa: %d\n", mlirTypeIsLinneaMatrixType(originalType));
 
   mlirModuleDestroy(module);
   mlirContextDestroy(ctx);
