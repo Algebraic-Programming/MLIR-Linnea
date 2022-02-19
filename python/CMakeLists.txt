@@ -18,7 +18,7 @@ declare_mlir_dialect_python_bindings(
   TD_FILE dialects/StandaloneOps.td
   SOURCES
     dialects/standalone.py
-  DIALECT_NAME standalone)
+  DIALECT_NAME linnea)
 
 declare_mlir_python_extension(StandalonePythonSources.Extension
   MODULE_NAME _standaloneDialects
