@@ -1,0 +1,65 @@
+@@grammar::Linnea
+@@eol_comments :: /#.*?$/
+# @@whitespace :: /[\t ]+/
+# @@whitespace :: /[^\S\r\n]+/
+
+identifier = ?"[a-zA-Z_][a-zA-Z0-9_]*" ;
+constant = ?"[0-9]+(\.[0-9]+)?([Ee][+-]?[0-9]+)?" ;
+integer = ?"[0-9]+" ;
+# eol = ?"[\r\n]+";
+
+model::Model = vars:var_declarations symbols:symbol_declarations equations:equations $ ;
+
+var_declarations = { @+:var_declaration } ;
+symbol_declarations = { @+:symbol_declaration } ;
+equations = { @+:equation } ;
+
+var_declaration::Size = name:identifier "=" ~ value:integer ;
+
+symbol_declaration = scalar | row_vector | column_vector | matrix | identity_matrix | zero_matrix ;
+scalar::Scalar = "Scalar" ~ name:identifier "<" ','%{ properties+:properties }* ">";
+row_vector::RowVector = "RowVector" ~ name:identifier dims:dim_vector "<" ','%{ properties+:properties }* ">";
+column_vector::ColumnVector = "ColumnVector" ~ name:identifier dims:dim_vector "<" ','%{ properties+:properties }* ">";
+matrix::Matrix = "Matrix" ~ name:identifier dims:dim_matrix "<" ','%{ properties+:properties }* ">";
+identity_matrix::IdentityMatrix = "IdentityMatrix" ~ name:identifier dims:dim_matrix;
+zero_matrix::ZeroMatrix = "ZeroMatrix" ~ name:identifier dims:dim_matrix;
+
+dim_vector = "(" length:identifier ")";
+dim_matrix = "(" rows:identifier "," columns:identifier ")";
+properties =
+        | @:"Square"            | @:"SPD"               | @:"ColumnPanel"
+        | @:"RowPanel"          | @:"Diagonal"          | @:"Tridiagonal"
+        | @:"Banded"            | @:"LowerTriangular"   | @:"UpperTriangular"
+        | @:"UnitDiagonal"      | @:"Symmetric"         | @:"Hessenberg"
+        | @:"Orthogonal"        | @:"FullRank"          | @:"Non-singular"
+        | @:"Positive"          | @:"SPSD"              | @:"OrthogonalColumns"
+        | @:"OrthogonalRows"    | @:"Permutation";
+
+equation::Equation = lhs:symbol "=" ~ rhs:expression ;
+
+expression = addition | subtraction | term ;
+addition::Plus = left:term op:'+' ~ right:expression ;
+subtraction::Subtract = left:term op:'-' ~ right:expression ;
+
+term = multiplication | factor ;
+multiplication::Times = left:factor op:'*' ~ right:term ;
+
+factor = subexpression | transposed_expr | inverted_expr | minus_expr | literal_expr | symbol ;
+subexpression = "(" ~ @:expression ")" ;
+transposed_expr::Transpose =  "trans(" arg:expression ")" | arg:factor "'" ;
+inverted_expr::Inverse =  "inv(" arg:expression ")" ;
+minus_expr::Minus = "-" arg:factor ;
+literal_expr::Number = value:constant ;
+symbol::Symbol = name:identifier ;
+
+# TODO regarding A': what about for that only allowing subexpression, inverted, literal, symbol? 
+# then it should not be left recursive
+# -> doesn't work
+
+# factor = subexpression | transposed_expr | inverted_expr | literal_expr | symbol ;
+# tfactor = subexpression | inverted_expr | literal_expr | symbol ;
+# subexpression = "(" ~ @:expression ")" ;
+# transposed_expr::Transpose =  "trans(" arg:expression ")" | arg:tfactor "'" ;
+# inverted_expr::Inverse =  "inv(" arg:expression ")" ;
+# literal_expr::Number = value:constant ;
+# symbol::Symbol = name:identifier ;
