@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 
   // CHECK-LABEL: testMatrixTypeAttr
   fprintf(stderr, "testMatrixTypeAttr\n");
-  const char *originalAsmAttr = "#linnea.property<[\"general\"]>>";
+  const char *originalAsmAttr = "#linnea.property<[\"general\"]>";
   MlirAttribute originalAttr = mlirAttributeParseGet(
       ctx, mlirStringRefCreateFromCString(originalAsmAttr));
   // CHECK: isa: 1

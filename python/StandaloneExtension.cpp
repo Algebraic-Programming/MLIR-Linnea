@@ -30,8 +30,8 @@ PYBIND11_MODULE(_standaloneDialects, m) {
       py::arg("context") = py::none(), py::arg("load") = true);
 
   // Linnea MatrixType.
-  auto MatrixType =
-      mlir_type_subclass(m, "MatrixType", mlirTypeIsLinneaMatrixType);
+  auto MatrixType = mlir_type_subclass(standalone_m, "MatrixType",
+                                       mlirTypeIsLinneaMatrixType);
   MatrixType.def_classmethod(
       "get",
       [](py::object cls, MlirContext ctx, MlirAttribute attr,
@@ -56,8 +56,9 @@ PYBIND11_MODULE(_standaloneDialects, m) {
       .value("square", MLIR_LINNEA_MATRIX_PROPERTY_SQUARE)
       .value("factored", MLIR_LINNEA_MATRIX_PROPERTY_FACTORED);
 
-  auto MatrixEncodingAttr = mlir_attribute_subclass(
-      m, "LinneaMatrixEncodingAttr", mlirAttributeIsLinneaMatrixEncodingAttr);
+  auto MatrixEncodingAttr =
+      mlir_attribute_subclass(standalone_m, "MatrixEncodingAttr",
+                              mlirAttributeIsLinneaMatrixEncodingAttr);
 
   MatrixEncodingAttr.def_classmethod(
       "get",
