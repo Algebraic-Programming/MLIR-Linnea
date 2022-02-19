@@ -36,6 +36,10 @@ set(LLVM_LIT_ARGS "-sv" CACHE STRING "lit default options")
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 include(sanitizers)
 
+# It requires external deps. Switch it off.
+set(ENABLE_PYLINNEA 0 CACHE BOOL
+       "Enables pylinnea (implementing linnea using mlir).")
+
 add_subdirectory(include)
 add_subdirectory(lib)
 if(MLIR_ENABLE_BINDINGS_PYTHON)
