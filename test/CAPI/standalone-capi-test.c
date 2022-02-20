@@ -12,6 +12,7 @@
 #include <stdio.h>
 
 #include "Standalone-c/LinneaDialect.h"
+#include "mlir-c/BuiltinTypes.h"
 #include "mlir-c/IR.h"
 
 int main(int argc, char **argv) {
@@ -42,7 +43,11 @@ int main(int argc, char **argv) {
   // CHECK: isa: 1
   fprintf(stderr, "isa: %d\n",
           mlirAttributeIsLinneaMatrixEncodingAttr(originalAttr));
-  MlirAttribute propertyMatrix = mlirLinneaAttributeMatrixEncodingAttrGet(ctx, 1, MlirLinneaMatrixEncoding::MLIR_LINNEA_MATRIX_PROPERTY_GENERAL);
+  const enum MlirLinneaMatrixEncoding property =
+      MLIR_LINNEA_MATRIX_PROPERTY_GENERAL;
+  MlirAttribute propertyMatrix =
+      mlirLinneaAttributeMatrixEncodingAttrGet(ctx, 1, &property);
+  // CHECK: #linnea.property<["general"]>
   mlirAttributeDump(propertyMatrix);
 
   // CHECK-LABEL: testMatrixType
@@ -53,6 +58,11 @@ int main(int argc, char **argv) {
       ctx, mlirStringRefCreateFromCString(originalAsmMatrixType));
   // CHECK: isa: 1
   fprintf(stderr, "isa: %d\n", mlirTypeIsLinneaMatrixType(originalMatrixType));
+  const int64_t sizes[2] = {23, 23};
+  MlirType matrix = mlirLinneaMatrixTypeGet(ctx, propertyMatrix, 2, sizes,
+                                            mlirF32TypeGet(ctx));
+  // CHECK: !linnea.matrix<#linnea.property<["general"]>, [23, 23], f32>
+  mlirTypeDump(matrix);
 
   // CHECK-LABEL: testTermType
   fprintf(stderr, "testTermType\n");

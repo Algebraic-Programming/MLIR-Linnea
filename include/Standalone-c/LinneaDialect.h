@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef MLIR_C_DIALECT_LINNEA_H_UF
-#define MLIR_C_DIALECT_LINNEA_H_UF
+#ifndef MLIR_C_DIALECT_LINNEA_H
+#define MLIR_C_DIALECT_LINNEA_H
 
 #include "mlir-c/Registration.h"
 
