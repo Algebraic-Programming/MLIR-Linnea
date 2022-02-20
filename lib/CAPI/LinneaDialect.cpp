@@ -26,14 +26,22 @@ MlirAttribute mlirLinneaAttributeMatrixEncodingAttrGet(
 }
 
 bool mlirTypeIsLinneaMatrixType(MlirType type) {
-  return unwrap(type).isa<linnea::MatrixType>();
+  return unwrap(type).isa<MatrixType>();
 }
 
 MlirType mlirLinneaMatrixTypeGet(MlirContext ctx, MlirAttribute attr,
                                  intptr_t rank, const int64_t *shape,
                                  MlirType elementType) {
-  return wrap(linnea::MatrixType::get(
-      unwrap(ctx), unwrap(attr).cast<linnea::LinneaMatrixEncodingAttr>(),
+  return wrap(MatrixType::get(
+      unwrap(ctx), unwrap(attr).cast<LinneaMatrixEncodingAttr>(),
       llvm::makeArrayRef(shape, static_cast<size_t>(rank)),
       unwrap(elementType)));
+}
+
+bool mlirTypeIsLinneaTermType(MlirType type) {
+  return unwrap(type).isa<TermType>();
+}
+
+MlirType mlirLinneaTermTypeGet(MlirContext ctx) {
+  return wrap(TermType::get(unwrap(ctx)));
 }

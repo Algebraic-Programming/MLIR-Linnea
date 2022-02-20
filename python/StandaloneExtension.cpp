@@ -29,6 +29,16 @@ PYBIND11_MODULE(_standaloneDialects, m) {
       },
       py::arg("context") = py::none(), py::arg("load") = true);
 
+  // Linnea AnyType.
+  auto TermType =
+      mlir_type_subclass(standalone_m, "TermType", mlirTypeIsLinneaTermType);
+  TermType.def_classmethod(
+      "get",
+      [](py::object cls, MlirContext ctx) {
+        return cls(mlirLinneaTermTypeGet(ctx));
+      },
+      py::arg("cls"), py::arg("ctx"), "Create a TermType");
+
   // Linnea MatrixType.
   auto MatrixType = mlir_type_subclass(standalone_m, "MatrixType",
                                        mlirTypeIsLinneaMatrixType);

@@ -42,15 +42,28 @@ int main(int argc, char **argv) {
   // CHECK: isa: 1
   fprintf(stderr, "isa: %d\n",
           mlirAttributeIsLinneaMatrixEncodingAttr(originalAttr));
+  MlirAttribute propertyMatrix = mlirLinneaAttributeMatrixEncodingAttrGet(ctx, 1, MlirLinneaMatrixEncoding::MLIR_LINNEA_MATRIX_PROPERTY_GENERAL);
+  mlirAttributeDump(propertyMatrix);
 
   // CHECK-LABEL: testMatrixType
   fprintf(stderr, "testMatrixType\n");
-  const char *originalAmsType =
+  const char *originalAsmMatrixType =
       "!linnea.matrix<#linnea.property<[\"general\"]>, [32, 32], f32>";
-  MlirType originalType =
-      mlirTypeParseGet(ctx, mlirStringRefCreateFromCString(originalAmsType));
+  MlirType originalMatrixType = mlirTypeParseGet(
+      ctx, mlirStringRefCreateFromCString(originalAsmMatrixType));
   // CHECK: isa: 1
-  fprintf(stderr, "isa: %d\n", mlirTypeIsLinneaMatrixType(originalType));
+  fprintf(stderr, "isa: %d\n", mlirTypeIsLinneaMatrixType(originalMatrixType));
+
+  // CHECK-LABEL: testTermType
+  fprintf(stderr, "testTermType\n");
+  const char *originalAsmTermType = "!linnea.term";
+  MlirType originalTermType = mlirTypeParseGet(
+      ctx, mlirStringRefCreateFromCString(originalAsmTermType));
+  // CHECK: isa: 1
+  fprintf(stderr, "isa: %d\n", mlirTypeIsLinneaTermType(originalTermType));
+  MlirType term = mlirLinneaTermTypeGet(ctx);
+  // CHECK: !linnea.term
+  mlirTypeDump(term);
 
   mlirModuleDestroy(module);
   mlirContextDestroy(ctx);

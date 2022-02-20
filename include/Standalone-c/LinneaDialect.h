@@ -56,6 +56,14 @@ MLIR_CAPI_EXPORTED MlirType mlirLinneaMatrixTypeGet(MlirContext ctx,
                                                     const int64_t *shape,
                                                     MlirType elementType);
 
+//===---------------------------------------------------------------------===//
+// TermType
+//===---------------------------------------------------------------------===//
+
+MLIR_CAPI_EXPORTED bool mlirTypeIsLinneaTermType(MlirType type);
+
+MLIR_CAPI_EXPORTED MlirType mlirLinneaTermTypeGet(MlirContext ctx);
+
 #ifdef __cplusplus
 }
 #endif
