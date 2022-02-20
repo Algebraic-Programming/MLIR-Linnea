@@ -53,7 +53,8 @@ PYBIND11_MODULE(_standaloneDialects, m) {
       py::arg("elementType"), "Create a MatrixType");
 
   // Linnea MatrixEncodingAttr.
-  py::enum_<MlirLinneaMatrixEncoding>(m, "Property", py::module_local())
+  py::enum_<MlirLinneaMatrixEncoding>(standalone_m, "Property",
+                                      py::module_local())
       .value("general", MLIR_LINNEA_MATRIX_PROPERTY_GENERAL)
       .value("fullrank", MLIR_LINNEA_MATRIX_PROPERTY_FULLRANK)
       .value("diagonal", MLIR_LINNEA_MATRIX_PROPERTY_DIAGONAL)

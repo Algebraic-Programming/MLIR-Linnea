@@ -70,3 +70,34 @@ def testParsing():
     # CHECK: }
     # CHECK: return
     print(str(module))
+
+# CHECK-LABEL: TEST: buildLinneaTermType
+@run
+def buildLinneaTermType():
+  with Context() as ctx, Location.unknown():
+    sd.register_dialect()
+    tt = sd.TermType.get(ctx)
+    # CHECK: !linnea.term
+    print(tt)
+
+# CHECK-LABEL: TEST: buildMatrixAttribute
+@run
+def buildMatrixAttribute():
+  with Context() as ctx, Location.unknown():
+    sd.register_dialect()
+    p = [sd.Property.general]
+    attr = sd.MatrixEncodingAttr.get(ctx, p)
+    # CHECK: #linnea.property<["general"]>
+    print(attr)
+
+# CHECK-LABEL: TEST: buildMatrixType
+@run
+def buildMatrixType():
+  with Context() as ctx, Location.unknown():
+    sd.register_dialect()
+    p = [sd.Property.general]
+    attr = sd.MatrixEncodingAttr.get(ctx, p)
+    f32 = F32Type.get()
+    matrix = sd.MatrixType.get(ctx, attr, [23, 23], f32)
+    # CHECK: !linnea.matrix<#linnea.property<["general"]>, [23, 23], f32> 
+    print(matrix)
