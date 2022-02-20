@@ -108,7 +108,6 @@ public:
   bool isTransposeOf(const Expr *right);
   bool isSame(const Expr *right);
   void walk(int space = 0) const;
-  long getMCPFlops();
   Expr *simplify();
 
 protected:
@@ -134,6 +133,7 @@ public:
 /// Nary operation (i.e., MUL).
 // TODO: Does it make sense to query the same
 // properties on the "ADD" ?
+// TODO: Subclass MUL and ADD similar to Operand and Identity?
 class NaryExpr : public ScopedExpr<NaryExpr> {
 public:
   enum class NaryExprKind { MUL, ADD };
@@ -158,6 +158,10 @@ public:
 
   // return the children.
   std::vector<Expr *> getChildren() const { return children; }
+
+  // get flops estimate for matrix-chain multiplcation
+  // for testing purpose only. Defined only for NaryExprKind::MUL
+  long getMCPFlops();
 
   // query properties.
   bool isUpperTriangular() const override;

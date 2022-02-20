@@ -71,25 +71,6 @@ static void printShape(ArrayRef<int64_t> shape) {
   }
 }
 
-static vector<long> getPVector(vector<Expr *> exprs) {
-  vector<long> pVector;
-  for (auto expr : exprs) {
-    Operand *operand = nullptr;
-    while (auto unaryOp = llvm::dyn_cast_or_null<UnaryExpr>(expr))
-      expr = unaryOp->getChild();
-    operand = llvm::dyn_cast_or_null<Operand>(expr);
-    assert(operand && "must be non null");
-    auto shape = operand->getShape();
-    if (!pVector.size()) {
-      pVector.push_back(shape[0]);
-      pVector.push_back(shape[1]);
-    } else {
-      pVector.push_back(shape[1]);
-    }
-  }
-  return pVector;
-}
-
 static void printOptimalParens(const vector<vector<long>> &s, size_t i,
                                size_t j, vector<Expr *> operands) {
   if (i == j) {
@@ -111,27 +92,6 @@ static void printOptimalParens(const vector<vector<long>> &s, size_t i,
     printOptimalParens(s, s[i][j] + 1, j, operands);
     cout << ")";
   }
-}
-
-static void collectOperandsImpl(Expr *node, vector<Expr *> &operands) {
-  if (node) {
-    if (auto binaryOp = llvm::dyn_cast_or_null<NaryExpr>(node)) {
-      assert(binaryOp->getKind() == NaryExpr::NaryExprKind::MUL);
-      for (auto child : binaryOp->getChildren()) {
-        collectOperandsImpl(child, operands);
-      }
-    }
-    if (llvm::isa<UnaryExpr>(node) || llvm::isa<Operand>(node)) {
-      assert(node != nullptr && "must be non-null");
-      operands.push_back(node);
-    }
-  }
-}
-
-static vector<Expr *> collectOperands(Expr *expr) {
-  vector<Expr *> operands;
-  collectOperandsImpl(expr, operands);
-  return operands;
 }
 
 #if DEBUG
@@ -256,113 +216,6 @@ void getKernelCostFullExpr(Expr *node, long &cost) {
 
 void getKernelCostTopLevelExpr(Expr *node, long &cost) {
   (void)getKernelCostImpl(node, cost, false);
-}
-
-struct ResultMCP {
-  vector<vector<long>> m;
-  vector<vector<long>> s;
-  Expr *newExpr = nullptr;
-};
-
-ResultMCP runMCP(Expr *expr) {
-#if DEBUG
-  cout << "Starting point\n";
-  walk(expr);
-  cout << "\n\n";
-#endif
-  vector<Expr *> operands = collectOperands(expr);
-  vector<long> pVector = getPVector(operands);
-  const size_t n = pVector.size();
-  vector<vector<long>> m(n, vector<long>(n, std::numeric_limits<long>::max()));
-  vector<vector<long>> s(n, vector<long>(n, std::numeric_limits<long>::max()));
-
-  // store symbolic temporary variables representing sub-chains.
-  vector<vector<Expr *>> tmps(n, vector<Expr *>(n, nullptr));
-
-  for (size_t i = 0; i < n - 1; i++)
-    tmps[i + 1][i + 1] = operands.at(i);
-
-#if DEBUG
-  cout << "\n\n-before-tmps-\n";
-  print(tmps, true);
-#endif
-
-  for (size_t i = 0; i < n; i++)
-    m[i][i] = 0;
-
-  size_t j = 0;
-  long q = 0;
-  for (size_t l = 2; l < n; l++) {
-    for (size_t i = 1; i < n - l + 1; i++) {
-      j = i + l - 1;
-      m[i][j] = std::numeric_limits<long>::max();
-      for (size_t k = i; k <= j - 1; k++) {
-
-        auto tmpexpr =
-            variadicMul({tmps[i][k], tmps[k + 1][j]}, /*fold*/ false);
-#if DEBUG
-        cout << "---\n";
-        walk(tmpexpr);
-        cout << "\n---\n\n";
-#endif
-        long cost = 0;
-        getKernelCostTopLevelExpr(tmpexpr, cost);
-        q = m[i][k] + m[k + 1][j] + cost;
-        if (q < m[i][j]) {
-          tmps[i][j] =
-              variadicMul({tmps[i][k], tmps[k + 1][j]}, /*fold*/ false);
-          // tmps[i][j]->inferProperties();
-          m[i][j] = q;
-          s[i][j] = k;
-        }
-      }
-    }
-  }
-
-#if DEBUG
-  cout << "\n\n-after-tmps-\n";
-  print(tmps, true);
-  cout << "\n";
-  walk(tmps[1][tmps.size() - 1]);
-
-  cout << "\n\n-----s------\n";
-  int rows = s.size();
-  int cols = s[0].size();
-  for (int i = 0; i < rows; i++) {
-    for (int j = 0; j < cols; j++) {
-      if (s[i][j] == std::numeric_limits<long>::max())
-        cout << "- ";
-      else
-        cout << s[i][j] << " ";
-    }
-    cout << "\n";
-  }
-  cout << "\n-----m------\n";
-  rows = m.size();
-  cols = m[0].size();
-  for (int i = 0; i < rows; i++) {
-    for (int j = 0; j < cols; j++) {
-      if (m[i][j] == std::numeric_limits<long>::max())
-        cout << "- ";
-      else
-        cout << m[i][j] << " ";
-    }
-    cout << "\n";
-  }
-  cout << "\n";
-  printOptimalParens(s, 1, operands.size(), operands);
-  cout << "\n\n";
-#endif
-  return {m, s, tmps[1][tmps.size() - 1]};
-}
-
-long Expr::getMCPFlops() {
-  ResultMCP result = runMCP(this);
-  auto m = result.m;
-#if DEBUG
-  cout << "FLOPS: " << m[1][m.size() - 1] << "\n";
-#endif
-  return m[1][m.size() - 1];
 }
 
 // TODO: we can use the same set of enums between MLIR and the side data
@@ -746,8 +599,13 @@ static SmallVector<long, 8> getOperandSize(ArrayRef<Expr *> operands) {
   return sizes;
 }
 
+struct ResultMCO {
+  Expr *optimizedMulExpr = nullptr;
+  long flops = 0;
+};
+
 // Run matrix-chain optimization.
-static Expr *runMCO(ArrayRef<Expr *> operands) {
+static ResultMCO runMCO(ArrayRef<Expr *> operands) {
 
   SmallVector<long, 8> pVector = getOperandSize(operands);
   const size_t n = pVector.size();
@@ -829,7 +687,7 @@ static Expr *runMCO(ArrayRef<Expr *> operands) {
   printOptimalParens(s, 1, operands.size(), operands);
   cout << "\n\n";
 #endif
-  return tmps[1][tmps.size() - 1];
+  return {tmps[1][tmps.size() - 1], m[1][m.size() - 1]};
 }
 
 // Optimize symbolic expression.
@@ -845,7 +703,7 @@ static Expr *simplifyImpl(Expr *root) {
         for (size_t i = 0; i < children.size(); i++) {
           simplifiedChildren.push_back(simplifyImpl(children[i]));
         }
-        return runMCO(simplifiedChildren);
+        return runMCO(simplifiedChildren).optimizedMulExpr;
       }
       case NaryExpr::NaryExprKind::ADD: {
         // Optimize each children and rewrite the expression
@@ -930,6 +788,13 @@ SmallVector<int64_t, 2> NaryExpr::getResultShape() const {
     // first children.
     return children[0]->getResultShape();
   }
+}
+
+/// Return a flop estimate for the matrix-chain algorithm. Used for test only.
+long NaryExpr::getMCPFlops() {
+  assert(this->getKind() == NaryExprKind::MUL);
+  auto optimizedMulExpr = runMCO(this->getChildren());
+  return optimizedMulExpr.flops;
 }
 
 //===----------------------------------------------------------------------===//
