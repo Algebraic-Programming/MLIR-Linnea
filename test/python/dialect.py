@@ -47,3 +47,26 @@ def testMatrixType():
     casted = sd.MatrixType(parsed)
     # CHECK: equal: True
     print(f"equal: {casted == parsed}")
+
+# CHECK-LABEL: TEST: testParsing
+@run
+def testParsing():
+  with Context() as ctx:
+    sd.register_dialect()
+    module = Module.parse("""
+      func @bar(%arg0: !linnea.matrix<#linnea.property<["general"]>,[32,32], f32>) {
+        %0 = linnea.equation {
+          %1 = linnea.transpose %arg0 : 
+            !linnea.matrix<#linnea.property<["general"]>,[32,32], f32> -> !linnea.term
+          linnea.yield %1 : !linnea.term
+        }
+        return 
+      }
+    """)
+    # CHECK-LABEL: @bar(
+    # CHECK: %{{.*}} = linnea.equation{
+    # CHECK:    %[[T:.*]] = linnea.transpose %{{.*}}
+    # CHECK:    linnea.yield %[[T]]
+    # CHECK: }
+    # CHECK: return
+    print(str(module))

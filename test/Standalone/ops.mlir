@@ -25,9 +25,9 @@ func @bar(%arg0: !linnea.term, %arg1: !linnea.matrix<#linnea.property<["general"
 func @bar(%arg0: !linnea.matrix<#linnea.property<["general"]>,[32,32], f32>) {
   // CHECK: %{{.*}} = linnea.equation
   %0 = linnea.equation {
-      // CHECK: %{{.*}} = linnea.transpose %{{.*}}
+      // CHECK: %[[T:.*]] = linnea.transpose %{{.*}}
       %1 = linnea.transpose %arg0 : !linnea.matrix<#linnea.property<["general"]>,[32,32], f32> -> !linnea.term
-      // CHECK: linnea.yield %{{.*}}
+      // CHECK: linnea.yield %[[T]]
       linnea.yield %1 : !linnea.term
   }
   return
