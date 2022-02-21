@@ -477,16 +477,16 @@ Expr *ExprBuilder::buildExprImpl(Value val, Operation *currentOp) {
     // fold the eqOp in currentOp as eqOp has currentOp
     // as only user.
     if (hasOnlyUser(eqOp.getResult(), currentOp)) {
-      Region &region = eqOp.getBody();
-      Operation *terminator = region.front().getTerminator();
+      Block &block = eqOp.getBody();
+      Operation *terminator = block.getTerminator();
       visited.insert(eqOp.getOperation());
       return buildExprImpl(terminator->getOperand(0), currentOp);
     }
     // current equation op (eqOp) is used by the 'currentOp' but it has
     // multiple users. Build it and use the newly created value as operand for
     // the 'currentOp'.
-    Region &region = eqOp.getBody();
-    Operation *terminator = region.front().getTerminator();
+    Block &block = eqOp.getBody();
+    Operation *terminator = block.getTerminator();
     Value termOperand = terminator->getOperand(0);
     Expr *root = buildLinneaExpr(termOperand, eqOp.getOperation());
     root = root->simplify();

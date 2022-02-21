@@ -100,7 +100,8 @@ def Linnea_EquationOp : Linnea_Op<"equation",
   let regions = (region SizedRegion<1>:$region);
 
   let extraClassDeclaration = [{
-    Region &getBody() { return getOperation()->getRegion(0); }
+    Region &getRegion() { return getOperation()->getRegion(0); }
+    Block &getBody() { return getOperation()->getRegion(0).front(); }
   }];
 
   let hasCustomAssemblyFormat = 1;

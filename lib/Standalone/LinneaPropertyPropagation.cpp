@@ -80,8 +80,8 @@ void LinneaPropertyPropagation::runOnOperation() {
         continue;
       }
 
-      Region &region = eqOp.getBody();
-      Operation *terminator = region.front().getTerminator();
+      Block &block = eqOp.getBody();
+      Operation *terminator = block.getTerminator();
       Value termOperand = terminator->getOperand(0);
       Expr *root =
           exprBuilder.buildLinneaExpr(termOperand, eqOp.getOperation());
