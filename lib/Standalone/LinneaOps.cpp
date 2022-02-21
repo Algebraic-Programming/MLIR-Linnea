@@ -154,6 +154,11 @@ ParseResult EquationOp::parse(OpAsmParser &parser, OperationState &result) {
   if (parser.parseRegion(*body))
     return failure();
 
+  if (body->empty()) {
+    parser.emitError(parser.getNameLoc(), "Unexpected empty region");
+    return failure();
+  }
+
   // Parse terminator.
   Operation &yield = body->back().back();
   result.types.reserve(yield.getNumOperands());
@@ -163,7 +168,7 @@ ParseResult EquationOp::parse(OpAsmParser &parser, OperationState &result) {
 
 void EquationOp::print(OpAsmPrinter &printer) {
   // Print the region.
-  printer.printRegion(getBody());
+  printer.printRegion(getRegion());
 }
 
 #define GET_OP_CLASSES
