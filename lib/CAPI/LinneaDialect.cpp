@@ -1,14 +1,33 @@
-#include "Standalone-c/LinneaDialect.h"
+//===- LinalgDialect.cpp --------------------------------------------------===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
 
+#include "Standalone-c/LinneaDialect.h"
 #include "Standalone/LinneaDialect.h"
 #include "Standalone/LinneaOps.h"
 #include "mlir/CAPI/Registration.h"
+#include "mlir/IR/ImplicitLocOpBuilder.h"
 
 using namespace mlir;
 using namespace mlir::linnea;
 
 MLIR_DEFINE_CAPI_DIALECT_REGISTRATION(Linnea, linnea,
                                       mlir::linnea::LinneaDialect)
+
+void mlirLinneaEquationOpFillRegion(MlirOperation mlirOp) {
+  Operation *op = unwrap(mlirOp);
+  auto equationOp = cast_or_null<EquationOp>(op);
+  assert(equationOp);
+  Region &region = op->getRegion(0);
+  ImplicitLocOpBuilder b(op->getLoc(), op->getContext());
+  Block *block = b.createBlock(&region);
+  b.setInsertionPointToStart(block);
+  // b.create<YieldOp>(equationOp.output());
+}
 
 bool mlirAttributeIsLinneaMatrixEncodingAttr(MlirAttribute attr) {
   return unwrap(attr).isa<LinneaMatrixEncodingAttr>();

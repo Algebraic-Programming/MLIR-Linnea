@@ -29,6 +29,12 @@ PYBIND11_MODULE(_standaloneDialects, m) {
       },
       py::arg("context") = py::none(), py::arg("load") = true);
 
+  // Custom builder for equationOp.
+  standalone_m.def(
+      "fill_equation_region",
+      [](MlirOperation op) { mlirLinneaEquationOpFillRegion(op); },
+      py::arg("op"), "Fill the region for `op` assumed to be an equationOp.");
+
   // Linnea AnyType.
   auto TermType =
       mlir_type_subclass(standalone_m, "TermType", mlirTypeIsLinneaTermType);

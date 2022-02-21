@@ -152,4 +152,27 @@ def buildFillOp():
   # CHECK: return
   # CHECK: }
   # CHECK: }
-  print(module)   
+  print(module)
+
+# CHECK-LABEL: TEST: buildEquationOp
+@run
+def buildEquationOp():
+  with Context() as ctx, Location.unknown():
+    linnea.register_dialect()
+    module = Module.create()
+    with InsertionPoint(module.body):
+      termType = linnea.TermType.get(ctx)
+      func = builtin.FuncOp("some_func", ([termType], []))
+      with InsertionPoint(func.add_entry_block()):
+        eqOp = linnea.EquationOp(termType)
+        with InsertionPoint(eqOp.add_entry_block()):
+          yieldOp = linnea.YieldOp(func.arguments[0])
+        std.ReturnOp([])
+  # CHECK: module {
+  # CHECK: func @some_func(%arg0: !linnea.term) {
+  # CHECK:   %0 = linnea.equation{
+  # CHECK:     linnea.yield %arg0 : !linnea.term
+  # CHECK:   }
+  # CHECK: }
+  # CHECK: }
+  print(module) 
