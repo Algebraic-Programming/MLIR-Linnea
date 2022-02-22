@@ -14,5 +14,7 @@ add_public_tablegen_target(MLIRLinneaAttrDefIncGen)
 
 set(LLVM_TARGET_DEFINITIONS LinneaPasses.td)
 mlir_tablegen(LinneaPasses.h.inc -gen-pass-decls -name Linnea)
+mlir_tablegen(Passes.capi.h.inc -gen-pass-capi-header --prefix Linnea)
+mlir_tablegen(Passes.capi.cpp.inc -gen-pass-capi-impl --prefix Linnea)
 add_public_tablegen_target(MLIRLinneaPassIncGen)
 add_mlir_doc(LinneaPasses LinneaPasses ./ -gen-pass-doc)

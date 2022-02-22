@@ -27,6 +27,13 @@ def lowerToLLVM(module):
   pm.run(module)
   return module
 
+def lowerLinneaToLLVM(module):
+  import mlir_standalone.passes
+  with Context():
+    pm = PassManager.parse("linnea-compiler")
+    pm.run(module)
+    return module
+ 
 # CHECK-LABEL: TEST: testInvokeFloatAdd
 @run
 def testInvokeFloatAdd():
@@ -60,3 +67,38 @@ func @void() attributes { llvm.emit_c_interface } {
     execution_engine = ExecutionEngine(lowerToLLVM(module))
     # Nothing to check other than no exception thrown here.
     execution_engine.invoke("void")
+
+# CHECK-LABEL: TEST: lowerMulOp
+@run
+def lowerMulOp():
+  with Context() as ctx:
+    linnea.register_dialect()
+    module = Module.parse(r"""
+func @entry() attributes { llvm.emit_c_interface } {
+        
+  %c5 = arith.constant 5 : index
+
+  // Materialize and fill a linnea matrix.
+  %fc = arith.constant 5.0 : f32
+  %A = linnea.init [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+  %Af = linnea.fill(%fc, %A) : f32, !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+
+  // Materialize and fill a linnea matrix.
+  %B = linnea.init [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+  %Bf = linnea.fill(%fc, %B) : f32, !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+
+  %0 = linnea.equation {
+    %1 = linnea.mul.high %Af, %Bf :
+        !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>,
+        !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32> -> !linnea.term
+    linnea.yield %1 : !linnea.term
+  }
+           
+  linnea.print %0 : !linnea.term 
+  linnea.print %Af : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+  linnea.print %Bf : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32> 
+          
+  return 
+}""")
+  execution_engine = ExecutionEngine(lowerLinneaToLLVM(module))
+  execution_engine.invoke("entry")

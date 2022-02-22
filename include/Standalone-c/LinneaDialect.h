@@ -74,4 +74,6 @@ MLIR_CAPI_EXPORTED MlirType mlirLinneaTermTypeGet(MlirContext ctx);
 }
 #endif
 
+#include "Standalone/Passes.capi.h.inc"
+
 #endif // MLIR_C_DIALECT_LINNEA_H
