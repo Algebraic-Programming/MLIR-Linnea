@@ -26,11 +26,39 @@ void mlirLinneaEquationOpFillRegion(MlirOperation mlirOp) {
   ImplicitLocOpBuilder b(op->getLoc(), op->getContext());
   Block *block = b.createBlock(&region);
   b.setInsertionPointToStart(block);
-  // b.create<YieldOp>(equationOp.output());
 }
 
 bool mlirAttributeIsLinneaMatrixEncodingAttr(MlirAttribute attr) {
   return unwrap(attr).isa<LinneaMatrixEncodingAttr>();
+}
+
+// really bad. fix it.
+LinneaMatrixEncodingAttr::MatrixProperty
+getCppProperty(MlirLinneaMatrixEncoding p) {
+  if (p == MlirLinneaMatrixEncoding::MLIR_LINNEA_MATRIX_PROPERTY_GENERAL)
+    return LinneaMatrixEncodingAttr::MatrixProperty::General;
+  if (p == MlirLinneaMatrixEncoding::MLIR_LINNEA_MATRIX_PROPERTY_FULLRANK)
+    return LinneaMatrixEncodingAttr::MatrixProperty::FullRank;
+  if (p == MlirLinneaMatrixEncoding::MLIR_LINNEA_MATRIX_PROPERTY_FACTORED)
+    return LinneaMatrixEncodingAttr::MatrixProperty::Factored;
+  if (p == MlirLinneaMatrixEncoding::MLIR_LINNEA_MATRIX_PROPERTY_DIAGONAL)
+    return LinneaMatrixEncodingAttr::MatrixProperty::Diagonal;
+  if (p == MlirLinneaMatrixEncoding::MLIR_LINNEA_MATRIX_PROPERTY_UNITDIAGONAL)
+    return LinneaMatrixEncodingAttr::MatrixProperty::UnitDiagonal;
+  if (p ==
+      MlirLinneaMatrixEncoding::MLIR_LINNEA_MATRIX_PROPERTY_LOWERTRIANGULAR)
+    return LinneaMatrixEncodingAttr::MatrixProperty::LowerTriangular;
+  if (p ==
+      MlirLinneaMatrixEncoding::MLIR_LINNEA_MATRIX_PROPERTY_UPPERTRIANGULAR)
+    return LinneaMatrixEncodingAttr::MatrixProperty::UpperTriangular;
+  if (p == MlirLinneaMatrixEncoding::MLIR_LINNEA_MATRIX_PROPERTY_SYMMETRIC)
+    return LinneaMatrixEncodingAttr::MatrixProperty::Symmetric;
+  if (p == MlirLinneaMatrixEncoding::MLIR_LINNEA_MATRIX_PROPERTY_SQUARE)
+    return LinneaMatrixEncodingAttr::MatrixProperty::Square;
+  if (p == MlirLinneaMatrixEncoding::MLIR_LINNEA_MATRIX_PROPERTY_SPD)
+    return LinneaMatrixEncodingAttr::MatrixProperty::SPD;
+  else
+    return LinneaMatrixEncodingAttr::MatrixProperty::SPSD;
 }
 
 MlirAttribute mlirLinneaAttributeMatrixEncodingAttrGet(
@@ -39,8 +67,7 @@ MlirAttribute mlirLinneaAttributeMatrixEncodingAttrGet(
   SmallVector<LinneaMatrixEncodingAttr::MatrixProperty> cppProperties;
   cppProperties.resize(numProperties);
   for (intptr_t i = 0; i < numProperties; i++)
-    cppProperties[i] =
-        static_cast<LinneaMatrixEncodingAttr::MatrixProperty>(properties[i]);
+    cppProperties[i] = getCppProperty(properties[i]);
   return wrap(LinneaMatrixEncodingAttr::get(unwrap(ctx), cppProperties));
 }
 

@@ -3,6 +3,7 @@
 from mlir_standalone.ir import *
 from mlir_standalone.dialects import standalone as linnea
 from mlir_standalone.dialects import builtin as builtin
+from mlir_standalone.dialects import arith
 from mlir_standalone.dialects import std as std
 from typing import List
 
@@ -108,4 +109,41 @@ def buildMulHighOp():
   # CHECK:  }
   # CHECK: }
   # CHECK: }
-  print(module) 
+  print(module)
+
+# CHECK-LABEL: TEST: buildFullTest
+@run
+def buildFullTest():
+  with Context() as ctx, Location.unknown():
+    linnea.register_dialect()
+    module = Module.create()
+    with InsertionPoint(module.body):
+      func = builtin.FuncOp("entry", ([], []))
+      with InsertionPoint(func.add_entry_block()):
+        eqOp = linnea.EquationOp(linnea.TermType.get(ctx))
+        with InsertionPoint(eqOp.add_entry_block()):
+          f32 = F32Type.get()
+          indexType = IndexType.get()
+          fiveCstIdx = arith.ConstantOp(indexType, 5)
+          fiveCst = arith.ConstantOp(f32, 5.0)  
+          p = [linnea.Property.uppertriangular]
+          matrixType = linnea.MatrixType.get(ctx, 
+                                             linnea.MatrixEncodingAttr.get(ctx, p), [5, 5], f32) 
+          aMatrix = linnea.InitOp(matrixType, [fiveCstIdx, fiveCstIdx])
+          aMatrixFilled = linnea.FillOp(matrixType, fiveCst, aMatrix)
+          mulOp = linnea.MulOpHigh(linnea.TermType.get(ctx), [aMatrixFilled, aMatrixFilled])
+          yieldOp = linnea.YieldOp(mulOp)
+        std.ReturnOp([])
+  # CHECK: {
+  # CHECK: func @entry() {
+  # CHECK:  %0 = linnea.equation{
+  # CHECK:    %c5 = arith.constant 5 : index
+  # CHECK:    %cst = arith.constant 5.000000e+00 : f32
+  # CHECK:    %1 = linnea.init[%c5, %c5] : <#linnea.property<["upperTri"]>, [5, 5], f32>
+  # CHECK:    %2 = linnea.fill(%cst, %1) : f32, !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
+  # CHECK:    %3 = linnea.mul.high %2, %2 : !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>, !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32> -> !linnea.term
+  # CHECK: linnea.yield %3 : !linnea.term
+  # CHECK:  }
+  # CHECK: }
+  # CHECK: }
+  print(module)

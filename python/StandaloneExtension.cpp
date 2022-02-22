@@ -63,15 +63,15 @@ PYBIND11_MODULE(_standaloneDialects, m) {
                                       py::module_local())
       .value("general", MLIR_LINNEA_MATRIX_PROPERTY_GENERAL)
       .value("fullrank", MLIR_LINNEA_MATRIX_PROPERTY_FULLRANK)
+      .value("factored", MLIR_LINNEA_MATRIX_PROPERTY_FACTORED)
       .value("diagonal", MLIR_LINNEA_MATRIX_PROPERTY_DIAGONAL)
       .value("unitdiagonal", MLIR_LINNEA_MATRIX_PROPERTY_UNITDIAGONAL)
       .value("lowertriangular", MLIR_LINNEA_MATRIX_PROPERTY_LOWERTRIANGULAR)
       .value("uppertriangular", MLIR_LINNEA_MATRIX_PROPERTY_UPPERTRIANGULAR)
       .value("symmetric", MLIR_LINNEA_MATRIX_PROPERTY_SYMMETRIC)
-      .value("spd", MLIR_LINNEA_MATRIX_PROPERTY_SPD)
-      .value("spsd", MLIR_LINNEA_MATRIX_PROPERTY_SPSD)
       .value("square", MLIR_LINNEA_MATRIX_PROPERTY_SQUARE)
-      .value("factored", MLIR_LINNEA_MATRIX_PROPERTY_FACTORED);
+      .value("spd", MLIR_LINNEA_MATRIX_PROPERTY_SPD)
+      .value("spsd", MLIR_LINNEA_MATRIX_PROPERTY_SPSD);
 
   auto MatrixEncodingAttr =
       mlir_attribute_subclass(standalone_m, "MatrixEncodingAttr",
