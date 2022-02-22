@@ -26,10 +26,6 @@ module {
       linnea.yield %1 : !linnea.term
     }
     
-    // this linnea.term gives a lot of problem. It is nice
-    // to have the compiler keeping track of the result of
-    // a linnea equation but how can we propagate the result
-    // of a linnea equation to others?
     //
     // CHECK:       ( ( 25, 0, 0, 0, 0 ),
     // CHECK-SAME:    ( 50, 25, 0, 0, 0 ),
