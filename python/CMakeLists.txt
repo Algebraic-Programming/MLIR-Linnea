@@ -28,6 +28,8 @@ declare_mlir_python_extension(StandalonePythonSources.Extension
     StandaloneExtension.cpp
   EMBED_CAPI_LINK_LIBS
     StandaloneCAPI
+    MLIRCAPIExecutionEngine
+    MLIRCAPIConversion
 )
 
 ################################################################################
