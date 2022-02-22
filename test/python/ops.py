@@ -142,7 +142,7 @@ def buildFullTest():
   # CHECK:    %1 = linnea.init[%c5, %c5] : <#linnea.property<["upperTri"]>, [5, 5], f32>
   # CHECK:    %2 = linnea.fill(%cst, %1) : f32, !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
   # CHECK:    %3 = linnea.mul.high %2, %2 : !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>, !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32> -> !linnea.term
-  # CHECK: linnea.yield %3 : !linnea.term
+  # CHECK:    linnea.yield %3 : !linnea.term
   # CHECK:  }
   # CHECK: }
   # CHECK: }
