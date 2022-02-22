@@ -9,12 +9,6 @@ from mlir_standalone.execution_engine import *
 from mlir_standalone.passmanager import *
 from mlir_standalone.runtime import *
 
-# Log everything to stderr and flush so that we have a unified stream to match
-# errors/info emitted by MLIR to stderr.
-def log(*args):
-  print(*args, file=sys.stderr)
-  sys.stderr.flush()
-
 def run(f):
   print("\nTEST:", f.__name__)
   f()
@@ -53,7 +47,7 @@ func @add(%arg0: f32, %arg1: f32) -> f32 attributes { llvm.emit_c_interface } {
     res = c_float_p(-1.)
     execution_engine.invoke("add", arg0, arg1, res)
     # CHECK: 42.0 + 2.0 = 44.0
-    log("{0} + {1} = {2}".format(arg0[0], arg1[0], res[0]))
+    print("{0} + {1} = {2}".format(arg0[0], arg1[0], res[0]))
 
 # CHECK-LABEL: TEST: testInvokedVoid
 @run
