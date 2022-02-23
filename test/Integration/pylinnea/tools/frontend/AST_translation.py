@@ -1,8 +1,8 @@
 from tatsu.walkers import NodeWalker
 
-from tools.algebra import expression as ae
-from tools.algebra.equations import Equations
-from tools.algebra.properties import Property
+from ..algebra import expression as ae
+from ..algebra.equations import Equations
+from ..algebra.properties import Property
 
 
 class LinneaWalker(NodeWalker):

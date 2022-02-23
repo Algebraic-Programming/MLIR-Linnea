@@ -6,9 +6,12 @@ TEXT = '''
 n = 1500
 m = 1000
 
-Matrix X(n, m) <FullRank>
-ColumnVector y(n) <>
-ColumnVector b(m) <>
-
-b = inv(trans(X)*X)*trans(X)*y
+Matrix X(n, m) <LowerTriangular>
+Matrix Y(n, m) <>
+Y = X * X
 '''
+
+equations = parse_input(TEXT)
+# CHECK: Y = (X X)
+for equation in equations:
+  print(equations)
