@@ -624,7 +624,27 @@ class LinneaSemantics(object):
     def symbol(self, ast):  # noqa
         return ast
 
-def parseExpr(text):
-  parser = LinneaParser()
-  ast = parser.parse(text, rule_name='identifier')
-  return ast 
+
+def main(filename, start=None, **kwargs):
+    if start is None:
+        start = 'identifier'
+    if not filename or filename == '-':
+        text = sys.stdin.read()
+    else:
+        with open(filename) as f:
+            text = f.read()
+    parser = LinneaParser()
+    return parser.parse(text, rule_name=start, filename=filename, **kwargs)
+
+
+if __name__ == '__main__':
+    import json
+    from tatsu.util import asjson
+
+    ast = generic_main(main, LinneaParser, name='Linnea')
+    print('AST:')
+    print(ast)
+    print()
+    print('JSON:')
+    print(json.dumps(asjson(ast), indent=2))
+    print()
