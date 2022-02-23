@@ -25,6 +25,7 @@ PYBIND11_MODULE(_standaloneDialects, m) {
         mlirDialectHandleRegisterDialect(handle, context);
         if (load) {
           mlirDialectHandleLoadDialect(handle, context);
+          mlirRegisterLinneaPasses();
         }
       },
       py::arg("context") = py::none(), py::arg("load") = true);

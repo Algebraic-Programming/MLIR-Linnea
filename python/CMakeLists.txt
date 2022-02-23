@@ -19,7 +19,6 @@ declare_mlir_dialect_python_bindings(
   SOURCES
     dialects/standalone.py
     dialects/_linnea_ops_ext.py
-    passes/standalone.py
   DIALECT_NAME linnea)
 
 declare_mlir_python_extension(StandalonePythonSources.Extension
@@ -31,15 +30,6 @@ declare_mlir_python_extension(StandalonePythonSources.Extension
     StandaloneCAPI
     MLIRCAPIExecutionEngine
     MLIRCAPIConversion
-)
-
-declare_mlir_python_extension(StandalonePythonSources.LinneaDialectPasses
-  MODULE_NAME _standalonePasses
-  ADD_TO_PARENT StandalonePythonSources
-  SOURCES
-    LinneaPasses.cpp
-  EMBED_CAPI_LINK_LIBS
-    StandaloneCAPI
 )
 
 ################################################################################

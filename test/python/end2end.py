@@ -1,6 +1,7 @@
-# RUN: %PYTHON %s | FileCheck %s
+# RUN: SUPPORT_LIB=%llvmlibdir/libmlir_c_runner_utils%shlibext \
+# RUN:    %PYTHON %s | FileCheck %s
 
-import sys
+import sys, os
 from mlir_standalone.ir import *
 from mlir_standalone.dialects import standalone as linnea
 from mlir_standalone.dialects import builtin as builtin
@@ -21,13 +22,6 @@ def lowerToLLVM(module):
   pm.run(module)
   return module
 
-def lowerLinneaToLLVM(module):
-  import mlir_standalone.passes
-  with Context():
-    pm = PassManager.parse("linnea-compiler")
-    pm.run(module)
-    return module
- 
 # CHECK-LABEL: TEST: testInvokeFloatAdd
 @run
 def testInvokeFloatAdd():
@@ -49,7 +43,7 @@ func @add(%arg0: f32, %arg1: f32) -> f32 attributes { llvm.emit_c_interface } {
     # CHECK: 42.0 + 2.0 = 44.0
     print("{0} + {1} = {2}".format(arg0[0], arg1[0], res[0]))
 
-# CHECK-LABEL: TEST: testInvokedVoid
+# CHECK-LABEL: TEST: testInvokeVoid
 @run
 def testInvokeVoid():
   with Context():
@@ -89,10 +83,20 @@ func @entry() attributes { llvm.emit_c_interface } {
   }
            
   linnea.print %0 : !linnea.term 
-  linnea.print %Af : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
-  linnea.print %Bf : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32> 
-          
   return 
 }""")
-  execution_engine = ExecutionEngine(lowerLinneaToLLVM(module))
-  execution_engine.invoke("entry")
+
+    support_lib = os.getenv('SUPPORT_LIB')
+    assert support_lib is not None, 'SUPPORT_LIB must be defined'
+    if not os.path.exists(support_lib):
+      raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), support_lib)
+
+    pm = PassManager.parse("linnea-compiler")
+    pm.run(module)
+    execution_engine = ExecutionEngine(module, opt_level=0, shared_libs=[support_lib])
+    # CHECK:      ( ( 25, 0, 0, 0, 0 ),
+    # CHECK-SAME: ( 50, 25, 0, 0, 0 ),
+    # CHECK-SAME: ( 75, 50, 25, 0, 0 ),
+    # CHECK-SAME: ( 100, 75, 50, 25, 0 ),
+    # CHECK-SAME: ( 125, 100, 75, 50, 25 ) )
+    execution_engine.invoke("entry")
