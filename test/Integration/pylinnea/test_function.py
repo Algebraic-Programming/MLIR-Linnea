@@ -48,8 +48,16 @@ class LinneaMLIRWalker(NodeWalker):
 
   def walk_Matrix(self, node):
     size = (self._variables[node.dims.rows], self._variables[node.dims.columns])
-    p = [linnea.Property.general]
+    p = []
+    for prop in node.properties:
+      if prop == 'LowerTriangular':
+        p.append(linnea.Property.lowertriangular)
+      if prop == 'UpperTriangular':
+        p.append(linnea.Property.uppertriangular)
+      if prop == 'General':
+        p.append(linnea.Property.general)
     attr = linnea.MatrixEncodingAttr.get(self._ctx, p)
+    # No type element information in Linnea. Use f32.
     f32 = F32Type.get()
     self._symbols.append(linnea.MatrixType.get(self._ctx, attr, size, f32))
 
@@ -68,7 +76,7 @@ def testBuildLinneaFromPython():
       with InsertionPoint(func.add_entry_block()):  
         std.ReturnOp([])
   # CHECK: module {
-  # CHECK: func @some_func(%arg0: !linnea.matrix<#linnea.property<["general"]>, [1500, 1000], f32>, %arg1: !linnea.matrix<#linnea.property<["general"]>, [1500, 1000], f32>) {
+  # CHECK: func @some_func(%arg0: !linnea.matrix<#linnea.property<["lowerTri"]>, [1500, 1000], f32>, %arg1: !linnea.matrix<#linnea.property<[]>, [1500, 1000], f32>) {
   # CHECK:  return
   # CHECK: }
   # CHECK: }
