@@ -1,0 +1,86 @@
+from ... import config
+
+from ..utils import select_optimal_match
+
+from .base import expression as egb
+
+import matchpy
+import operator
+
+collections_module = config.import_collections()
+
+class MatrixChainGraph(egb.ExpressionGraphBase):
+
+
+    def __init__(self, input):
+        super().__init__(input)
+        self.active_nodes = [self.root]
+
+
+    def remove_node(self, node):
+        self.nodes.remove(node)
+        try:
+            self.active_nodes.remove(node)
+        except ValueError:
+            pass
+
+
+    def generate(self):
+
+        while self.active_nodes:
+            new_nodes = []
+            
+            for node in self.active_nodes:
+                new_nodes.extend(self.create_nodes(node, *self.GS_matrix_chain_kernels(node.expression)))
+                new_nodes.extend(self.create_nodes(node, *self.GS_unary_kernels(node.expression)))
+            
+            self.active_nodes = new_nodes
+            self.merge_nodes()
+            
+
+    def merge_nodes(self):
+        """Merges redundant nodes in the search graph.
+
+        Returns the number of removed nodes.
+
+        """
+        hashtable = dict()
+        for node in self.nodes:
+            hashtable.setdefault(node.get_payload(), []).append(node)
+
+        remove = []
+        for group in hashtable.values():
+            remaining_node = group.pop()
+            for node in group:
+                remaining_node.merge(node)
+            remove.extend(group)
+
+        self.remove_nodes(remove)
+
+        return len(remove)
+
+
+    def GS_matrix_chain_kernels(self, expression):
+        kernel, substitution = select_optimal_match(collections_module.matrix_chain_DN.match(expression))
+
+        if kernel:
+            matched_kernel = kernel.set_match(substitution, False)
+            transformed_expression = matched_kernel.replacement
+
+            return [(transformed_expression, (matched_kernel,))]
+        return []
+
+
+    def GS_unary_kernels(self, expression):
+        transformed_expressions = []
+
+        # iterate over all subexpressions
+        for node, pos in expression.preorder_iter():
+            kernel, substitution = select_optimal_match(collections_module.unary_kernel_DN.match(node))
+
+            if kernel:
+                matched_kernel = kernel.set_match(substitution, False)
+                transformed_expression = matchpy.replace(expression, pos, matched_kernel.replacement)
+                transformed_expressions.append((transformed_expression, (matched_kernel,)))
+
+        return transformed_expressions

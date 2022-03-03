@@ -1,13 +1,17 @@
 # RUN: %PYTHON %s | FileCheck %s
-import json
-from tatsu.util import asjson
-from tools import parser as p
+
+from tools.frontend.utils import parse_input
 
 TEXT = '''
-Matrix L(n, n) <LowerTriangular, FullRank>
+n = 1500
+m = 1000
 
+Matrix X(n, m) <LowerTriangular>
+Matrix Y(n, m) <>
+Y = X * X
 '''
 
-ast = p.parseExpr(TEXT)
-# CHECK: Matrix
-print(json.dumps(asjson(ast), indent=2))
+equations = parse_input(TEXT)
+# CHECK: Y = (X X)
+for equation in equations:
+  print(equations)
