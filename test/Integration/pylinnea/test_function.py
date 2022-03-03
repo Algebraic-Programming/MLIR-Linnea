@@ -26,22 +26,30 @@ def run(f):
 class LinneaMLIRWalker(NodeWalker):
   def __init__(self, ctx, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    self._symbols = []
+    self._operand_types = dict()
     self._variables = dict()
-    self._ctx = ctx;
+    self._operands = dict()
+    self._ctx = ctx
 
   @property
-  def symbols(self):
-    return self._symbols
+  def get_Operand_Types(self):
+    return self._operand_types
 
   def walk_object(self, node):
     assert False, "This should never be reached unless the grammar is changed."
 
   def walk_Model(self, node):
-    for var in node.vars:
-      self.walk(var)
-    for symbol in node.symbols:
-      self.walk(symbol)
+    # FIXME: We parse two times avoid this.
+    # First we parse operands and vars then we parse
+    # equations. 
+    if (len(self._operands) == 0):
+      for var in node.vars:
+        self.walk(var)
+      for symbol in node.symbols:
+        self.walk(symbol)
+    else:
+      for equation in node.equations:
+        self.walk(equation)
 
   def walk_Size(self, node):
     self._variables[node.name] = int(node.value)
@@ -59,10 +67,28 @@ class LinneaMLIRWalker(NodeWalker):
     attr = linnea.MatrixEncodingAttr.get(self._ctx, p)
     # No type element information in Linnea. Use f32.
     f32 = F32Type.get()
-    self._symbols.append(linnea.MatrixType.get(self._ctx, attr, size, f32))
+    self._operand_types[node.name] = linnea.MatrixType.get(self._ctx, attr, size, f32)
+
+  def walk_Symbol(self, node):
+    return self._operands[node.name]
+
+  def walk_Times(self, node):
+    lhs = self.walk(node.left)
+    rhs = self.walk(node.right)
+    l = [lhs, rhs]
+    termType = linnea.TermType.get(self._ctx)
+    return linnea.MulOpHigh(termType, l)  
+
+  # TODO: connect yielded value with lhs.
+  def walk_Equation(self, node):
+    termType = linnea.TermType.get(self._ctx)
+    eqOp = linnea.EquationOp(termType)
+    with InsertionPoint(eqOp.add_entry_block()):
+      yielded = self.walk(node.rhs)
+      yieldOp = linnea.YieldOp(yielded)
 
 @run
-def testBuildLinneaFromPython():
+def testBuildLinneaFromPythonArgs():
   with Context() as ctx, Location.unknown():
     linnea.register_dialect()
     module = Module.create()
@@ -70,15 +96,47 @@ def testBuildLinneaFromPython():
     ast = parser.parse(TEXT, rule_name = "model")
     walker = LinneaMLIRWalker(ctx)
     walker.walk(ast)
-    operands = walker.symbols
+    operand_types = list(walker.get_Operand_Types.values())
     with InsertionPoint(module.body):
-      func = builtin.FuncOp("some_func", (operands, []))
+      func = builtin.FuncOp("some_func", (operand_types, []))
       with InsertionPoint(func.add_entry_block()):  
         std.ReturnOp([])
+  # CHECK-LABEL: testBuildLinneaFromPythonArgs
   # CHECK: module {
   # CHECK: func @some_func(%arg0: !linnea.matrix<#linnea.property<["lowerTri"]>, [1500, 1000], f32>, %arg1: !linnea.matrix<#linnea.property<[]>, [1500, 1000], f32>) {
   # CHECK:  return
   # CHECK: }
   # CHECK: }
+  print(module)
 
-  print(module)  
+@run
+def testBuildLinneaFromPythonBody(): 
+  with Context() as ctx, Location.unknown():
+    linnea.register_dialect()
+    module = Module.create()
+    parser = LinneaParser(semantics=ModelBuilderSemantics())
+    ast = parser.parse(TEXT, rule_name = "model")
+    walker = LinneaMLIRWalker(ctx)
+    walker.walk(ast)
+    operand_types = list(walker.get_Operand_Types.values())
+    operand_ids = list(walker.get_Operand_Types.keys())
+    with InsertionPoint(module.body):
+      func = builtin.FuncOp("some_func", (operand_types, []))
+      with InsertionPoint(func.add_entry_block()):
+        assert(len(func.arguments) == len(operand_ids))
+        zip_iterator = zip(operand_ids, func.arguments)
+        walker._operands = dict(zip_iterator)
+        walker.walk(ast)
+        std.ReturnOp([])
+    # CHECK-LABEL: testBuildLinneaFromPythonBody
+    # CHECK: module {
+    # CHECK: func @some_func(%arg0: !linnea.matrix<#linnea.property<["lowerTri"]>, [1500, 1000], f32>, %arg1: !linnea.matrix<#linnea.property<[]>, [1500, 1000], f32>) {
+    # CHECK:  %0 = linnea.equation{
+    # CHECK:  %1 = linnea.mul.high %arg0, %arg0 : !linnea.matrix<#linnea.property<["lowerTri"]>, [1500, 1000], f32>, !linnea.matrix<#linnea.property<["lowerTri"]>, [1500, 1000], f32> -> !linnea.term
+    # CHECK:  linnea.yield %1 : !linnea.term
+    # CHECK: }
+    # CHECK: return
+    # CHECK: }
+    # CHECK: }
+
+    print(module)

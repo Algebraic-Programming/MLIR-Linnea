@@ -99,7 +99,7 @@ def buildMulHighOp():
         with InsertionPoint(eqOp.add_entry_block()):
           l = [func.arguments[0], func.arguments[0]]
           mulOp = linnea.MulOpHigh(termType, l)
-          yeildOp = linnea.YieldOp(mulOp)
+          yieldOp = linnea.YieldOp(mulOp)
         std.ReturnOp([])
   # CHECK: {
   # CHECK: func @some_func(%arg0: !linnea.term) {
