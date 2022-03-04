@@ -88,7 +88,7 @@ void LinneaPropertyPropagation::runOnOperation() {
 
       // root->walk();
       LLVM_DEBUG(DBGS() << "Before simplify ---> \n"; root->walk(););
-      root = root->simplify();
+      root = root->simplify(SymbolicOpt);
       LLVM_DEBUG(DBGS() << "After simplify ---> \n"; root->walk(););
       // root->walk();
       simplifiedExpressions.push({eqOp, root});

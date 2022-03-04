@@ -489,7 +489,8 @@ Expr *ExprBuilder::buildExprImpl(Value val, Operation *currentOp) {
     Operation *terminator = block.getTerminator();
     Value termOperand = terminator->getOperand(0);
     Expr *root = buildLinneaExpr(termOperand, eqOp.getOperation());
-    root = root->simplify();
+    // FIXME: see ExprBuilder(bool)
+    root = root->simplify(symbolicOpt);
     OpBuilder builder(eqOp->getContext());
     OpBuilder::InsertionGuard guard(builder);
     builder.setInsertionPointAfter(eqOp);
@@ -690,35 +691,48 @@ static ResultMCO runMCO(ArrayRef<Expr *> operands) {
   return {tmps[1][tmps.size() - 1], m[1][m.size() - 1]};
 }
 
+// preserve the chain order.
+static Expr *passThroughMul(ArrayRef<Expr *> operands) {
+  assert(operands.size() >= 2 && "expect two or more operands");
+  Expr *root = variadicMul({operands[0], operands[1]}, /*fold*/ false);
+  for (size_t i = 2; i < operands.size(); i++)
+    root = variadicMul({root, operands[i]}, /*fold*/ false);
+  return root;
+}
+
+static Expr *passThroughAdd(ArrayRef<Expr *> operands) {
+  assert(operands.size() >= 2 && "expect two or more operands");
+  Expr *root = variadicAdd({operands[0], operands[1]}, /*fold*/ false);
+  for (size_t i = 2; i < operands.size(); i++)
+    root = variadicAdd({root, operands[i]}, /*fold*/ false);
+  return root;
+}
+
 // Optimize symbolic expression.
-static Expr *simplifyImpl(Expr *root) {
+// symbolicOpt flag drives the optimization. Currenty
+// we do only MC. Disable it if symbolicOpt = false.
+static Expr *simplifyImpl(bool symbolicOpt, Expr *root) {
   if (root) {
     if (auto naryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
       auto children = naryExpr->getChildren();
       assert(children.size() >= 2 && "expect two or more children");
+      // Optimize each children then run MCO.
+      SmallVector<Expr *> simplifiedChildren;
+      for (size_t i = 0; i < children.size(); i++)
+        simplifiedChildren.push_back(simplifyImpl(symbolicOpt, children[i]));
       switch (naryExpr->getKind()) {
       case NaryExpr::NaryExprKind::MUL: {
-        // Optimize each children then run MCO.
-        SmallVector<Expr *> simplifiedChildren;
-        for (size_t i = 0; i < children.size(); i++) {
-          simplifiedChildren.push_back(simplifyImpl(children[i]));
-        }
-        return runMCO(simplifiedChildren).optimizedMulExpr;
+        if (symbolicOpt)
+          return runMCO(simplifiedChildren).optimizedMulExpr;
+        return passThroughMul(simplifiedChildren);
       }
       case NaryExpr::NaryExprKind::ADD: {
-        // Optimize each children and rewrite the expression
-        // from variadic to binary.
-        Expr *leftChild = simplifyImpl(children[0]);
-        Expr *rightChild = simplifyImpl(children[1]);
-        Expr *add = variadicAdd({leftChild, rightChild}, /*fold*/ false);
-        for (size_t i = 2; i < children.size(); i++)
-          add = variadicAdd({add, simplifyImpl(children[i])}, /*fold*/ false);
-        return add;
+        return passThroughAdd(simplifiedChildren);
       }
       }
     }
     if (auto unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(root)) {
-      auto child = simplifyImpl(unaryExpr->getChild());
+      auto child = simplifyImpl(symbolicOpt, unaryExpr->getChild());
       switch (unaryExpr->getKind()) {
       case UnaryExpr::UnaryExprKind::TRANSPOSE:
         return trans(child);
@@ -732,7 +746,9 @@ static Expr *simplifyImpl(Expr *root) {
   llvm_unreachable("expect root to be non null");
 }
 
-Expr *Expr::simplify() { return simplifyImpl(this); }
+Expr *Expr::simplify(bool symbolicOpt) {
+  return simplifyImpl(symbolicOpt, this);
+}
 
 //===----------------------------------------------------------------------===//
 // UnaryExpr

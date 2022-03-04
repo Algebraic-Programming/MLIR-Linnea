@@ -108,7 +108,7 @@ public:
   bool isTransposeOf(const Expr *right);
   bool isSame(const Expr *right);
   void walk(int space = 0) const;
-  Expr *simplify();
+  Expr *simplify(bool symbolicOpt);
 
 protected:
   Expr() = delete;
@@ -375,7 +375,12 @@ public:
   Value buildIR(Location loc, OpBuilder &builder, Expr *root);
 
   ExprBuilder() = default;
+  // FIXME: remove this. Needed beacuse we call root->simplify()
+  ExprBuilder(bool runSymbolicOpt) : symbolicOpt(runSymbolicOpt){};
   ExprBuilder(ExprBuilder &) = delete;
+
+private:
+  bool symbolicOpt = false;
 };
 
 template <typename K>

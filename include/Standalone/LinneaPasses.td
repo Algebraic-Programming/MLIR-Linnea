@@ -30,9 +30,12 @@ def LinneaConvertToLoops : Pass<"convert-linnea-to-loops", "ModuleOp"> {
 
 def LinneaPropertyPropagation :
     Pass<"properties-propagation", "ModuleOp"> {
-  let summary = "property propagation";
-  let description = [{ todo }];
+  let summary = "property propagation and symbolic optimization";
   let constructor = "mlir::linnea::createLinneaPropertyPropagationPass()";
+  let options = [
+    Option<"SymbolicOpt", "symbolic-opt", "bool", /*default*/"true",
+          "Perform symbolic optimizations (i.e., chain reordering)">
+  ];
 }
 
 def LinneaFuncTypeConversion : Pass<"linnea-func-type-conversion", "ModuleOp"> {
