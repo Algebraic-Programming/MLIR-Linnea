@@ -11,7 +11,7 @@
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaPasses.h"
 
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Pass/Pass.h"
 #include "llvm/Support/Debug.h"
 #include <queue>
@@ -38,10 +38,10 @@ static bool isaLinneaTerm(Type t) { return t.isa<mlir::linnea::TermType>(); };
 
 /// Return the unique ReturnOp that terminates `funcOp`.
 /// Return nullptr if there is no such unique ReturnOp.
-static ReturnOp getAssumedUniqueReturnOp(FuncOp funcOp) {
-  ReturnOp returnOp;
+static func::ReturnOp getAssumedUniqueReturnOp(FuncOp funcOp) {
+  func::ReturnOp returnOp;
   for (Block &b : funcOp.body()) {
-    if (auto candidateOp = dyn_cast<ReturnOp>(b.getTerminator())) {
+    if (auto candidateOp = dyn_cast<func::ReturnOp>(b.getTerminator())) {
       if (returnOp)
         return nullptr;
       returnOp = candidateOp;
@@ -117,7 +117,7 @@ void LinneaPropertyPropagation::runOnOperation() {
         !llvm::any_of(funcOp.getType().getResults(), isaLinneaTerm))
       return WalkResult::advance();
 
-    ReturnOp returnOp = getAssumedUniqueReturnOp(funcOp);
+    func::ReturnOp returnOp = getAssumedUniqueReturnOp(funcOp);
     if (!returnOp)
       return funcOp->emitError() << "return op must be available";
 

@@ -10,7 +10,7 @@
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaPasses.h"
 #include "Standalone/LinneaUtils.h"
-#include "mlir/Dialect/StandardOps/Transforms/FuncConversions.h"
+#include "mlir/Dialect/Func/Transforms/FuncConversions.h"
 #include "mlir/Transforms/DialectConversion.h"
 
 #include "mlir/Pass/Pass.h"
