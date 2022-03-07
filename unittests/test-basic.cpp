@@ -8,10 +8,10 @@ TEST(Basic, mul) { EXPECT_EQ(0, 0); }
 
 TEST(Basic, conversion) {
   ScopedContext ctx;
-  Operand *A = new Matrix("A1", {30, 35});
-  EXPECT_TRUE(llvm::isa<Matrix>(A));
-  Operand *I = new Identity({30, 30});
-  EXPECT_TRUE(llvm::isa<Identity>(I));
-  EXPECT_FALSE(llvm::isa<Identity>(A));
-  EXPECT_TRUE(llvm::isa<Matrix>(I));
+  Operand *a = new Matrix("A1", {30, 35});
+  EXPECT_TRUE(llvm::isa<Matrix>(a));
+  Operand *i = new Identity({30, 30});
+  EXPECT_TRUE(llvm::isa<Identity>(i));
+  EXPECT_FALSE(llvm::isa<Identity>(a));
+  EXPECT_TRUE(llvm::isa<Matrix>(i));
 }

@@ -16,35 +16,35 @@ using namespace std;
 
 static bool isTransposeOfImpl(const Expr *left, const Expr *right) {
   // transpose.
-  if (auto leftExpr = llvm::dyn_cast_or_null<UnaryExpr>(left))
+  if (const auto *leftExpr = llvm::dyn_cast_or_null<UnaryExpr>(left))
     if (leftExpr->getKind() == UnaryExpr::UnaryExprKind::TRANSPOSE)
       return leftExpr->getChild() == right;
-  if (auto rightExpr = llvm::dyn_cast_or_null<UnaryExpr>(right))
+  if (const auto *rightExpr = llvm::dyn_cast_or_null<UnaryExpr>(right))
     if (rightExpr->getKind() == UnaryExpr::UnaryExprKind::TRANSPOSE)
       return rightExpr->getChild() == left;
   // inverse.
-  if (auto leftExpr = llvm::dyn_cast_or_null<UnaryExpr>(left))
+  if (const auto *leftExpr = llvm::dyn_cast_or_null<UnaryExpr>(left))
     if (leftExpr->getKind() == UnaryExpr::UnaryExprKind::INVERSE)
-      if (auto rightExpr = llvm::dyn_cast_or_null<UnaryExpr>(right))
+      if (const auto *rightExpr = llvm::dyn_cast_or_null<UnaryExpr>(right))
         if (rightExpr->getKind() == UnaryExpr::UnaryExprKind::INVERSE)
-          if (auto childRightExpr =
+          if (auto *childRightExpr =
                   llvm::dyn_cast_or_null<UnaryExpr>(rightExpr->getChild()))
             if (childRightExpr->getKind() ==
                 UnaryExpr::UnaryExprKind::TRANSPOSE)
               return childRightExpr == leftExpr->getChild();
-  if (auto rightExpr = llvm::dyn_cast_or_null<UnaryExpr>(left))
+  if (const auto *rightExpr = llvm::dyn_cast_or_null<UnaryExpr>(left))
     if (rightExpr->getKind() == UnaryExpr::UnaryExprKind::INVERSE)
-      if (auto rightExprChild =
+      if (auto *rightExprChild =
               llvm::dyn_cast_or_null<UnaryExpr>(rightExpr->getChild()))
         if (rightExprChild->getKind() == UnaryExpr::UnaryExprKind::TRANSPOSE)
-          if (auto leftExpr = llvm::dyn_cast_or_null<UnaryExpr>(left))
+          if (const auto *leftExpr = llvm::dyn_cast_or_null<UnaryExpr>(left))
             if (leftExpr->getKind() == UnaryExpr::UnaryExprKind::TRANSPOSE)
               return rightExprChild == leftExpr->getChild();
   // mul each operand of the left expression should be the transpose
   // of the right expression.
-  if (auto leftExpr = llvm::dyn_cast_or_null<NaryExpr>(left))
+  if (const auto *leftExpr = llvm::dyn_cast_or_null<NaryExpr>(left))
     if (leftExpr->getKind() == NaryExpr::NaryExprKind::MUL)
-      if (auto rightExpr = llvm::dyn_cast_or_null<NaryExpr>(right))
+      if (const auto *rightExpr = llvm::dyn_cast_or_null<NaryExpr>(right))
         if (rightExpr->getKind() == NaryExpr::NaryExprKind::MUL) {
           if (leftExpr->getChildren().size() != rightExpr->getChildren().size())
             return false;
@@ -56,8 +56,8 @@ static bool isTransposeOfImpl(const Expr *left, const Expr *right) {
         }
   // both operands. Left and right are the same operand
   // with the symmetric property.
-  if (auto leftExpr = llvm::dyn_cast_or_null<Operand>(left))
-    if (auto rightExpr = llvm::dyn_cast_or_null<Operand>(right))
+  if (const auto *leftExpr = llvm::dyn_cast_or_null<Operand>(left))
+    if (const auto *rightExpr = llvm::dyn_cast_or_null<Operand>(right))
       if (leftExpr->isSymmetric() && leftExpr == rightExpr)
         return true;
   return false;
@@ -111,7 +111,7 @@ Expr *Operand::getNormalForm() { return this; }
 
 Expr *NaryExpr::getNormalForm() {
   SmallVector<Expr *, 4> operands;
-  for (auto child : this->getChildren())
+  for (auto *child : this->getChildren())
     operands.push_back(child->getNormalForm());
   return variadicMul(operands, /*fold*/ true);
 }
@@ -147,7 +147,7 @@ Expr *UnaryExpr::getNormalForm() {
     }
   }
   // normal form operand.
-  auto operand = llvm::dyn_cast_or_null<Operand>(child);
+  auto *operand = llvm::dyn_cast_or_null<Operand>(child);
   assert(operand && "expect valid operand");
   assert((this->getKind() == UnaryExprKind::INVERSE) ||
          (this->getKind() == UnaryExprKind::TRANSPOSE));

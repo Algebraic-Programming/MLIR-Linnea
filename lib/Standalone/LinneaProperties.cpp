@@ -193,7 +193,7 @@ bool NaryExpr::isSquare() const {
   // [5x3] * [3x5] = [5x5]
   // This is not true. Not all the children
   // need to be square.
-  for (auto child : this->getChildren())
+  for (auto *child : this->getChildren())
     if (!child->isSquare())
       return false;
   return true;
@@ -204,7 +204,7 @@ bool NaryExpr::isSquare() const {
 /// Multiplication by a full-rank square matrix preserves rank.
 static bool isFullRankProduct(const NaryExpr *op) {
   assert(op->getKind() == NaryExpr::NaryExprKind::MUL && "must be mul");
-  for (auto child : op->getChildren()) {
+  for (auto *child : op->getChildren()) {
     if (!child->isFullRank() && !child->isSquare())
       return false;
   }
@@ -238,8 +238,8 @@ static bool isSymmetricProduct(const NaryExpr *op, bool checkSPD = false) {
       else
         rightChildren.push_back(children[i]);
     }
-    auto leftExpr = variadicMul(leftChildren, /*fold*/ true);
-    auto rightExpr = variadicMul(rightChildren, /*fold*/ true);
+    auto *leftExpr = variadicMul(leftChildren, /*fold*/ true);
+    auto *rightExpr = variadicMul(rightChildren, /*fold*/ true);
 #if DEBUG
     cout << __func__ << "\n";
     walk(leftExpr);
@@ -270,8 +270,8 @@ static bool isSymmetricProduct(const NaryExpr *op, bool checkSPD = false) {
       else
         rightChildren.push_back(children[i]);
     }
-    auto leftExpr = variadicMul(leftChildren, /*fold*/ true);
-    auto rightExpr = variadicMul(rightChildren, /*fold*/ true);
+    auto *leftExpr = variadicMul(leftChildren, /*fold*/ true);
+    auto *rightExpr = variadicMul(rightChildren, /*fold*/ true);
 #if DEBUG
     cout << __func__ << "\n";
     walk(leftExpr);

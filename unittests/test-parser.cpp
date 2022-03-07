@@ -489,11 +489,11 @@ void Parser::parseWhereClause(vector<ParsedOperand> &operands) {
 }
 
 static void collectOperandsImpl(Expr *root, map<string, Operand *> &map) {
-  if (auto binaryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
-    for (auto child : binaryExpr->getChildren())
+  if (auto *binaryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
+    for (auto *child : binaryExpr->getChildren())
       collectOperandsImpl(child, map);
   }
-  if (auto unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(root)) {
+  if (auto *unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(root)) {
     collectOperandsImpl(unaryExpr->getChild(), map);
   }
   if (Operand *operand = llvm::dyn_cast_or_null<Operand>(root)) {
@@ -556,8 +556,8 @@ bool isSameTree(const Expr *root1, const Expr *root2) {
       return false;
     }
     if (llvm::isa<Operand>(root1)) {
-      auto root1Operand = llvm::dyn_cast_or_null<Operand>(root1);
-      auto root2Operand = llvm::dyn_cast_or_null<Operand>(root2);
+      const auto *root1Operand = llvm::dyn_cast_or_null<Operand>(root1);
+      const auto *root2Operand = llvm::dyn_cast_or_null<Operand>(root2);
       if (root1Operand->getName() != root2Operand->getName()) {
         return false;
       }
@@ -607,9 +607,9 @@ TEST(Parser, simpleMul) {
   Parser p(s, ctx);
   auto root = p.parseFunction();
   assert(root.getRhs() && "must be non-null");
-  auto *A = new Matrix("A", {32, 32});
-  auto *B = new Matrix("B", {32, 32});
-  auto *truth = mul(A, B);
+  auto *a = new Matrix("A", {32, 32});
+  auto *b = new Matrix("B", {32, 32});
+  auto *truth = mul(a, b);
   EXPECT_EQ(isSameTree(root.getRhs(), truth), true);
 }
 
@@ -624,9 +624,9 @@ TEST(Parser, simpleAdd) {
   Parser p(s, ctx);
   auto root = p.parseFunction();
   assert(root.getRhs() && "must be non-null");
-  auto *A = new Matrix("A", {32, 32});
-  auto *B = new Matrix("B", {32, 32});
-  auto *truth = add(A, B);
+  auto *a = new Matrix("A", {32, 32});
+  auto *b = new Matrix("B", {32, 32});
+  auto *truth = add(a, b);
   EXPECT_EQ(isSameTree(root.getRhs(), truth), true);
 }
 
@@ -642,9 +642,9 @@ TEST(Parser, simplePrecedence) {
   auto root = p.parseFunction();
   root.print();
   assert(root.getRhs() && "must be non-null");
-  auto *A = new Matrix("A", {32, 32});
-  auto *B = new Matrix("B", {32, 32});
-  auto *truth = add(A, mul(B, A));
+  auto *a = new Matrix("A", {32, 32});
+  auto *b = new Matrix("B", {32, 32});
+  auto *truth = add(a, mul(b, a));
   EXPECT_EQ(isSameTree(root.getRhs(), truth), true);
 }
 
@@ -662,13 +662,13 @@ TEST(Parser, variadicMul) {
   Parser p(s, ctx);
   auto root = p.parseFunction();
   assert(root.getRhs() && "must be non null");
-  auto *A = new Matrix("A", {32, 32});
-  auto *B = new Matrix("B", {32, 32});
-  auto *C = new Matrix("C", {32, 32});
-  auto *D = new Matrix("D", {32, 32});
-  auto *E = new Matrix("E", {32, 32});
-  auto *F = new Matrix("F", {32, 32});
-  auto *truth = mul(A, B, C, D, E, F);
+  auto *a = new Matrix("A", {32, 32});
+  auto *b = new Matrix("B", {32, 32});
+  auto *c = new Matrix("C", {32, 32});
+  auto *d = new Matrix("D", {32, 32});
+  auto *e = new Matrix("E", {32, 32});
+  auto *f = new Matrix("F", {32, 32});
+  auto *truth = mul(a, b, c, d, e, f);
   EXPECT_EQ(isSameTree(root.getRhs(), truth), true);
 }
 
@@ -686,13 +686,13 @@ TEST(Parser, variadicAdd) {
   Parser p(s, ctx);
   auto root = p.parseFunction();
   assert(root.getRhs() && "must be non null");
-  auto *A = new Matrix("A", {32, 32});
-  auto *B = new Matrix("B", {32, 32});
-  auto *C = new Matrix("C", {32, 32});
-  auto *D = new Matrix("D", {32, 32});
-  auto *E = new Matrix("E", {32, 32});
-  auto *F = new Matrix("F", {32, 32});
-  auto *truth = add(A, B, C, D, E, F);
+  auto *a = new Matrix("A", {32, 32});
+  auto *b = new Matrix("B", {32, 32});
+  auto *c = new Matrix("C", {32, 32});
+  auto *d = new Matrix("D", {32, 32});
+  auto *e = new Matrix("E", {32, 32});
+  auto *f = new Matrix("F", {32, 32});
+  auto *truth = add(a, b, c, d, e, f);
   EXPECT_EQ(isSameTree(root.getRhs(), truth), true);
 }
 
@@ -730,10 +730,10 @@ TEST(Parser, paren) {
   Parser p(s, ctx);
   auto root = p.parseFunction();
   assert(root.getRhs() && "must be non-null");
-  auto *A = new Matrix("A", {32, 32});
-  auto *B = new Matrix("B", {32, 32});
+  auto *a = new Matrix("A", {32, 32});
+  auto *b = new Matrix("B", {32, 32});
   // must be non equal as we keep parenthesis into account.
-  auto *truth = mul(A, A, B, A, B);
+  auto *truth = mul(a, a, b, a, b);
   EXPECT_EQ(!isSameTree(root.getRhs(), truth), true);
 }
 
@@ -748,9 +748,9 @@ TEST(Parser, parenAdd) {
   Parser p(s, ctx);
   auto root = p.parseFunction();
   assert(root.getRhs() && "must be non-null");
-  auto *A = new Matrix("A", {32, 32});
-  auto *B = new Matrix("B", {32, 32});
+  auto *a = new Matrix("A", {32, 32});
+  auto *b = new Matrix("B", {32, 32});
   // must be non equal as we keep parenthesis into account.
-  auto *truth = mul(A, A, B, A, B);
+  auto *truth = mul(a, a, b, a, b);
   EXPECT_EQ(!isSameTree(root.getRhs(), truth), true);
 }

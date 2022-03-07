@@ -204,16 +204,16 @@ public:
       return failure();
 
     Location loc = op->getLoc();
-    Value A = castToTensor(op.inputs()[0], rewriter, loc);
-    Value B = castToTensor(op.inputs()[1], rewriter, loc);
-    Value C = castToTensor(op.outputs()[0], rewriter, loc);
+    Value a = castToTensor(op.inputs()[0], rewriter, loc);
+    Value b = castToTensor(op.inputs()[1], rewriter, loc);
+    Value c = castToTensor(op.outputs()[0], rewriter, loc);
 
     Value dest = rewriter
-                     .create<linalg::MatmulOp>(loc, TypeRange{C.getType()},
-                                               ValueRange{A, B}, C)
+                     .create<linalg::MatmulOp>(loc, TypeRange{c.getType()},
+                                               ValueRange{a, b}, c)
                      ->getResult(0);
 
-    rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>(op, C.getType(), dest);
+    rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>(op, c.getType(), dest);
     return success();
   }
 };
@@ -253,9 +253,9 @@ public:
       return failure();
 
     Location loc = op->getLoc();
-    Value A = castToTensor(op.inputs()[0], rewriter, loc);
-    Value B = castToTensor(op.inputs()[1], rewriter, loc);
-    Value C = castToTensor(op.outputs()[0], rewriter, loc);
+    Value a = castToTensor(op.inputs()[0], rewriter, loc);
+    Value b = castToTensor(op.inputs()[1], rewriter, loc);
+    Value c = castToTensor(op.outputs()[0], rewriter, loc);
 
     // build affine map for add operation.
     using MapList = ArrayRef<ArrayRef<AffineExpr>>;
@@ -270,7 +270,7 @@ public:
     Value dest =
         rewriter
             .create<linalg::GenericOp>(
-                loc, TypeRange{C.getType()}, ValueRange{A, B}, C, addMap, iter,
+                loc, TypeRange{c.getType()}, ValueRange{a, b}, c, addMap, iter,
                 [&](OpBuilder &nestedBuilder, Location nestedLoc,
                     ValueRange args) {
                   Value add =
@@ -280,7 +280,7 @@ public:
                   nestedBuilder.create<linalg::YieldOp>(nestedLoc, add);
                 })
             ->getResult(0);
-    rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>(op, C.getType(), dest);
+    rewriter.replaceOpWithNewOp<CastFromBuiltinTensorOp>(op, c.getType(), dest);
     return success();
   }
 };

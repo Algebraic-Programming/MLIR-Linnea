@@ -76,7 +76,7 @@ static void printOptimalParens(const vector<vector<long>> &s, size_t i,
   if (i == j) {
     cout << " ";
     Operand *operand = nullptr;
-    if (auto unaryOp = llvm::dyn_cast_or_null<UnaryExpr>(operands[i - 1]))
+    if (auto *unaryOp = llvm::dyn_cast_or_null<UnaryExpr>(operands[i - 1]))
       operand = llvm::dyn_cast_or_null<Operand>(unaryOp->getChild());
     else
       operand = llvm::dyn_cast_or_null<Operand>(operands[i - 1]);
@@ -118,7 +118,7 @@ static void print(vector<vector<Expr *>> &tmps, bool bitLayout = false) {
 
 bool isGEMMLikePattern(NaryExpr *node) {
   Expr *leftExpr = node->getChildren()[0];
-  while (auto unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(leftExpr)) {
+  while (auto *unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(leftExpr)) {
     if (unaryExpr->getKind() == UnaryExpr::UnaryExprKind::INVERSE)
       return false;
     leftExpr = unaryExpr->getChild();
@@ -127,7 +127,7 @@ bool isGEMMLikePattern(NaryExpr *node) {
   if (!leftOperand)
     return false;
   Expr *rightExpr = node->getChildren()[1];
-  while (auto unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(rightExpr)) {
+  while (auto *unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(rightExpr)) {
     if (unaryExpr->getKind() == UnaryExpr::UnaryExprKind::INVERSE)
       return false;
     rightExpr = unaryExpr->getChild();
@@ -155,7 +155,7 @@ bool isSYRK(NaryExpr *node) { return false; }
 // Do a simple pattern matching on 'node'. Generalize later if needed.
 // Do we want to call BLAS or use Linalg for code-generation?
 int getCostBasedOnProperties(Expr *node, int m, int n, int k) {
-  auto binaryExpr = llvm::dyn_cast_or_null<NaryExpr>(node);
+  auto *binaryExpr = llvm::dyn_cast_or_null<NaryExpr>(node);
   assert(binaryExpr && "must be non null");
   assert(binaryExpr->getChildren().size() == 2 && "expect two children");
 
@@ -181,7 +181,7 @@ int getCostBasedOnProperties(Expr *node, int m, int n, int k) {
 // flop count and properties.
 pair<long, long> getKernelCostImpl(Expr *node, long &cost, bool fullTree) {
   if (node) {
-    if (auto binaryOp = llvm::dyn_cast_or_null<NaryExpr>(node)) {
+    if (auto *binaryOp = llvm::dyn_cast_or_null<NaryExpr>(node)) {
       auto children = binaryOp->getChildren();
       assert(children.size() == 2 && "expect only two children");
       pair<long, long> left = getKernelCostImpl(children[0], cost, fullTree);
@@ -198,10 +198,10 @@ pair<long, long> getKernelCostImpl(Expr *node, long &cost, bool fullTree) {
 
       return {left.first, right.second};
     }
-    if (auto unaryOp = llvm::dyn_cast_or_null<UnaryExpr>(node)) {
+    if (auto *unaryOp = llvm::dyn_cast_or_null<UnaryExpr>(node)) {
       return getKernelCostImpl(unaryOp->getChild(), cost, fullTree);
     }
-    if (auto operand = llvm::dyn_cast_or_null<Operand>(node)) {
+    if (auto *operand = llvm::dyn_cast_or_null<Operand>(node)) {
       auto shape = operand->getShape();
       assert(shape.size() == 2 && "must be 2d");
       return {shape[0], shape[1]};
@@ -397,7 +397,7 @@ Value ExprBuilder::buildUnaryOpImpl(Location loc, OpBuilder &builder,
 
 Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder, Expr *root) {
   if (root) {
-    if (auto naryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
+    if (auto *naryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
       switch (naryExpr->getKind()) {
       case NaryExpr::NaryExprKind::MUL:
         return buildBinaryOpImpl<MulOpLow>(loc, builder, naryExpr);
@@ -407,7 +407,7 @@ Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder, Expr *root) {
         break;
       }
     }
-    if (auto unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(root)) {
+    if (auto *unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(root)) {
       switch (unaryExpr->getKind()) {
       case UnaryExpr::UnaryExprKind::TRANSPOSE:
         return buildUnaryOpImpl<TransposeOp>(loc, builder, unaryExpr);
@@ -417,7 +417,7 @@ Value ExprBuilder::buildIRImpl(Location loc, OpBuilder &builder, Expr *root) {
         break;
       }
     }
-    if (auto operand = llvm::dyn_cast_or_null<Operand>(root)) {
+    if (auto *operand = llvm::dyn_cast_or_null<Operand>(root)) {
       return lookup(operand);
     }
   }
@@ -552,7 +552,7 @@ void Expr::setPropertiesImpl(T *expr) {
 
 /// Walk a generic expression.
 void Expr::walk(int level) const {
-  if (auto naryExpr = llvm::dyn_cast_or_null<NaryExpr>(this)) {
+  if (const auto *naryExpr = llvm::dyn_cast_or_null<NaryExpr>(this)) {
     switch (naryExpr->getKind()) {
     case NaryExpr::NaryExprKind::MUL:
       cout << string(level, ' ') << "(*\n";
@@ -566,7 +566,7 @@ void Expr::walk(int level) const {
       cout << " \n";
     }
   } // binaryOp
-  if (auto unaryOp = llvm::dyn_cast_or_null<UnaryExpr>(this)) {
+  if (const auto *unaryOp = llvm::dyn_cast_or_null<UnaryExpr>(this)) {
     switch (unaryOp->getKind()) {
     case UnaryExpr::UnaryExprKind::TRANSPOSE:
       cout << string(level, ' ') << "transpose(";
@@ -578,7 +578,7 @@ void Expr::walk(int level) const {
     unaryOp->getChild()->walk(level);
     cout << string(level, ' ') << ")";
   } // unaryOp
-  if (auto operand = llvm::dyn_cast_or_null<Operand>(this)) {
+  if (const auto *operand = llvm::dyn_cast_or_null<Operand>(this)) {
     cout << string(level, ' ') << operand->getName() << " [";
     printProperties(operand->getProperties());
     cout << "] [";
@@ -634,7 +634,7 @@ static ResultMCO runMCO(ArrayRef<Expr *> operands) {
       m[i][j] = std::numeric_limits<long>::max();
       for (size_t k = i; k <= j - 1; k++) {
 
-        auto tmpexpr =
+        auto *tmpexpr =
             variadicMul({tmps[i][k], tmps[k + 1][j]}, /*fold*/ false);
 #if DEBUG
         cout << "---\n";
@@ -713,7 +713,7 @@ static Expr *passThroughAdd(ArrayRef<Expr *> operands) {
 // we do only MC. Disable it if symbolicOpt = false.
 static Expr *simplifyImpl(bool symbolicOpt, Expr *root) {
   if (root) {
-    if (auto naryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
+    if (auto *naryExpr = llvm::dyn_cast_or_null<NaryExpr>(root)) {
       auto children = naryExpr->getChildren();
       assert(children.size() >= 2 && "expect two or more children");
       // Optimize each children then run MCO.
@@ -731,8 +731,8 @@ static Expr *simplifyImpl(bool symbolicOpt, Expr *root) {
       }
       }
     }
-    if (auto unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(root)) {
-      auto child = simplifyImpl(symbolicOpt, unaryExpr->getChild());
+    if (auto *unaryExpr = llvm::dyn_cast_or_null<UnaryExpr>(root)) {
+      auto *child = simplifyImpl(symbolicOpt, unaryExpr->getChild());
       switch (unaryExpr->getKind()) {
       case UnaryExpr::UnaryExprKind::TRANSPOSE:
         return trans(child);
@@ -740,7 +740,7 @@ static Expr *simplifyImpl(bool symbolicOpt, Expr *root) {
         return inv(child);
       }
     }
-    if (auto operand = llvm::dyn_cast_or_null<Operand>(root))
+    if (auto *operand = llvm::dyn_cast_or_null<Operand>(root))
       return operand;
   }
   llvm_unreachable("expect root to be non null");
@@ -823,7 +823,7 @@ ScopedContext *&ScopedContext::getCurrentScopedContext() {
 }
 
 ScopedContext::~ScopedContext() {
-  for (auto expr : liveRefs)
+  for (auto *expr : liveRefs)
     delete expr;
 }
 
