@@ -16,7 +16,7 @@
 #include "mlir/Dialect/Arithmetic/Transforms/Passes.h"
 #include "mlir/Dialect/Bufferization/Transforms/Passes.h"
 #include "mlir/Dialect/Linalg/Passes.h"
-#include "mlir/Dialect/StandardOps/Transforms/Passes.h"
+#include "mlir/Dialect/Func/Transforms/Passes.h"
 #include "mlir/Dialect/Tensor/Transforms/Passes.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
@@ -58,7 +58,7 @@ void LinneaCompilerPipeline::runOnOperation() {
   //  --linalg-bufferize
   pm.addNestedPass<FuncOp>(createLinalgBufferizePass());
   // --func-bufferize
-  pm.addPass(createFuncBufferizePass());
+  pm.addPass(mlir::func::createFuncBufferizePass());
   // --arith-bufferize
   pm.addPass(arith::createConstantBufferizePass());
   // --tensor-bufferize

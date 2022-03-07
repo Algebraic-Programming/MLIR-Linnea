@@ -10,8 +10,8 @@
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaPasses.h"
 #include "Standalone/LinneaTypes.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
-#include "mlir/Dialect/StandardOps/Transforms/FuncConversions.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Func/Transforms/FuncConversions.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 
@@ -70,8 +70,8 @@ struct LinneaFuncTypeConversionPass
     });
 
     populateCallOpTypeConversionPattern(patterns, typeConverter);
-    target.addDynamicallyLegalOp<CallOp>(
-        [&](CallOp op) { return typeConverter.isLegal(op); });
+    target.addDynamicallyLegalOp<func::CallOp>(
+        [&](func::CallOp op) { return typeConverter.isLegal(op); });
 
     populateBranchOpInterfaceTypeConversionPattern(patterns, typeConverter);
     populateReturnOpTypeConversionPattern(patterns, typeConverter);
