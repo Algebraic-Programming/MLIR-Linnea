@@ -11,7 +11,7 @@
 #include "mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h"
 #include "mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
-#include "mlir/Conversion/StandardToLLVM/ConvertStandardToLLVMPass.h"
+#include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h"
 #include "mlir/Conversion/VectorToLLVM/ConvertVectorToLLVM.h"
 #include "mlir/Dialect/Arithmetic/Transforms/Passes.h"
 #include "mlir/Dialect/Bufferization/Transforms/Passes.h"
@@ -83,7 +83,7 @@ void LinneaCompilerPipeline::runOnOperation() {
   // --convert-vector-to-llvm
   pm.addPass(createConvertVectorToLLVMPass());
   // --convert-std-to-llvm
-  pm.addPass(createLowerToLLVMPass());
+  pm.addPass(createConvertFuncToLLVMPass());
   // --reconcile-unrealized-casts
   pm.addPass(createReconcileUnrealizedCastsPass());
 
