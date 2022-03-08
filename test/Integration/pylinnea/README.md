@@ -1,3 +1,5 @@
 # MLIR-Linnea: Implementing Linnea in MLIR
 
-See: https://github.com/HPAC/linnea
+Move code from https://github.com/HPAC/linnea to this repo.
+We imported all the project but currently only the frontend
+is used.
