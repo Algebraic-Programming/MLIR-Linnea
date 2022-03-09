@@ -12,7 +12,7 @@ module {
     %c0 = arith.constant 0 : index
     %c5 = arith.constant 5 : index
     %fc = arith.constant 23.0 : f32
-    %t = linnea.init [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+    %t = linnea.alloc [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
     %f = linnea.fill(%fc, %t) : f32, !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
     
     // convert to memref, and print.

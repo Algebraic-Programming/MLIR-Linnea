@@ -19,6 +19,7 @@ using namespace mlir::linnea;
 //===----------------------------------------------------------------------===//
 // CastToBuiltinTensor
 //===----------------------------------------------------------------------===//
+
 OpFoldResult CastToBuiltinTensorOp::fold(ArrayRef<Attribute> attr) {
   // cast_to_builtin_tensor(cast_from_builtin_tensor(a)) -> a
   if (auto castFromBuiltinTensor =

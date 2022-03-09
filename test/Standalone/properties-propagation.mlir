@@ -5,10 +5,10 @@ module {
 
     %c5 = arith.constant 5 : index
     %fc = arith.constant 5.0 : f32
-    %A = linnea.init [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+    %A = linnea.alloc [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
     %Af = linnea.fill(%fc, %A) : f32, !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
 
-    %B = linnea.init [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+    %B = linnea.alloc [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
     %Bf = linnea.fill(%fc, %B) : f32, !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
 
     %0 = linnea.equation {
@@ -19,10 +19,10 @@ module {
     }
 
     %fd = arith.constant 6.0 : f32
-    %C = linnea.init [%c5, %c5] : !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
+    %C = linnea.alloc [%c5, %c5] : !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
     %Cf = linnea.fill(%fd, %C) : f32, !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
 
-    %D = linnea.init [%c5, %c5] : !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
+    %D = linnea.alloc [%c5, %c5] : !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
     %Df = linnea.fill(%fd, %D) : f32, !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
 
     %1 = linnea.equation {
@@ -50,10 +50,10 @@ module {
 
     %c5 = arith.constant 5 : index
     %fc = arith.constant 5.0 : f32
-    %A = linnea.init [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+    %A = linnea.alloc [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
     %Af = linnea.fill(%fc, %A) : f32, !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
 
-    %B = linnea.init [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+    %B = linnea.alloc [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
     %Bf = linnea.fill(%fc, %B) : f32, !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
 
     %0 = linnea.equation {
@@ -64,10 +64,10 @@ module {
     }
 
     %fd = arith.constant 6.0 : f32
-    %C = linnea.init [%c5, %c5] : !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
+    %C = linnea.alloc [%c5, %c5] : !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
     %Cf = linnea.fill(%fd, %C) : f32, !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
 
-    %D = linnea.init [%c5, %c5] : !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
+    %D = linnea.alloc [%c5, %c5] : !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
     %Df = linnea.fill(%fd, %D) : f32, !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
 
     %1 = linnea.equation {

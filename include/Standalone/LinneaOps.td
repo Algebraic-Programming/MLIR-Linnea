@@ -19,11 +19,19 @@ def Linnea_PrintOp : Linnea_Op<"print"> {
   let assemblyFormat = "$source attr-dict `:` type($source)";
 }
 
-def Linnea_InitOp : Linnea_Op<"init", [NoSideEffect]> {
+def Linnea_AllocOp : Linnea_Op<"alloc"> {
   let summary = "Materializes an unitialized linnea tensor";
   let arguments = (ins Variadic<Index>:$sizes);
   let results = (outs LinneaSymbolicMatrix:$result);
   let assemblyFormat = "`[` $sizes `]` attr-dict `:` type($result)";
+}
+
+def Linnea_DeallocOp : Linnea_Op<"dealloc"> {
+  let summary = "Clean-up allocation";
+  let arguments = (ins AnyTypeOf<[AnyRankedOrUnrankedMemRef,
+                                  AnyTensor, 
+                                  LinneaSymbolicMatrix]>:$input);
+  let assemblyFormat = "$input attr-dict `:` type($input)";
 }
 
 def Linnea_CastToBuiltinTensorOp : Linnea_Op<"cast_to_builtin_tensor", 

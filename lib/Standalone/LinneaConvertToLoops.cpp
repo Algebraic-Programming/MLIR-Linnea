@@ -139,6 +139,7 @@ static Value castToTensor(Value val, PatternRewriter &rewriter, Location loc) {
   return castedLinneaTensor;
 }
 
+/// Converter for linalg::InitTensorOp.
 struct InitOpConverter : public OpRewritePattern<linalg::InitTensorOp> {
 public:
   using OpRewritePattern<linalg::InitTensorOp>::OpRewritePattern;
@@ -153,7 +154,7 @@ public:
     Location loc = op->getLoc();
     MemRefType memTp =
         MemRefType::get(outputTensor.getShape(), outputTensor.getElementType());
-    Value memref = rewriter.create<memref::AllocaOp>(loc, memTp);
+    Value memref = rewriter.create<memref::AllocOp>(loc, memTp);
     RankedTensorType builtinTensor = RankedTensorType::get(
         outputTensor.getShape(), outputTensor.getElementType());
     rewriter.replaceOpWithNewOp<bufferization::ToTensorOp>(op, builtinTensor,
@@ -162,6 +163,25 @@ public:
   }
 };
 
+/// Converter for linnea::DeallocOp.
+struct DeallocOpConverter : public OpRewritePattern<linnea::DeallocOp> {
+public:
+  using OpRewritePattern<linnea::DeallocOp>::OpRewritePattern;
+  LogicalResult matchAndRewrite(linnea::DeallocOp op,
+                                PatternRewriter &rewriter) const override {
+    Type input = op.input().getType();
+    auto encoding = getLinneaTensorEncoding(input);
+    if (!encoding)
+      return failure();
+
+    Location loc = op->getLoc();
+    Value memref = castToMemRef(op.input(), rewriter, loc);
+    rewriter.replaceOpWithNewOp<memref::DeallocOp>(op, memref);
+    return success();
+  }
+};
+
+/// Converter for linalg::FillOp.
 struct FillOpConverter : public OpRewritePattern<linalg::FillOp> {
 public:
   using OpRewritePattern<linalg::FillOp>::OpRewritePattern;
@@ -291,7 +311,7 @@ struct ConvertToLoops : public LinneaConvertToLoopsBase<ConvertToLoops> {
     ModuleOp module = getOperation();
     RewritePatternSet patterns(module.getContext());
     patterns.add<FillOpConverter, MatmulOpConverter, AddOpConverter,
-                 InitOpConverter>(patterns.getContext());
+                 InitOpConverter, DeallocOpConverter>(patterns.getContext());
     (void)applyPatternsAndFoldGreedily(module, std::move(patterns));
   }
 };

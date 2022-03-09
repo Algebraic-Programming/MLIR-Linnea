@@ -173,12 +173,12 @@ public:
   }
 };
 
-/// Linnea conversion rule for InitOp.
-class InitOpConverter : public OpConversionPattern<InitOp> {
+/// Linnea conversion rule for AllocOp.
+class AllocOpConverter : public OpConversionPattern<AllocOp> {
 public:
   using OpConversionPattern::OpConversionPattern;
   LogicalResult
-  matchAndRewrite(InitOp op, OpAdaptor adaptor,
+  matchAndRewrite(AllocOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     Type resType = op.getType();
     auto encoding = getLinneaMatrixEncoding(resType);
@@ -193,6 +193,30 @@ public:
     rewriter.replaceOpWithNewOp<linalg::InitTensorOp>(
         op, builtinTensorWithProperty, ArrayRef<Value>{},
         rewriter.getI64ArrayAttr(builtinTensorWithProperty.getShape()));
+    return success();
+  }
+};
+
+/// Linnea conversion rule for DeallocOp.
+class DeallocOpConverter : public OpConversionPattern<DeallocOp> {
+public:
+  using OpConversionPattern::OpConversionPattern;
+  LogicalResult
+  matchAndRewrite(DeallocOp op, OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    Type inputType = op.input().getType();
+    auto encoding = getLinneaMatrixEncoding(inputType);
+    if (!encoding)
+      return failure();
+
+    auto linneaType = inputType.cast<MatrixType>();
+    RankedTensorType castedTensorType =
+        RankedTensorType::get(linneaType.getDims(), linneaType.getElementType(),
+                              linneaType.getProperty());
+    Value castedToTensor = rewriter.create<ToBuiltinTensorOp>(
+        op->getLoc(), castedTensorType, op.input());
+    castedToTensor.dump();
+    rewriter.updateRootInPlace(op, [&] { op->setOperands(castedToTensor); });
     return success();
   }
 };
@@ -247,9 +271,9 @@ public:
 // Populate patterns
 void populateLinneaToLinalgPattern(RewritePatternSet &patterns,
                                    TypeConverter &converter) {
-  patterns.add<FillOpConverter, MulOpConverter, InitOpConverter,
-               PrintOpConverter, AddOpConverter>(converter,
-                                                 patterns.getContext());
+  patterns.add<FillOpConverter, MulOpConverter, AllocOpConverter,
+               DeallocOpConverter, PrintOpConverter, AddOpConverter>(
+      converter, patterns.getContext());
 }
 
 static void setupTypeConversion(ConversionTarget &target,
