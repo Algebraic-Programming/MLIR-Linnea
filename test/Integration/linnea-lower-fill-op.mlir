@@ -30,7 +30,8 @@ module {
     // CHECK-SAME:  ( 23, 23, 23, 23, 0 ),
     // CHECK-SAME:  ( 23, 23, 23, 23, 23 ) ) 
     vector.print %v1 : vector<5x5xf32>
-    //memref.dealloc %m : memref<5x5xf32>
+    linnea.dealloc %t : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+
     return 
   }
 }

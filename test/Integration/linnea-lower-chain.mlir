@@ -1,3 +1,5 @@
+// This is still needed as the vector dialect lowers to llvm.alloca.
+// See lowering for the linnea.print.
 // RUN: ulimit -s 16000
 // RUN: g++ -std=c++11 %testdir/chain-ref.cpp -o chain
 // RUN: ./chain &> chain.ref.out
@@ -58,7 +60,6 @@ module {
     %A6 = linnea.alloc [%c20, %c25] : !linnea.matrix<#linnea.property<["general"]>, [20, 25], i32>
     %Af6 = linnea.fill(%fA6, %A6) : i32, !linnea.matrix<#linnea.property<["general"]>, [20, 25], i32>
 
-    // Too much stack allocation. To run use ulimit -s 16000 
     %0 = linnea.equation {
       %1 = linnea.mul.high %Af1, %Af2, %Af3, %Af4, %Af5, %Af6 :
         !linnea.matrix<#linnea.property<["general"]>, [30, 35], i32>,
@@ -71,7 +72,15 @@ module {
     }
    
     // CHECK: ( ( 378000000, 
-    linnea.print %0 : !linnea.term  
+    linnea.print %0 : !linnea.term
+
+    linnea.dealloc %A1 : !linnea.matrix<#linnea.property<["general"]>, [30, 35], i32>
+    linnea.dealloc %A2 : !linnea.matrix<#linnea.property<["general"]>, [35, 15], i32>
+    linnea.dealloc %A3 : !linnea.matrix<#linnea.property<["general"]>, [15, 5], i32>
+    linnea.dealloc %A4 : !linnea.matrix<#linnea.property<["general"]>, [5, 10], i32>
+    linnea.dealloc %A5 : !linnea.matrix<#linnea.property<["general"]>, [10, 20], i32>
+    linnea.dealloc %A6 : !linnea.matrix<#linnea.property<["general"]>, [20, 25], i32> 
+
     return 
   }
 }

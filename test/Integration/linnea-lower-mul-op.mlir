@@ -35,7 +35,9 @@ module {
     linnea.print %0 : !linnea.term 
     linnea.print %Af : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
     linnea.print %Bf : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32> 
-    
+    linnea.dealloc %A : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+    linnea.dealloc %B : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+ 
     return 
   }
 }

@@ -10,6 +10,7 @@
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaPasses.h"
 #include "Standalone/LinneaUtils.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Func/Transforms/FuncConversions.h"
 #include "mlir/Transforms/DialectConversion.h"
 
@@ -28,11 +29,11 @@ using namespace mlir::linnea;
 
 namespace {
 
-static inline bool isMLIRFloatType(mlir::Type t) {
+static inline bool isMLIRFloatType(Type t) {
   return t.isF16() || t.isF32() || t.isF64();
 }
 
-static inline bool isMLIRIntType(mlir::Type t) {
+static inline bool isMLIRIntType(Type t) {
   return t.isInteger(2) || t.isInteger(4) || t.isInteger(8) ||
          t.isInteger(16) || t.isInteger(32) || t.isInteger(64);
 }
@@ -46,6 +47,20 @@ static Value buildBinaryOpFromValues(OpBuilder builder, Value left, Value right,
     return builder.create<IOpTy>(loc, left, right);
   else
     llvm_unreachable("unsupported type");
+}
+
+// Return the unique ReturnOp that terminates `funcOp`.
+// Return nullptr if there is no such unique ReturnOp.
+static inline func::ReturnOp getAssumedUniqueReturnOp(FuncOp funcOp) {
+  func::ReturnOp returnOp;
+  for (Block &b : funcOp.body()) {
+    if (auto candidateOp = dyn_cast<func::ReturnOp>(b.getTerminator())) {
+      if (returnOp)
+        return nullptr;
+      returnOp = candidateOp;
+    }
+  }
+  return returnOp;
 }
 
 // Emit linalg matrix op. Optimization (i.e., matrix-chain
@@ -72,6 +87,19 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
   Attribute resultZeroAttr = rewriter.getZeroAttr(outputType.getElementType());
   Value zero = rewriter.create<arith::ConstantOp>(loc, resultZeroAttr);
   buffer = rewriter.create<linalg::FillOp>(loc, zero, buffer).getResult(0);
+
+  // insert a dealloc before exiting the function.
+  auto currentInsertionPoint = rewriter.getInsertionPoint();
+  auto currentInsertionBlock = rewriter.getInsertionBlock();
+  func::ReturnOp ret =
+      getAssumedUniqueReturnOp(op->getParentOfType<mlir::FuncOp>());
+  assert(ret && "assume a return op");
+
+  rewriter.setInsertionPoint(ret);
+  rewriter.create<linnea::DeallocOp>(ret->getLoc(), buffer);
+
+  // restore insertion point.
+  rewriter.setInsertionPoint(currentInsertionBlock, currentInsertionPoint);
 
   return rewriter
       .create<linalg::MatmulOp>(loc, TypeRange{buffer.getType()},
@@ -215,7 +243,6 @@ public:
                               linneaType.getProperty());
     Value castedToTensor = rewriter.create<ToBuiltinTensorOp>(
         op->getLoc(), castedTensorType, op.input());
-    castedToTensor.dump();
     rewriter.updateRootInPlace(op, [&] { op->setOperands(castedToTensor); });
     return success();
   }

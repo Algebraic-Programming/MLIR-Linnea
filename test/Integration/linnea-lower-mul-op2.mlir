@@ -45,6 +45,9 @@ module {
     // CHECK-SAME:    ( 12500, 6250, 2500, 625, 0 ),
     // CHECK-SAME:    ( 21875, 12500, 6250, 2500, 625 ) )
     linnea.print %1 : !linnea.term
+    linnea.dealloc %A : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+    linnea.dealloc %B : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+
     return
   }
 }

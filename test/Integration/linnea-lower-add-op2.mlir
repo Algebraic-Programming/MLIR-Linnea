@@ -54,6 +54,10 @@ module {
     // CHECK-SAME:  ( 300, 225, 150, 111, 72 ),
     // CHECK-SAME:  ( 375, 300, 225, 150, 111 ) )
     linnea.print %1 : !linnea.term
+    linnea.dealloc %A : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+    linnea.dealloc %B : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+    linnea.dealloc %C : !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
+    linnea.dealloc %D : !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
     
     return 
   }
