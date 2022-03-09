@@ -167,7 +167,6 @@ public:
   using OpRewritePattern<linalg::FillOp>::OpRewritePattern;
   LogicalResult matchAndRewrite(linalg::FillOp op,
                                 PatternRewriter &rewriter) const override {
-    // TODO: should we fail if fillop cannot be bufferize in place?
     Type output = op.output().getType();
     RankedTensorType outputTensor = output.cast<RankedTensorType>();
     auto encoding = getLinneaTensorEncoding(output);
