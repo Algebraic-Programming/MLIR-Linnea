@@ -41,6 +41,42 @@ void MatrixType::print(AsmPrinter &printer) const {
   printer << ">";
 }
 
+Type MatrixType::parse(AsmParser &parser) {
+  if (failed(parser.parseLess()))
+    return Type();
+  LinneaMatrixEncodingAttr properties;
+  if (failed(parser.parseAttribute(properties)))
+    return Type();
+  if (failed(parser.parseComma()))
+    return Type();
+  ArrayAttr dimensions;
+  if (failed(parser.parseAttribute(dimensions)))
+    return Type();
+
+  SmallVector<int64_t, 4> dims;
+  for (size_t i = 0, e = dimensions.size(); i < e; i++) {
+    auto intAttr = dimensions[i].dyn_cast<IntegerAttr>();
+    if (!intAttr) {
+      parser.emitError(parser.getNameLoc(),
+                       "expect int attribute for matrix type");
+      return Type();
+    }
+    dims.push_back(intAttr.getInt());
+  }
+
+  if (failed(parser.parseComma()))
+    return Type();
+  Type elementType;
+  if (failed(parser.parseType(elementType)))
+    return Type();
+
+  if (failed(parser.parseGreater()))
+    return Type();
+  return MatrixType::getChecked(
+      [&parser] { return parser.emitError(parser.getCurrentLocation()); },
+      parser.getContext(), properties, {dims}, elementType);
+}
+
 //===----------------------------------------------------------------------===//
 // IdentityType
 //===----------------------------------------------------------------------===//
@@ -63,4 +99,34 @@ void IdentityType::print(AsmPrinter &printer) const {
   printer << ", ";
   printer << getElementType();
   printer << ">";
+}
+
+Type IdentityType::parse(AsmParser &parser) {
+  if (failed(parser.parseLess()))
+    return Type();
+  ArrayAttr dimensions;
+  if (failed(parser.parseAttribute(dimensions)))
+    return Type();
+  SmallVector<int64_t, 2> dims;
+  for (size_t i = 0, e = dimensions.size(); i < e; i++) {
+    auto intAttr = dimensions[i].dyn_cast<IntegerAttr>();
+    if (!intAttr) {
+      parser.emitError(parser.getNameLoc(),
+                       "expect int attribute for identity type");
+      return Type();
+    }
+    dims.push_back(intAttr.getInt());
+  }
+  if (failed(parser.parseComma()))
+    return Type();
+  Type elementType;
+  if (failed(parser.parseType(elementType)))
+    return Type();
+  if (failed(parser.parseGreater()))
+    return Type();
+
+  MLIRContext *ctx = parser.getContext();
+  return IdentityType::getChecked(
+      [&] { return parser.emitError(parser.getNameLoc()); }, ctx, {dims},
+      elementType);
 }

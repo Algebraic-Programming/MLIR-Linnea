@@ -51,9 +51,9 @@ static Value buildBinaryOpFromValues(OpBuilder builder, Value left, Value right,
 
 // Return the unique ReturnOp that terminates `funcOp`.
 // Return nullptr if there is no such unique ReturnOp.
-static inline func::ReturnOp getAssumedUniqueReturnOp(FuncOp funcOp) {
+static inline func::ReturnOp getAssumedUniqueReturnOp(func::FuncOp funcOp) {
   func::ReturnOp returnOp;
-  for (Block &b : funcOp.body()) {
+  for (Block &b : funcOp.getBody()) {
     if (auto candidateOp = dyn_cast<func::ReturnOp>(b.getTerminator())) {
       if (returnOp)
         return nullptr;
@@ -92,7 +92,7 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
   auto currentInsertionPoint = rewriter.getInsertionPoint();
   auto currentInsertionBlock = rewriter.getInsertionBlock();
   func::ReturnOp ret =
-      getAssumedUniqueReturnOp(op->getParentOfType<mlir::FuncOp>());
+      getAssumedUniqueReturnOp(op->getParentOfType<func::FuncOp>());
   assert(ret && "assume a return op");
 
   rewriter.setInsertionPoint(ret);
@@ -395,7 +395,7 @@ struct ConvertToLinalg : public LinneaConvertToLinalgBase<ConvertToLinalg> {
 
 } // namespace
 
-std::unique_ptr<OperationPass<FuncOp>>
+std::unique_ptr<OperationPass<func::FuncOp>>
 mlir::linnea::createConvertLinneaToLinalgPass() {
   return std::make_unique<ConvertToLinalg>();
 }

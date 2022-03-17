@@ -40,7 +40,7 @@ static bool isaLinneaTerm(Type t) { return t.isa<mlir::linnea::TermType>(); };
 /// Return nullptr if there is no such unique ReturnOp.
 static func::ReturnOp getAssumedUniqueReturnOp(FuncOp funcOp) {
   func::ReturnOp returnOp;
-  for (Block &b : funcOp.body()) {
+  for (Block &b : funcOp.getBody()) {
     if (auto candidateOp = dyn_cast<func::ReturnOp>(b.getTerminator())) {
       if (returnOp)
         return nullptr;
@@ -113,8 +113,8 @@ void LinneaPropertyPropagation::runOnOperation() {
   // adjust at function boundaries.
   // TODO: fix also callee as in comprehensive bufferization pass.
   WalkResult res = module.walk([](FuncOp funcOp) -> WalkResult {
-    if (!llvm::any_of(funcOp.getType().getInputs(), isaLinneaTerm) &&
-        !llvm::any_of(funcOp.getType().getResults(), isaLinneaTerm))
+    if (!llvm::any_of(funcOp.getFunctionType().getInputs(), isaLinneaTerm) &&
+        !llvm::any_of(funcOp.getFunctionType().getResults(), isaLinneaTerm))
       return WalkResult::advance();
 
     func::ReturnOp returnOp = getAssumedUniqueReturnOp(funcOp);
@@ -127,9 +127,9 @@ void LinneaPropertyPropagation::runOnOperation() {
     }
     ValueRange retValues{returnValues};
     FunctionType funcTypes = getFunctionType(
-        funcOp, funcOp.getType().getInputs(), retValues.getTypes());
+        funcOp, funcOp.getFunctionType().getInputs(), retValues.getTypes());
 
-    Block &front = funcOp.body().front();
+    Block &front = funcOp.getBody().front();
     unsigned numArgs = front.getNumArguments();
     for (unsigned idx = 0; idx < numArgs; idx++) {
       auto bbArg = front.getArgument(0);

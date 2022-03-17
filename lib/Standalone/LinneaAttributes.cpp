@@ -20,21 +20,57 @@ LogicalResult LinneaMatrixEncodingAttr::verify(
   return success();
 }
 
-// LinneaMatrixEncodingAttr getMatrixEncodingAttr(Type type) {
-//  if (auto ttp = type.dyn_cast<RankedTensorType>())
-//    return ttp.getEncoding().dyn_cast_or_null<LinneaMatrixEncodingAttr>();
-//  return nullptr;
-//}
+Attribute LinneaMatrixEncodingAttr::parse(AsmParser &parser, Type t) {
+  if (failed(parser.parseLess()))
+    return {};
+  ArrayAttr properties;
+  if (failed(parser.parseAttribute(properties)))
+    return {};
+  if (failed(parser.parseGreater()))
+    return {};
+  SmallVector<LinneaMatrixEncodingAttr::MatrixProperty, 4> mt;
 
-// template <LinneaMatrixEncodingAttr::MatrixProperty T>
-// bool isT(Type type) {
-//  auto encoding = getMatrixEncodingAttr(type);
-//  if (!encoding)
-//    return false;
-//  if (llvm::is_contained(encoding.getEncodingType(), T))
-//    return true;
-//  return false;
-//}
+  for (size_t i = 0, e = properties.size(); i < e; i++) {
+    auto strAttr = properties[i].dyn_cast<StringAttr>();
+    if (!strAttr) {
+      parser.emitError(parser.getNameLoc(),
+                       "expect string attribute for matrix type");
+      return {};
+    }
+    auto strVal = strAttr.getValue();
+    if (strVal == "general")
+      mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::General);
+    else if (strVal == "fullrank")
+      mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::FullRank);
+    else if (strVal == "diagonal")
+      mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Diagonal);
+    else if (strVal == "unitdiagonal")
+      mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::UnitDiagonal);
+    else if (strVal == "lowerTri")
+      mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::LowerTriangular);
+    else if (strVal == "upperTri")
+      mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::UpperTriangular);
+    else if (strVal == "symmetric")
+      mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Symmetric);
+    else if (strVal == "spd")
+      mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::SPD);
+    else if (strVal == "spds")
+      mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::SPSD);
+    else if (strVal == "square")
+      mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Square);
+    else if (strVal == "factored")
+      mt.push_back(LinneaMatrixEncodingAttr::MatrixProperty::Factored);
+    else {
+      parser.emitError(parser.getNameLoc(), "unexpected matrix type: ")
+          << strVal;
+      return {};
+    }
+  }
+
+  return LinneaMatrixEncodingAttr::getChecked(
+      [&parser] { return parser.emitError(parser.getCurrentLocation()); },
+      parser.getContext(), {mt});
+}
 
 void LinneaMatrixEncodingAttr::print(AsmPrinter &printer) const {
   printer << "<[";

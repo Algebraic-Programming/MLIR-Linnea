@@ -11,6 +11,7 @@
 
 include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinDialect.td"
+include "mlir/IR/BuiltinTypes.td"
 include "Standalone/LinneaDialect.td"
 
 class Linnea_Type<string name>
@@ -41,38 +42,8 @@ def LinneaSymbolicMatrixIdentity : Linnea_Type<"Identity"> {
                      >:$dims,
     "Type":$elementType
   );
-  
-  let parser = [{
-    if ($_parser.parseLess())
-      return Type();
-    ArrayAttr dimensions;
-    if ($_parser.parseAttribute(dimensions))
-      return Type();
-    SmallVector<int64_t, 2> dims;
-    for (size_t i = 0, e = dimensions.size(); i < e; i++) {
-      auto intAttr = dimensions[i].dyn_cast<IntegerAttr>();
-      if (!intAttr) {
-        $_parser.emitError($_parser.getNameLoc(),
-                          "expect int attribute for identity type");
-        return Type();
-      }
-      dims.push_back(intAttr.getInt());
-    }
-    
-    if ($_parser.parseComma())
-      return Type();
-    
-    Type elementType;
-    if ($_parser.parseType(elementType))
-      return Type();
-    
-    if ($_parser.parseGreater())
-      return Type();
 
-    return IdentityType::getChecked([&$_parser] { 
-      return $_parser.emitError($_parser.getCurrentLocation()); },
-             $_ctxt, dims, elementType);
-  }];
+  let hasCustomAssemblyFormat = 1;
 } 
 
 def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
@@ -91,41 +62,7 @@ def LinneaSymbolicMatrix : Linnea_Type<"Matrix"> {
     "Type":$elementType
   );
 
-  let parser = [{
-    if ($_parser.parseLess())
-      return Type();
-    LinneaMatrixEncodingAttr properties;
-    if ($_parser.parseAttribute(properties))
-      return Type();
-    if ($_parser.parseComma())
-      return Type();
-    ArrayAttr dimensions;
-    if ($_parser.parseAttribute(dimensions))
-      return Type();
-    
-    SmallVector<int64_t, 4> dims; 
-    for (size_t i = 0, e = dimensions.size(); i < e; i++) {
-      auto intAttr = dimensions[i].dyn_cast<IntegerAttr>();
-      if (!intAttr) {
-        $_parser.emitError($_parser.getNameLoc(),
-                           "expect int attribute for matrix type");
-        return Type();
-      }
-      dims.push_back(intAttr.getInt());
-    }
-
-    if ($_parser.parseComma())
-      return Type();
-    Type elementType;
-    if ($_parser.parseType(elementType))
-      return Type();
-
-    if ($_parser.parseGreater())
-      return Type();
-    return MatrixType::getChecked([&$_parser] { 
-      return $_parser.emitError($_parser.getCurrentLocation()); }, 
-             $_ctxt, properties, dims, elementType);
-  }]; 
+  let hasCustomAssemblyFormat = 1; 
 }
 
 def AnyLinneaType : AnyTypeOf<[LinneaSymbolicMatrix, 
