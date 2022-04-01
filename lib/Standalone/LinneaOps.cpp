@@ -76,14 +76,14 @@ ParseResult FillOp::parse(OpAsmParser &parser, OperationState &result) {
   if (parser.parseLParen())
     return failure();
 
-  OpAsmParser::OperandType operand;
+  OpAsmParser::UnresolvedOperand operand;
   if (parser.parseOperand(operand))
     return failure();
 
   if (parser.parseComma())
     return failure();
 
-  OpAsmParser::OperandType output;
+  OpAsmParser::UnresolvedOperand output;
   if (parser.parseOperand(output))
     return failure();
 
