@@ -63,21 +63,12 @@ static inline func::ReturnOp getAssumedUniqueReturnOp(func::FuncOp funcOp) {
   return returnOp;
 }
 
-// Emit linalg matrix op. Optimization (i.e., matrix-chain
-// reordering happen at the symbolic level).
-static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
-                              ConversionPatternRewriter &rewriter,
-                              TypeConverter *typeConverter,
-                              ResultRange results) {
-  assert(operands.size() == 2 && "expect two operands");
-  assert(results.size() == 1 && "expect one output");
-  Location loc = op->getLoc();
-
-  Value left = operands[0];
-  Value right = operands[1];
-  RankedTensorType outputType =
-      typeConverter->convertType(results[0].getType()).cast<RankedTensorType>();
-
+// Materialize a buffer of type 'outputType'. Since we lower initTensorOp
+// to an alloc we also emit a delloc. The allocated buffer is filled with
+// zeros.
+static Value emitAllocAndDealloc(MulOpLow op, RankedTensorType outputType,
+                                 ConversionPatternRewriter &rewriter,
+                                 Location loc) {
   // Materialize result.
   Value buffer = rewriter.create<linalg::InitTensorOp>(
       loc, outputType, ArrayRef<Value>({}),
@@ -101,10 +92,83 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
   // restore insertion point.
   rewriter.setInsertionPoint(currentInsertionBlock, currentInsertionPoint);
 
+  return buffer;
+}
+
+// Emit linalg matrix op. Optimization (i.e., matrix-chain
+// reordering happen at the symbolic level).
+static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
+                              ConversionPatternRewriter &rewriter,
+                              TypeConverter *typeConverter,
+                              ResultRange results) {
+  assert(operands.size() == 2 && "expect two operands");
+  assert(results.size() == 1 && "expect one output");
+  Location loc = op->getLoc();
+
+  Value left = operands[0];
+  Value right = operands[1];
+  RankedTensorType outputType =
+      typeConverter->convertType(results[0].getType()).cast<RankedTensorType>();
+
+  Value buffer = emitAllocAndDealloc(op, outputType, rewriter, loc);
+
   return rewriter
       .create<linalg::MatmulOp>(loc, TypeRange{buffer.getType()},
                                 ValueRange{left, right}, buffer)
       ->getResult(0);
+}
+
+// Emit a linalg matrix based on the semirings attribute.
+static Value emitLinalgMatrixWithSem(MulOpLow op, ValueRange operands,
+                                     ConversionPatternRewriter &rewriter,
+                                     TypeConverter *typeConverter,
+                                     ResultRange results,
+                                     StringAttr semirings) {
+  assert(operands.size() == 2 && "expect two operands");
+  assert(results.size() == 1 && "expect one output");
+  Location loc = op->getLoc();
+
+  Value left = operands[0];
+  Value right = operands[1];
+  RankedTensorType outputType =
+      typeConverter->convertType(results[0].getType()).cast<RankedTensorType>();
+
+  Value buffer = emitAllocAndDealloc(op, outputType, rewriter, loc);
+
+  // build affine maps for the mul operation.
+  using MapList = ArrayRef<ArrayRef<AffineExpr>>;
+  auto infer = [](MapList m) { return AffineMap::inferFromExprList(m); };
+  AffineExpr i, j, k;
+  bindDims(op->getContext(), i, j, k);
+  auto mulMap = infer({{i, k}, {k, j}, {i, j}});
+  // iterators.
+  SmallVector<StringRef, 3> iter = {"parallel", "parallel", "reduction"};
+
+  Value result =
+      rewriter
+          .create<linalg::GenericOp>(
+              loc, TypeRange{buffer.getType()}, ValueRange{left, right}, buffer,
+              mulMap, iter,
+              [&](OpBuilder &nestedBuilder, Location nestedLoc,
+                  ValueRange args) {
+                assert(args.size() == 3 && "expect 3 args");
+                Value mul = nullptr;
+                if (semirings.str().compare("min-plus") == 0) {
+                  Value add =
+                      buildBinaryOpFromValues<arith::AddFOp, arith::AddIOp>(
+                          nestedBuilder, args[0], args[1], nestedLoc,
+                          args[2].getType());
+                  mul = buildBinaryOpFromValues<arith::MulFOp, arith::MulIOp>(
+                      nestedBuilder, args[2], add, nestedLoc,
+                      args[2].getType());
+                } else {
+                  llvm_unreachable("semirings not supported");
+                }
+                nestedBuilder.create<linalg::YieldOp>(nestedLoc, mul);
+              })
+          ->getResult(0);
+
+  return result;
 }
 
 /// Linnea conversion rule for MulOpLow.
@@ -114,9 +178,14 @@ public:
   LogicalResult
   matchAndRewrite(MulOpLow op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
+    StringAttr attr = op->getAttr("semirings").dyn_cast_or_null<StringAttr>();
     ValueRange operands = {adaptor.left(), adaptor.right()};
-    Value result = emitLinalgMatrix(op, operands, rewriter, getTypeConverter(),
-                                    op->getResults());
+    Value result = (attr == nullptr)
+                       ? emitLinalgMatrix(op, operands, rewriter,
+                                          getTypeConverter(), op->getResults())
+                       : emitLinalgMatrixWithSem(op, operands, rewriter,
+                                                 getTypeConverter(),
+                                                 op->getResults(), attr);
     assert(result != nullptr && "must be non null");
     rewriter.replaceOp(op, result);
     return success();
