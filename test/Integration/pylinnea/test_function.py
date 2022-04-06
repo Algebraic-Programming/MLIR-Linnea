@@ -3,7 +3,7 @@
 from mlir_standalone.ir import *
 from mlir_standalone.dialects import standalone as linnea
 from mlir_standalone.dialects import builtin as builtin
-from mlir_standalone.dialects import std as std
+from mlir_standalone.dialects import func as func
 
 from tatsu.model import ModelBuilderSemantics
 from tools.frontend.parser import LinneaParser
@@ -98,9 +98,9 @@ def testBuildLinneaFromPythonArgs():
     walker.walk(ast)
     operand_types = list(walker.get_Operand_Types.values())
     with InsertionPoint(module.body):
-      func = builtin.FuncOp("some_func", (operand_types, []))
-      with InsertionPoint(func.add_entry_block()):  
-        std.ReturnOp([])
+      f = func.FuncOp("some_func", (operand_types, []))
+      with InsertionPoint(f.add_entry_block()):  
+        func.ReturnOp([])
   # CHECK-LABEL: testBuildLinneaFromPythonArgs
   # CHECK: module {
   # CHECK: func @some_func(%arg0: !linnea.matrix<#linnea.property<["lowerTri"]>, [1500, 1000], f32>, %arg1: !linnea.matrix<#linnea.property<[]>, [1500, 1000], f32>) {
@@ -121,13 +121,13 @@ def testBuildLinneaFromPythonBody():
     operand_types = list(walker.get_Operand_Types.values())
     operand_ids = list(walker.get_Operand_Types.keys())
     with InsertionPoint(module.body):
-      func = builtin.FuncOp("some_func", (operand_types, []))
-      with InsertionPoint(func.add_entry_block()):
-        assert(len(func.arguments) == len(operand_ids))
-        zip_iterator = zip(operand_ids, func.arguments)
+      f = func.FuncOp("some_func", (operand_types, []))
+      with InsertionPoint(f.add_entry_block()):
+        assert(len(f.arguments) == len(operand_ids))
+        zip_iterator = zip(operand_ids, f.arguments)
         walker._operands = dict(zip_iterator)
         walker.walk(ast)
-        std.ReturnOp([])
+        func.ReturnOp([])
     # CHECK-LABEL: testBuildLinneaFromPythonBody
     # CHECK: module {
     # CHECK: func @some_func(%arg0: !linnea.matrix<#linnea.property<["lowerTri"]>, [1500, 1000], f32>, %arg1: !linnea.matrix<#linnea.property<[]>, [1500, 1000], f32>) {

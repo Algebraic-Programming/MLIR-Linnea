@@ -5,7 +5,7 @@ import sys, os
 from mlir_standalone.ir import *
 from mlir_standalone.dialects import standalone as linnea
 from mlir_standalone.dialects import builtin as builtin
-from mlir_standalone.dialects import std as std
+from mlir_standalone.dialects import func as func
 from mlir_standalone.execution_engine import *
 from mlir_standalone.passmanager import *
 from mlir_standalone.runtime import *
@@ -18,7 +18,7 @@ def run(f):
 def lowerToLLVM(module): 
   import mlir_standalone.conversions 
   pm = PassManager.parse(
-      "convert-memref-to-llvm,convert-std-to-llvm,reconcile-unrealized-casts")
+      "convert-memref-to-llvm,convert-func-to-llvm,reconcile-unrealized-casts")
   pm.run(module)
   return module
 
@@ -68,11 +68,11 @@ func @entry() attributes { llvm.emit_c_interface } {
 
   // Materialize and fill a linnea matrix.
   %fc = arith.constant 5.0 : f32
-  %A = linnea.init [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+  %A = linnea.alloc [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
   %Af = linnea.fill(%fc, %A) : f32, !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
 
   // Materialize and fill a linnea matrix.
-  %B = linnea.init [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
+  %B = linnea.alloc [%c5, %c5] : !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
   %Bf = linnea.fill(%fc, %B) : f32, !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
 
   %0 = linnea.equation {

@@ -3,7 +3,7 @@
 from mlir_standalone.ir import *
 from mlir_standalone.dialects import standalone as linnea
 from mlir_standalone.dialects import builtin as builtin
-from mlir_standalone.dialects import std as std
+from mlir_standalone.dialects import func as func
 
 def run(f):
   print("\nTEST:", f.__name__)
@@ -115,12 +115,12 @@ def buildFuncOp():
     f32 = F32Type.get()
     matrixType = linnea.MatrixType.get(ctx, linnea.MatrixEncodingAttr.get(ctx, p), [2, 2], f32)
     with InsertionPoint(module.body):
-      func = builtin.FuncOp("some_func", ([termType, termType], []))
-      with InsertionPoint(func.add_entry_block()):
-        std.ReturnOp([])
-      otherFunc = builtin.FuncOp("some_other_func", ([termType, matrixType], []))
-      with InsertionPoint(otherFunc.add_entry_block()):
-        std.ReturnOp([])
+      f = func.FuncOp("some_func", ([termType, termType], []))
+      with InsertionPoint(f.add_entry_block()):
+        func.ReturnOp([])
+      otherF = func.FuncOp("some_other_func", ([termType, matrixType], []))
+      with InsertionPoint(otherF.add_entry_block()):
+        func.ReturnOp([])
     
   # CHECK: module {
   # CHECK: func @some_func(%arg0: !linnea.term, %arg1: !linnea.term) {
