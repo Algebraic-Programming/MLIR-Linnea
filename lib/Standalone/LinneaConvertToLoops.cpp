@@ -284,7 +284,7 @@ public:
     auto addMap = infer({{m, n}, {m, n}, {m, n}});
 
     // iterator for add operation.
-    llvm::SmallVector<StringRef, 3> iter = {"parallel", "parallel"};
+    SmallVector<StringRef, 2> iter = {"parallel", "parallel"};
 
     Value dest =
         rewriter
