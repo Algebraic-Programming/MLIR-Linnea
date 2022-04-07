@@ -67,7 +67,8 @@ static inline func::ReturnOp getAssumedUniqueReturnOp(func::FuncOp funcOp) {
 // to an alloc we also emit a delloc. The allocated buffer is filled with
 // zeros.
 static Value emitAllocAndDealloc(MulOpLow op, RankedTensorType outputType,
-                                 ConversionPatternRewriter &rewriter) {
+                                 ConversionPatternRewriter &rewriter,
+                                 StringAttr semirings = nullptr) {
   Location loc = op->getLoc();
   // Materialize result.
   Value buffer = rewriter.create<linalg::InitTensorOp>(
@@ -76,6 +77,24 @@ static Value emitAllocAndDealloc(MulOpLow op, RankedTensorType outputType,
 
   // Fill result buffer with 0.
   Attribute resultZeroAttr = rewriter.getZeroAttr(outputType.getElementType());
+  if (semirings) {
+    Type elementType = outputType.getElementType();
+    if (semirings.str().compare("min-plus") == 0) {
+      assert(isMLIRFloatType(elementType) &&
+             "expect float type with 'min-plus' semirings");
+      resultZeroAttr = rewriter.getFloatAttr(
+          elementType,
+          APFloat::getInf(elementType.cast<FloatType>().getFloatSemantics(),
+                          /*Negative*/ false));
+    } else if (semirings.str().compare("max-plus") == 0) {
+      assert(isMLIRFloatType(elementType) &&
+             "expect float type with 'max-plus' semirings");
+      resultZeroAttr = rewriter.getFloatAttr(
+          elementType,
+          APFloat::getInf(elementType.cast<FloatType>().getFloatSemantics(),
+                          /*Negative*/ true));
+    }
+  }
   Value zero = rewriter.create<arith::ConstantOp>(loc, resultZeroAttr);
   buffer = rewriter.create<linalg::FillOp>(loc, zero, buffer).getResult(0);
 
@@ -114,6 +133,40 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
       ->getResult(0);
 }
 
+static Value buildMatrixBody(StringAttr semirings, ValueRange operands,
+                             OpBuilder &builder, Location loc) {
+  if ((semirings.str().compare("real-arith") == 0) ||
+      (semirings.str().compare("integer-arith") == 0)) {
+    Type elementType = operands[2].getType();
+    assert((isMLIRFloatType(elementType) || (isMLIRIntType(elementType))) &&
+           "expect float/int type with 'real/integer-arith' semirings");
+    Value add = buildBinaryOpFromValues<arith::AddFOp, arith::AddIOp>(
+        builder, operands[0], operands[1], loc, elementType);
+    Value mul = buildBinaryOpFromValues<arith::MulFOp, arith::MulIOp>(
+        builder, operands[2], add, loc, elementType);
+    return mul;
+  } else if (semirings.str().compare("min-plus") == 0) {
+    Type elementType = operands[2].getType();
+    assert(isMLIRFloatType(elementType) &&
+           "expect float type with 'min-plus' semirings");
+    Value add = buildBinaryOpFromValues<arith::MinFOp, arith::MinSIOp>(
+        builder, operands[0], operands[1], loc, elementType);
+    Value mul = buildBinaryOpFromValues<arith::AddFOp, arith::AddIOp>(
+        builder, operands[2], add, loc, elementType);
+    return mul;
+  } else if (semirings.str().compare("max-plus") == 0) {
+    Type elementType = operands[2].getType();
+    assert(isMLIRFloatType(elementType) &&
+           "expect float type with 'max-plus' semirings");
+    Value add = buildBinaryOpFromValues<arith::MaxFOp, arith::MaxSIOp>(
+        builder, operands[0], operands[1], loc, elementType);
+    Value mul = buildBinaryOpFromValues<arith::AddFOp, arith::AddIOp>(
+        builder, operands[2], add, loc, elementType);
+    return mul;
+  }
+  llvm_unreachable("semirings not supported");
+}
+
 // Emit a linalg matrix based on the semirings attribute.
 static Value emitLinalgMatrixWithSem(MulOpLow op, ValueRange operands,
                                      ConversionPatternRewriter &rewriter,
@@ -125,7 +178,7 @@ static Value emitLinalgMatrixWithSem(MulOpLow op, ValueRange operands,
   RankedTensorType outputType =
       typeConverter->convertType(results[0].getType()).cast<RankedTensorType>();
 
-  Value buffer = emitAllocAndDealloc(op, outputType, rewriter);
+  Value buffer = emitAllocAndDealloc(op, outputType, rewriter, semirings);
 
   // build affine maps for the mul operation.
   using MapList = ArrayRef<ArrayRef<AffineExpr>>;
@@ -144,18 +197,8 @@ static Value emitLinalgMatrixWithSem(MulOpLow op, ValueRange operands,
               [&](OpBuilder &nestedBuilder, Location nestedLoc,
                   ValueRange args) {
                 assert(args.size() == 3 && "expect 3 args");
-                Value mul = nullptr;
-                if (semirings.str().compare("min-plus") == 0) {
-                  Value add =
-                      buildBinaryOpFromValues<arith::AddFOp, arith::AddIOp>(
-                          nestedBuilder, args[0], args[1], nestedLoc,
-                          args[2].getType());
-                  mul = buildBinaryOpFromValues<arith::MulFOp, arith::MulIOp>(
-                      nestedBuilder, args[2], add, nestedLoc,
-                      args[2].getType());
-                } else {
-                  llvm_unreachable("semirings not supported");
-                }
+                Value mul =
+                    buildMatrixBody(semirings, args, nestedBuilder, nestedLoc);
                 nestedBuilder.create<linalg::YieldOp>(nestedLoc, mul);
               })
           ->getResult(0);
