@@ -67,8 +67,8 @@ static inline func::ReturnOp getAssumedUniqueReturnOp(func::FuncOp funcOp) {
 // to an alloc we also emit a delloc. The allocated buffer is filled with
 // zeros.
 static Value emitAllocAndDealloc(MulOpLow op, RankedTensorType outputType,
-                                 ConversionPatternRewriter &rewriter,
-                                 Location loc) {
+                                 ConversionPatternRewriter &rewriter) {
+  Location loc = op->getLoc();
   // Materialize result.
   Value buffer = rewriter.create<linalg::InitTensorOp>(
       loc, outputType, ArrayRef<Value>({}),
@@ -101,19 +101,15 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
                               ConversionPatternRewriter &rewriter,
                               TypeConverter *typeConverter,
                               ResultRange results) {
-  assert(operands.size() == 2 && "expect two operands");
-  assert(results.size() == 1 && "expect one output");
-  Location loc = op->getLoc();
-
   Value left = operands[0];
   Value right = operands[1];
   RankedTensorType outputType =
       typeConverter->convertType(results[0].getType()).cast<RankedTensorType>();
 
-  Value buffer = emitAllocAndDealloc(op, outputType, rewriter, loc);
+  Value buffer = emitAllocAndDealloc(op, outputType, rewriter);
 
   return rewriter
-      .create<linalg::MatmulOp>(loc, TypeRange{buffer.getType()},
+      .create<linalg::MatmulOp>(op->getLoc(), TypeRange{buffer.getType()},
                                 ValueRange{left, right}, buffer)
       ->getResult(0);
 }
@@ -124,16 +120,12 @@ static Value emitLinalgMatrixWithSem(MulOpLow op, ValueRange operands,
                                      TypeConverter *typeConverter,
                                      ResultRange results,
                                      StringAttr semirings) {
-  assert(operands.size() == 2 && "expect two operands");
-  assert(results.size() == 1 && "expect one output");
-  Location loc = op->getLoc();
-
   Value left = operands[0];
   Value right = operands[1];
   RankedTensorType outputType =
       typeConverter->convertType(results[0].getType()).cast<RankedTensorType>();
 
-  Value buffer = emitAllocAndDealloc(op, outputType, rewriter, loc);
+  Value buffer = emitAllocAndDealloc(op, outputType, rewriter);
 
   // build affine maps for the mul operation.
   using MapList = ArrayRef<ArrayRef<AffineExpr>>;
@@ -147,8 +139,8 @@ static Value emitLinalgMatrixWithSem(MulOpLow op, ValueRange operands,
   Value result =
       rewriter
           .create<linalg::GenericOp>(
-              loc, TypeRange{buffer.getType()}, ValueRange{left, right}, buffer,
-              mulMap, iter,
+              op->getLoc(), TypeRange{buffer.getType()},
+              ValueRange{left, right}, buffer, mulMap, iter,
               [&](OpBuilder &nestedBuilder, Location nestedLoc,
                   ValueRange args) {
                 assert(args.size() == 3 && "expect 3 args");
