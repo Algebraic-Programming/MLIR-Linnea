@@ -402,7 +402,7 @@ public:
   }
 };
 
-// Populate patterns
+// Populate patterns.
 void populateLinneaToLinalgPattern(RewritePatternSet &patterns,
                                    TypeConverter &converter) {
   patterns.add<FillOpConverter, MulOpConverter, AllocOpConverter,
