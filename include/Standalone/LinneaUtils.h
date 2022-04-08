@@ -26,4 +26,6 @@ bool isMLIRIntType(Type t);
 } // namespace linnea
 } // namespace mlir
 
+#include "LinneaUtils-Inl.h"
+
 #endif

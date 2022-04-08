@@ -29,17 +29,6 @@ using namespace mlir::linnea;
 
 namespace {
 
-template <typename FOpTy, typename IOpTy>
-static Value buildBinaryOpFromValues(OpBuilder builder, Value left, Value right,
-                                     Location loc, Type t) {
-  if (isMLIRFloatType(t))
-    return builder.create<FOpTy>(loc, left, right);
-  else if (isMLIRIntType(t))
-    return builder.create<IOpTy>(loc, left, right);
-  else
-    llvm_unreachable("unsupported type");
-}
-
 // Return the unique ReturnOp that terminates `funcOp`.
 // Return nullptr if there is no such unique ReturnOp.
 static inline func::ReturnOp getAssumedUniqueReturnOp(func::FuncOp funcOp) {

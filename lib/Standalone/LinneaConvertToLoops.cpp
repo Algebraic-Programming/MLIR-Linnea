@@ -237,16 +237,6 @@ public:
   }
 };
 
-template <typename FOpTy, typename IOpTy>
-static Value buildBinaryOpFromValues(OpBuilder builder, Value left, Value right,
-                                     Location loc, Type t) {
-  if (isMLIRFloatType(t))
-    return builder.create<FOpTy>(loc, left, right);
-  else if (isMLIRIntType(t))
-    return builder.create<IOpTy>(loc, left, right);
-  llvm_unreachable("unsupported type");
-}
-
 /// Converter for linalg::GenericOp (coming from a linnea add).
 // TODO: again too much code duplication.
 struct AddOpConverter : public OpRewritePattern<linalg::GenericOp> {
