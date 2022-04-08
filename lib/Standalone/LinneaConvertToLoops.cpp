@@ -244,8 +244,7 @@ static Value buildBinaryOpFromValues(OpBuilder builder, Value left, Value right,
     return builder.create<FOpTy>(loc, left, right);
   else if (isMLIRIntType(t))
     return builder.create<IOpTy>(loc, left, right);
-  else
-    llvm_unreachable("unsupported type");
+  llvm_unreachable("unsupported type");
 }
 
 /// Converter for linalg::GenericOp (coming from a linnea add).
