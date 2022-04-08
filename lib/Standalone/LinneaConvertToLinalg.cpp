@@ -91,7 +91,7 @@ static Value emitAllocAndDealloc(MulOpLow op, RankedTensorType outputType,
 
   // insert a dealloc before exiting the function.
   auto currentInsertionPoint = rewriter.getInsertionPoint();
-  auto currentInsertionBlock = rewriter.getInsertionBlock();
+  auto *currentInsertionBlock = rewriter.getInsertionBlock();
   func::ReturnOp ret =
       getAssumedUniqueReturnOp(op->getParentOfType<func::FuncOp>());
   assert(ret && "assume a return op");
