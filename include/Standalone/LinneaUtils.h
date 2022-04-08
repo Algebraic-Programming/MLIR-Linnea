@@ -20,6 +20,9 @@ class LinneaMatrixEncodingAttr;
 LinneaMatrixEncodingAttr getLinneaTensorEncoding(Type type);
 LinneaMatrixEncodingAttr getLinneaMatrixEncoding(Type type);
 
+bool isMLIRFloatType(Type t);
+bool isMLIRIntType(Type t);
+
 } // namespace linnea
 } // namespace mlir
 

@@ -26,5 +26,15 @@ LinneaMatrixEncodingAttr getLinneaTensorEncoding(Type type) {
   return nullptr;
 }
 
+bool isMLIRFloatType(Type t) {
+  return t.isF16() || t.isF32() || t.isF64();
+}
+
+bool isMLIRIntType(Type t) {
+  return t.isInteger(2) || t.isInteger(4) || t.isInteger(8) ||
+         t.isInteger(16) || t.isInteger(32) || t.isInteger(64);
+}
+
+
 } // namespace linnea
 } // namespace mlir

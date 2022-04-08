@@ -29,15 +29,6 @@ using namespace mlir::linnea;
 
 namespace {
 
-static inline bool isMLIRFloatType(Type t) {
-  return t.isF16() || t.isF32() || t.isF64();
-}
-
-static inline bool isMLIRIntType(Type t) {
-  return t.isInteger(2) || t.isInteger(4) || t.isInteger(8) ||
-         t.isInteger(16) || t.isInteger(32) || t.isInteger(64);
-}
-
 template <typename FOpTy, typename IOpTy>
 static Value buildBinaryOpFromValues(OpBuilder builder, Value left, Value right,
                                      Location loc, Type t) {
