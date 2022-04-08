@@ -235,7 +235,9 @@ def Linnea_MulOpLow : Linnea_Op<"mul.low", [NoSideEffect]> {
         ```
     }];
 
-    let arguments = (ins AnyLinneaType:$left, AnyLinneaType:$right);
+    let arguments = (ins AnyLinneaType:$left, 
+                         AnyLinneaType:$right, 
+                         OptionalAttr<StrAttr>:$semirings);
     let results = (outs AnyLinneaType:$output);
 
     let assemblyFormat = [{
@@ -296,7 +298,9 @@ def Linnea_AddOpLow : Linnea_Op<"add.low", [NoSideEffect]> {
         ```
     }];
 
-    let arguments = (ins AnyLinneaType:$left, AnyLinneaType:$right);
+    let arguments = (ins AnyLinneaType:$left, 
+                         AnyLinneaType:$right,
+                         OptionalAttr<StrAttr>:$semirings);
     let results = (outs AnyLinneaType:$output);
 
     let assemblyFormat = [{

@@ -222,7 +222,12 @@ bool NaryExpr::isFullRank() const {
   llvm_unreachable("Only MUL supported");
 }
 
-/// is the current product SPD?
+static inline NaryExpr::SemiringsKind
+getSemiringsKindFromExpr(const NaryExpr *op) {
+  return op->getSemiringsKind();
+}
+
+// is the current product SPD?
 static bool isSymmetricProduct(const NaryExpr *op, bool checkSPD = false) {
   assert(op->getKind() == NaryExpr::NaryExprKind::MUL && "must be mul");
   auto children = op->getChildren();
@@ -238,8 +243,10 @@ static bool isSymmetricProduct(const NaryExpr *op, bool checkSPD = false) {
       else
         rightChildren.push_back(children[i]);
     }
-    auto *leftExpr = variadicMul(leftChildren, /*fold*/ true);
-    auto *rightExpr = variadicMul(rightChildren, /*fold*/ true);
+    auto *leftExpr =
+        variadicMul(leftChildren, /*fold*/ true, getSemiringsKindFromExpr(op));
+    auto *rightExpr =
+        variadicMul(rightChildren, /*fold*/ true, getSemiringsKindFromExpr(op));
 #if DEBUG
     cout << __func__ << "\n";
     walk(leftExpr);
@@ -270,8 +277,10 @@ static bool isSymmetricProduct(const NaryExpr *op, bool checkSPD = false) {
       else
         rightChildren.push_back(children[i]);
     }
-    auto *leftExpr = variadicMul(leftChildren, /*fold*/ true);
-    auto *rightExpr = variadicMul(rightChildren, /*fold*/ true);
+    auto *leftExpr =
+        variadicMul(leftChildren, /*fold*/ true, getSemiringsKindFromExpr(op));
+    auto *rightExpr =
+        variadicMul(rightChildren, /*fold*/ true, getSemiringsKindFromExpr(op));
 #if DEBUG
     cout << __func__ << "\n";
     walk(leftExpr);

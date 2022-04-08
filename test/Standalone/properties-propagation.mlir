@@ -12,7 +12,7 @@ module {
     %Bf = linnea.fill(%fc, %B) : f32, !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
 
     %0 = linnea.equation {
-      %1 = linnea.mul.high %Af, %Bf :
+      %1 = linnea.mul.high %Af, %Bf { semirings = "real-arith" }:
         !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>,
         !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32> -> !linnea.term
       linnea.yield %1 : !linnea.term
@@ -26,11 +26,11 @@ module {
     %Df = linnea.fill(%fd, %D) : f32, !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
 
     %1 = linnea.equation {
-      %2 = linnea.mul.high %Cf, %Df, %0 :
+      %2 = linnea.mul.high %Cf, %Df, %0 { semirings = "real-arith" }:
         !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>,
         !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>,
         !linnea.term -> !linnea.term
-      %3 = linnea.mul.high %Cf, %Df, %2 :
+      %3 = linnea.mul.high %Cf, %Df, %2 { semirings = "real-arith" }:
         !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>,
         !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>,
         !linnea.term -> !linnea.term
@@ -57,7 +57,7 @@ module {
     %Bf = linnea.fill(%fc, %B) : f32, !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
 
     %0 = linnea.equation {
-      %1 = linnea.mul.high %Af, %Bf :
+      %1 = linnea.mul.high %Af, %Bf { semirings = "real-arith" }:
         !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>,
         !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32> -> !linnea.term
       linnea.yield %1 : !linnea.term
@@ -71,11 +71,11 @@ module {
     %Df = linnea.fill(%fd, %D) : f32, !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>
 
     %1 = linnea.equation {
-      %2 = linnea.mul.high %Cf, %Df, %0 :
+      %2 = linnea.mul.high %Cf, %Df, %0 { semirings = "real-arith" }:
         !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>,
         !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>,
         !linnea.term -> !linnea.term
-      %3 = linnea.mul.high %Cf, %Df, %2 :
+      %3 = linnea.mul.high %Cf, %Df, %2 { semirings = "real-arith" }:
         !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>,
         !linnea.matrix<#linnea.property<["upperTri"]>, [5, 5], f32>,
         !linnea.term -> !linnea.term

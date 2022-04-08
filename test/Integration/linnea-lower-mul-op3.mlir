@@ -17,14 +17,14 @@ module {
     %Bf = linnea.fill(%fc, %B) : f32, !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>
 
     %0 = linnea.equation {
-      %1 = linnea.mul.high %Af, %Bf :
+      %1 = linnea.mul.high %Af, %Bf { semirings = "real-arith" }:
         !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>,
         !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32> -> !linnea.term
       linnea.yield %1 : !linnea.term
     }
 
     %1 = linnea.equation {
-      %2 = linnea.mul.high %Af, %Bf, %0 :
+      %2 = linnea.mul.high %Af, %Bf, %0 { semirings = "real-arith" }:
         !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>,
         !linnea.matrix<#linnea.property<["lowerTri"]>, [5, 5], f32>,
         !linnea.term -> !linnea.term

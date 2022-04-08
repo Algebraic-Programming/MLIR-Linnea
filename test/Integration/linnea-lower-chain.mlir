@@ -61,7 +61,7 @@ module {
     %Af6 = linnea.fill(%fA6, %A6) : i32, !linnea.matrix<#linnea.property<["general"]>, [20, 25], i32>
 
     %0 = linnea.equation {
-      %1 = linnea.mul.high %Af1, %Af2, %Af3, %Af4, %Af5, %Af6 :
+      %1 = linnea.mul.high %Af1, %Af2, %Af3, %Af4, %Af5, %Af6 { semirings = "integer-arith" }:
         !linnea.matrix<#linnea.property<["general"]>, [30, 35], i32>,
         !linnea.matrix<#linnea.property<["general"]>, [35, 15], i32>,
         !linnea.matrix<#linnea.property<["general"]>, [15, 5], i32>,

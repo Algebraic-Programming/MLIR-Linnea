@@ -137,14 +137,7 @@ static Value buildMatrixBody(StringAttr semirings, ValueRange operands,
                              OpBuilder &builder, Location loc) {
   if ((semirings.str().compare("real-arith") == 0) ||
       (semirings.str().compare("integer-arith") == 0)) {
-    Type elementType = operands[2].getType();
-    assert((isMLIRFloatType(elementType) || (isMLIRIntType(elementType))) &&
-           "expect float/int type with 'real/integer-arith' semirings");
-    Value add = buildBinaryOpFromValues<arith::AddFOp, arith::AddIOp>(
-        builder, operands[0], operands[1], loc, elementType);
-    Value mul = buildBinaryOpFromValues<arith::MulFOp, arith::MulIOp>(
-        builder, operands[2], add, loc, elementType);
-    return mul;
+    assert(0 && "not supported");
   } else if (semirings.str().compare("min-plus") == 0) {
     Type elementType = operands[2].getType();
     assert(isMLIRFloatType(elementType) &&
@@ -206,6 +199,13 @@ static Value emitLinalgMatrixWithSem(MulOpLow op, ValueRange operands,
   return result;
 }
 
+static bool isRealOrArith(StringAttr semirings) {
+  if ((semirings.str().compare("real-arith") == 0) ||
+      (semirings.str().compare("integer-arith") == 0))
+    return true;
+  return false;
+}
+
 /// Linnea conversion rule for MulOpLow.
 class MulOpConverter : public OpConversionPattern<MulOpLow> {
 public:
@@ -214,8 +214,11 @@ public:
   matchAndRewrite(MulOpLow op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     StringAttr attr = op->getAttr("semirings").dyn_cast_or_null<StringAttr>();
+    assert(attr);
     ValueRange operands = {adaptor.left(), adaptor.right()};
-    Value result = (attr == nullptr)
+    // here we emit linalg.matmul for real and integer. On the long run
+    // we will use only linalg.generic.
+    Value result = (isRealOrArith(attr) == true)
                        ? emitLinalgMatrix(op, operands, rewriter,
                                           getTypeConverter(), op->getResults())
                        : emitLinalgMatrixWithSem(op, operands, rewriter,

@@ -134,15 +134,19 @@ public:
 class NaryExpr : public ScopedExpr<NaryExpr> {
 public:
   enum class NaryExprKind { MUL, ADD };
+  enum class SemiringsKind { REAL_ARITH, INTEGER_ARITH, MIN_PLUS, MAX_PLUS };
 
 private:
   std::vector<Expr *> children;
   NaryExprKind kind;
+  SemiringsKind semirings;
 
 public:
   NaryExpr() = delete;
-  NaryExpr(std::vector<Expr *> children, NaryExprKind kind)
-      : ScopedExpr(ExprKind::BINARY), children(children), kind(kind){};
+  NaryExpr(std::vector<Expr *> children, NaryExprKind kind,
+           SemiringsKind semirings)
+      : ScopedExpr(ExprKind::BINARY), children(children), kind(kind),
+        semirings(semirings){};
 
   // compute the properties for the current expression.
   std::vector<Expr::ExprProperty> getAndSetProperties() override;
@@ -169,6 +173,9 @@ public:
 
   // kind of the nary expression.
   NaryExprKind getKind() const { return kind; };
+
+  // get the kind of semirings.
+  SemiringsKind getSemiringsKind() const { return semirings; };
 
   static bool classof(const Expr *expr) {
     return expr->getKind() == ExprKind::BINARY;

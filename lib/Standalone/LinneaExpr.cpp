@@ -366,6 +366,19 @@ static int64_t getDimSizeAtPos(Type t, size_t pos) {
   llvm_unreachable("expect only MatrixType or IdentityType");
 }
 
+static StringAttr getStringAttributeFromEnum(NaryExpr::SemiringsKind kind,
+                                             OpBuilder &builder) {
+  if (kind == NaryExpr::SemiringsKind::REAL_ARITH)
+    return StringAttr::get(builder.getContext(), "real-arith");
+  else if (kind == NaryExpr::SemiringsKind::INTEGER_ARITH)
+    return StringAttr::get(builder.getContext(), "integer-arith");
+  else if (kind == NaryExpr::SemiringsKind::MIN_PLUS)
+    return StringAttr::get(builder.getContext(), "min-plus");
+  else if (kind == NaryExpr::SemiringsKind::MAX_PLUS)
+    return StringAttr::get(builder.getContext(), "max-plus");
+  llvm_unreachable("unknown semiring");
+}
+
 template <typename OP>
 Value ExprBuilder::buildBinaryOpImpl(Location loc, OpBuilder &builder,
                                      NaryExpr *expr) {
@@ -385,7 +398,10 @@ Value ExprBuilder::buildBinaryOpImpl(Location loc, OpBuilder &builder,
       builder.getContext(),
       LinneaMatrixEncodingAttr::get(builder.getContext(), properties), dims,
       elementType);
-  return builder.create<OP>(loc, result, operands);
+  assert(operands.size() == 2 && "expect two operands");
+  StringAttr semirings =
+      getStringAttributeFromEnum(expr->getSemiringsKind(), builder);
+  return builder.create<OP>(loc, result, operands[0], operands[1], semirings);
 }
 
 template <typename OP>
@@ -439,6 +455,23 @@ static bool hasOnlyUser(Value source, Operation *target) {
   return true;
 }
 
+static inline NaryExpr::SemiringsKind getSemiringsKindFromOp(Operation *op) {
+  assert(
+      (op->getName().getIdentifier().str().compare("linnea.mul.high") == 0) ||
+      (op->getName().getIdentifier().str().compare("linnea.add.high") == 0));
+  StringAttr attr = op->getAttr("semirings").dyn_cast_or_null<StringAttr>();
+  assert(attr);
+  if (attr.str().compare("real-arith") == 0)
+    return NaryExpr::SemiringsKind::REAL_ARITH;
+  else if (attr.str().compare("integer-arith") == 0)
+    return NaryExpr::SemiringsKind::INTEGER_ARITH;
+  else if (attr.str().compare("min-plus") == 0)
+    return NaryExpr::SemiringsKind::MIN_PLUS;
+  else if (attr.str().compare("max-plus") == 0)
+    return NaryExpr::SemiringsKind::MAX_PLUS;
+  llvm_unreachable("unknown semirings");
+}
+
 // Build symbolic expression following use-def chain for 'val'.
 Expr *ExprBuilder::buildExprImpl(Value val, Operation *currentOp) {
   // 'val' comes is a basic block arg or the result
@@ -457,13 +490,13 @@ Expr *ExprBuilder::buildExprImpl(Value val, Operation *currentOp) {
     SmallVector<Expr *, 4> children;
     for (Value operand : mulOp.getOperands())
       children.push_back(buildExprImpl(operand, currentOp));
-    return variadicMul(children, /*fold*/ true);
+    return variadicMul(children, /*fold*/ true, getSemiringsKindFromOp(mulOp));
   }
   if (auto addOp = dyn_cast_or_null<linnea::AddOpHigh>(defOp)) {
     SmallVector<Expr *, 4> children;
     for (Value operand : addOp.getOperands())
       children.push_back(buildExprImpl(operand, currentOp));
-    return variadicAdd(children, /*fold*/ true);
+    return variadicAdd(children, /*fold*/ true, getSemiringsKindFromOp(addOp));
   }
   if (auto transOp = dyn_cast_or_null<linnea::TransposeOp>(defOp)) {
     Expr *child = buildExprImpl(transOp.getOperand(), currentOp);
@@ -606,7 +639,8 @@ struct ResultMCO {
 };
 
 // Run matrix-chain optimization.
-static ResultMCO runMCO(ArrayRef<Expr *> operands) {
+static ResultMCO runMCO(ArrayRef<Expr *> operands,
+                        NaryExpr::SemiringsKind semirings) {
 
   SmallVector<long, 8> pVector = getOperandSize(operands);
   const size_t n = pVector.size();
@@ -634,8 +668,8 @@ static ResultMCO runMCO(ArrayRef<Expr *> operands) {
       m[i][j] = std::numeric_limits<long>::max();
       for (size_t k = i; k <= j - 1; k++) {
 
-        auto *tmpexpr =
-            variadicMul({tmps[i][k], tmps[k + 1][j]}, /*fold*/ false);
+        auto *tmpexpr = variadicMul({tmps[i][k], tmps[k + 1][j]},
+                                    /*fold*/ false, semirings);
 #if DEBUG
         cout << "---\n";
         walk(tmpexpr);
@@ -645,8 +679,8 @@ static ResultMCO runMCO(ArrayRef<Expr *> operands) {
         getKernelCostTopLevelExpr(tmpexpr, cost);
         q = m[i][k] + m[k + 1][j] + cost;
         if (q < m[i][j]) {
-          tmps[i][j] =
-              variadicMul({tmps[i][k], tmps[k + 1][j]}, /*fold*/ false);
+          tmps[i][j] = variadicMul({tmps[i][k], tmps[k + 1][j]}, /*fold*/ false,
+                                   semirings);
           m[i][j] = q;
           s[i][j] = k;
         }
@@ -692,19 +726,23 @@ static ResultMCO runMCO(ArrayRef<Expr *> operands) {
 }
 
 // preserve the chain order.
-static Expr *passThroughMul(ArrayRef<Expr *> operands) {
+static Expr *passThroughMul(ArrayRef<Expr *> operands,
+                            NaryExpr::SemiringsKind semirings) {
   assert(operands.size() >= 2 && "expect two or more operands");
-  Expr *root = variadicMul({operands[0], operands[1]}, /*fold*/ false);
+  Expr *root =
+      variadicMul({operands[0], operands[1]}, /*fold*/ false, semirings);
   for (size_t i = 2; i < operands.size(); i++)
-    root = variadicMul({root, operands[i]}, /*fold*/ false);
+    root = variadicMul({root, operands[i]}, /*fold*/ false, semirings);
   return root;
 }
 
-static Expr *passThroughAdd(ArrayRef<Expr *> operands) {
+static Expr *passThroughAdd(ArrayRef<Expr *> operands,
+                            NaryExpr::SemiringsKind semirings) {
   assert(operands.size() >= 2 && "expect two or more operands");
-  Expr *root = variadicAdd({operands[0], operands[1]}, /*fold*/ false);
+  Expr *root =
+      variadicAdd({operands[0], operands[1]}, /*fold*/ false, semirings);
   for (size_t i = 2; i < operands.size(); i++)
-    root = variadicAdd({root, operands[i]}, /*fold*/ false);
+    root = variadicAdd({root, operands[i]}, /*fold*/ false, semirings);
   return root;
 }
 
@@ -723,11 +761,12 @@ static Expr *simplifyImpl(bool symbolicOpt, Expr *root) {
       switch (naryExpr->getKind()) {
       case NaryExpr::NaryExprKind::MUL: {
         if (symbolicOpt)
-          return runMCO(simplifiedChildren).optimizedMulExpr;
-        return passThroughMul(simplifiedChildren);
+          return runMCO(simplifiedChildren, naryExpr->getSemiringsKind())
+              .optimizedMulExpr;
+        return passThroughMul(simplifiedChildren, naryExpr->getSemiringsKind());
       }
       case NaryExpr::NaryExprKind::ADD: {
-        return passThroughAdd(simplifiedChildren);
+        return passThroughAdd(simplifiedChildren, naryExpr->getSemiringsKind());
       }
       }
     }
@@ -807,9 +846,10 @@ SmallVector<int64_t, 2> NaryExpr::getResultShape() const {
 }
 
 /// Return a flop estimate for the matrix-chain algorithm. Used for test only.
+// TODO: maybe runMCO should be a method of the class NaryExpr::MUL only.
 long NaryExpr::getMCPFlops() {
   assert(this->getKind() == NaryExprKind::MUL);
-  auto optimizedMulExpr = runMCO(this->getChildren());
+  auto optimizedMulExpr = runMCO(this->getChildren(), this->getSemiringsKind());
   return optimizedMulExpr.flops;
 }
 

@@ -25,7 +25,8 @@ template <typename... Args>
 Expr *adderImpl(bool fold, Args... args) {
   SmallVector<Expr *, 4> operands = varargToVector<Expr *>(args...);
   assert(operands.size() >= 2 && "two or more operands");
-  return variadicAdd(operands, fold);
+  // here we hard-code the semirings, as we have other tests for the semirings.
+  return variadicAdd(operands, fold, NaryExpr::SemiringsKind::REAL_ARITH);
 }
 
 template <typename... Args>
@@ -42,7 +43,8 @@ template <typename... Args>
 Expr *multiplierImpl(bool fold, Args... args) {
   SmallVector<Expr *> operands = varargToVector<Expr *>(args...);
   assert(operands.size() >= 2 && "two or more operands");
-  return variadicMul(operands, fold);
+  // here we hard-code the semirings (see above).
+  return variadicMul(operands, fold, NaryExpr::SemiringsKind::REAL_ARITH);
 }
 
 template <typename... Args>

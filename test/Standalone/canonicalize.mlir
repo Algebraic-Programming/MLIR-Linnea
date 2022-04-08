@@ -23,7 +23,7 @@ func @bar(%arg0: !linnea.matrix<#linnea.property<["general"]>, [32, 32], f32>,
           %arg1: !linnea.identity<[32, 32], f32>) -> !linnea.term {
 
   %0 = linnea.equation {
-    %1 = linnea.mul.high %arg0, %arg1 :
+    %1 = linnea.mul.high %arg0, %arg1 { semirings = "real-arith" }:
       !linnea.matrix<#linnea.property<["general"]>, [32, 32], f32>,
       !linnea.identity<[32, 32], f32> -> !linnea.term
     linnea.yield %1 : !linnea.term
