@@ -87,9 +87,6 @@ public:
     assert(0 && "cannot call getAndSet properties for operands");
   }
 
-  // normal form.
-  virtual Expr *getNormalForm() = 0;
-
   // return the dimensions of the result. Since we are dealing
   // with only matrices is a two-dimensional vector.
   virtual SmallVector<int64_t, 2> getResultShape() const = 0;
@@ -150,9 +147,6 @@ public:
   // compute the properties for the current expression.
   std::vector<Expr::ExprProperty> getAndSetProperties() override;
 
-  // get the normal form for the current expression.
-  Expr *getNormalForm() override;
-
   // get result dimension.
   SmallVector<int64_t, 2> getResultShape() const override;
 
@@ -197,9 +191,6 @@ public:
 
   // infer properties for the current expression.
   std::vector<Expr::ExprProperty> getAndSetProperties() override;
-
-  // get the normal form for the current expression.
-  Expr *getNormalForm() override;
 
   // get result dimension.
   SmallVector<int64_t, 2> getResultShape() const override;
@@ -246,9 +237,6 @@ public:
 
   // add additional properties to 'inferredProperties'.
   void setProperties(std::vector<Expr::ExprProperty> properties) override;
-
-  // return normal form for current expression.
-  Expr *getNormalForm() override;
 
   // get the dimensionality of the ouput for the current expression.
   SmallVector<int64_t, 2> getResultShape() const override;
