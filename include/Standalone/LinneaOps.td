@@ -231,13 +231,12 @@ def Linnea_MulOpLow : Linnea_Op<"mul.low", [NoSideEffect]> {
         Example:
 
         ```mlir
-          %2 = linnea.mul %0, %1 : { semirings = "min-plus" } (...)
+          %2 = linnea.mul %0, %1 : { add = "arith::addFOp", mul = "arith::mulFOp" } (...)
         ```
     }];
 
-    let arguments = (ins AnyLinneaType:$left, 
-                         AnyLinneaType:$right, 
-                         StrAttr:$semirings);
+    let arguments = (ins AnyLinneaType:$left, AnyLinneaType:$right, 
+                         StrAttr:$semiringAdd, StrAttr:$semiringMul);
     let results = (outs AnyLinneaType:$output);
 
     let assemblyFormat = [{
@@ -294,13 +293,12 @@ def Linnea_AddOpLow : Linnea_Op<"add.low", [NoSideEffect]> {
         Example:
 
         ```mlir
-          %2 = linnea.add %0, %1 : { semirings = "min-plus" } (...)
+          %2 = linnea.add %0, %1 : (...)
         ```
     }];
 
-    let arguments = (ins AnyLinneaType:$left, 
-                         AnyLinneaType:$right,
-                         StrAttr:$semirings);
+    let arguments = (ins AnyLinneaType:$left, AnyLinneaType:$right,
+                         StrAttr:$semiringAdd, StrAttr:$semiringMul);
     let results = (outs AnyLinneaType:$output);
 
     let assemblyFormat = [{

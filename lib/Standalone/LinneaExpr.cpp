@@ -366,16 +366,21 @@ static int64_t getDimSizeAtPos(Type t, size_t pos) {
   llvm_unreachable("expect only MatrixType or IdentityType");
 }
 
-static StringAttr getStringAttributeFromEnum(NaryExpr::SemiringsKind kind,
-                                             OpBuilder &builder) {
+static std::pair<StringAttr, StringAttr>
+getSemiringsFromEnum(NaryExpr::SemiringsKind kind, OpBuilder &builder) {
+  auto ctx = builder.getContext();
   if (kind == NaryExpr::SemiringsKind::REAL_ARITH)
-    return StringAttr::get(builder.getContext(), "real-arith");
+    return std::make_pair(StringAttr::get(ctx, "arith::AddFOp"),
+                          StringAttr::get(ctx, "arith::MulFOp"));
   else if (kind == NaryExpr::SemiringsKind::INTEGER_ARITH)
-    return StringAttr::get(builder.getContext(), "integer-arith");
-  else if (kind == NaryExpr::SemiringsKind::MIN_PLUS)
-    return StringAttr::get(builder.getContext(), "min-plus");
-  else if (kind == NaryExpr::SemiringsKind::MAX_PLUS)
-    return StringAttr::get(builder.getContext(), "max-plus");
+    return std::make_pair(StringAttr::get(ctx, "arith::AddIOp"),
+                          StringAttr::get(ctx, "arith::MulIOp"));
+  // TODO: this requires to know the type. Do not use enum but simply use
+  // attributes also on the high-level op.
+  // else if (kind == NaryExpr::SemiringsKind::MIN_PLUS)
+  //  return StringAttr::get(builder.getContext(), "min-plus");
+  // else if (kind == NaryExpr::SemiringsKind::MAX_PLUS)
+  //  return StringAttr::get(builder.getContext(), "max-plus");
   llvm_unreachable("unknown semiring");
 }
 
@@ -399,9 +404,10 @@ Value ExprBuilder::buildBinaryOpImpl(Location loc, OpBuilder &builder,
       LinneaMatrixEncodingAttr::get(builder.getContext(), properties), dims,
       elementType);
   assert(operands.size() == 2 && "expect two operands");
-  StringAttr semirings =
-      getStringAttributeFromEnum(expr->getSemiringsKind(), builder);
-  return builder.create<OP>(loc, result, operands[0], operands[1], semirings);
+  std::pair<StringAttr, StringAttr> semirings =
+      getSemiringsFromEnum(expr->getSemiringsKind(), builder);
+  return builder.create<OP>(loc, result, operands[0], operands[1],
+                            semirings.first /*add*/, semirings.second /*mul*/);
 }
 
 template <typename OP>

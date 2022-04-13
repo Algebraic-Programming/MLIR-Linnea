@@ -59,7 +59,7 @@ func @bar(%arg0: !linnea.term, %arg1: !linnea.matrix<#linnea.property<["general"
 // CHECK-LABEL: func @bar(
 func @bar(%arg0: !linnea.term, %arg1: !linnea.matrix<#linnea.property<["general"]>,[32,32], f32>) {
   // CHECK: %{{.*}} = linnea.mul.low %{{.*}}
-  %0 = linnea.mul.low %arg0, %arg1 { semirings = "min-plus" } : !linnea.term, !linnea.matrix<#linnea.property<["general"]>,[32,32], f32> -> !linnea.term
+  %0 = linnea.mul.low %arg0, %arg1 { add = "artih::AddFOp", mul = "arith::MulFOp" } : !linnea.term, !linnea.matrix<#linnea.property<["general"]>,[32,32], f32> -> !linnea.term
   return
 }
 

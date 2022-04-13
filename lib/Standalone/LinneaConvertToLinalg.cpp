@@ -113,30 +113,9 @@ static Value emitLinalgMatrix(MulOpLow op, ValueRange operands,
       ->getResult(0);
 }
 
-static Value buildMatrixBody(StringAttr semirings, ValueRange operands,
-                             OpBuilder &builder, Location loc) {
-  if ((semirings.str().compare("real-arith") == 0) ||
-      (semirings.str().compare("integer-arith") == 0)) {
-    assert(0 && "not supported");
-  } else if (semirings.str().compare("min-plus") == 0) {
-    Type elementType = operands[2].getType();
-    assert(isMLIRFloatType(elementType) &&
-           "expect float type with 'min-plus' semirings");
-    Value add = buildBinaryOpFromValues<arith::MinFOp, arith::MinSIOp>(
-        builder, operands[0], operands[1], loc, elementType);
-    Value mul = buildBinaryOpFromValues<arith::AddFOp, arith::AddIOp>(
-        builder, operands[2], add, loc, elementType);
-    return mul;
-  } else if (semirings.str().compare("max-plus") == 0) {
-    Type elementType = operands[2].getType();
-    assert(isMLIRFloatType(elementType) &&
-           "expect float type with 'max-plus' semirings");
-    Value add = buildBinaryOpFromValues<arith::MaxFOp, arith::MaxSIOp>(
-        builder, operands[0], operands[1], loc, elementType);
-    Value mul = buildBinaryOpFromValues<arith::AddFOp, arith::AddIOp>(
-        builder, operands[2], add, loc, elementType);
-    return mul;
-  }
+static Value buildMatrixBody(StringAttr addSemiring, StringAttr mulSemiring,
+                             ValueRange operands, OpBuilder &builder,
+                             Location loc) {
   llvm_unreachable("semirings not supported");
 }
 
@@ -145,13 +124,14 @@ static Value emitLinalgMatrixWithSem(MulOpLow op, ValueRange operands,
                                      ConversionPatternRewriter &rewriter,
                                      TypeConverter *typeConverter,
                                      ResultRange results,
-                                     StringAttr semirings) {
+                                     StringAttr addSemiring,
+                                     StringAttr mulSemiring) {
   Value left = operands[0];
   Value right = operands[1];
   RankedTensorType outputType =
       typeConverter->convertType(results[0].getType()).cast<RankedTensorType>();
 
-  Value buffer = emitAllocAndDealloc(op, outputType, rewriter, semirings);
+  Value buffer = emitAllocAndDealloc(op, outputType, rewriter, mulSemiring);
 
   // build affine maps for the mul operation.
   using MapList = ArrayRef<ArrayRef<AffineExpr>>;
@@ -170,8 +150,8 @@ static Value emitLinalgMatrixWithSem(MulOpLow op, ValueRange operands,
               [&](OpBuilder &nestedBuilder, Location nestedLoc,
                   ValueRange args) {
                 assert(args.size() == 3 && "expect 3 args");
-                Value mul =
-                    buildMatrixBody(semirings, args, nestedBuilder, nestedLoc);
+                Value mul = buildMatrixBody(addSemiring, mulSemiring, args,
+                                            nestedBuilder, nestedLoc);
                 nestedBuilder.create<linalg::YieldOp>(nestedLoc, mul);
               })
           ->getResult(0);
@@ -179,9 +159,18 @@ static Value emitLinalgMatrixWithSem(MulOpLow op, ValueRange operands,
   return result;
 }
 
-static bool isRealOrArith(StringAttr semirings) {
-  if ((semirings.str().compare("real-arith") == 0) ||
-      (semirings.str().compare("integer-arith") == 0))
+static bool isRealOrArith(StringAttr add, StringAttr mul) {
+
+  auto isReal = [](StringAttr add, StringAttr mul) {
+    return ((add.str().compare("arith::AddFOp") == 0) ||
+            mul.str().compare("arith::MulFOp") == 0);
+  };
+  auto isArith = [](StringAttr add, StringAttr mul) {
+    return ((add.str().compare("arith::AddIOp") == 0) ||
+            mul.str().compare("arith::MulIOp") == 0);
+  };
+
+  if (isReal(add, mul) || isArith(add, mul))
     return true;
   return false;
 }
@@ -193,17 +182,19 @@ public:
   LogicalResult
   matchAndRewrite(MulOpLow op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    StringAttr attr = op->getAttr("semirings").dyn_cast_or_null<StringAttr>();
-    assert(attr);
+    StringAttr addSemiring = op->getAttr("add").dyn_cast_or_null<StringAttr>();
+    StringAttr mulSemiring = op->getAttr("mul").dyn_cast_or_null<StringAttr>();
+    assert(addSemiring && "must be non null");
+    assert(mulSemiring && "must be non null");
     ValueRange operands = {adaptor.left(), adaptor.right()};
     // here we emit linalg.matmul for real and integer. On the long run
     // we will use only linalg.generic.
-    Value result = (isRealOrArith(attr) == true)
+    Value result = (isRealOrArith(addSemiring, mulSemiring) == true)
                        ? emitLinalgMatrix(op, operands, rewriter,
                                           getTypeConverter(), op->getResults())
-                       : emitLinalgMatrixWithSem(op, operands, rewriter,
-                                                 getTypeConverter(),
-                                                 op->getResults(), attr);
+                       : emitLinalgMatrixWithSem(
+                             op, operands, rewriter, getTypeConverter(),
+                             op->getResults(), addSemiring, mulSemiring);
     assert(result != nullptr && "must be non null");
     rewriter.replaceOp(op, result);
     return success();
