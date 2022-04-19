@@ -19,6 +19,7 @@
 
 using namespace mlir;
 using namespace mlir::linnea;
+using namespace mlir::func;
 using namespace mlir::linnea::expr;
 
 #define GEN_PASS_CLASSES

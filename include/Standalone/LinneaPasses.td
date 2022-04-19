@@ -11,7 +11,7 @@
 
 include "mlir/Pass/PassBase.td"
 
-def LinneaConvertToLinalg : Pass<"convert-linnea-to-linalg", "FuncOp"> {
+def LinneaConvertToLinalg : Pass<"convert-linnea-to-linalg", "func::FuncOp"> {
   let summary = "Lower linnea operations to linalg";
   let constructor = "mlir::linnea::createConvertLinneaToLinalgPass()";
   let dependentDialects = ["linalg::LinalgDialect", "tensor::TensorDialect"];
@@ -51,14 +51,6 @@ def LinneaFinalizeFuncTypeConversion : Pass<"linnea-finalize-func-type-conversio
 def LinneaCompiler : Pass<"linnea-compiler", "ModuleOp"> {
   let summary = "Build linnea compiler pipeline";
   let constructor = "mlir::linnea::createLinneaCompilerPipeline()";
-  let dependentDialects = ["scf::SCFDialect",
-                           "memref::MemRefDialect",
-                           "bufferization::BufferizationDialect",
-                           "arith::ArithmeticDialect",
-                           "linalg::LinalgDialect",
-                           "tensor::TensorDialect",
-                           "LLVM::LLVMDialect",
-                           "vector::VectorDialect"];
 }
 
 def LinneaCopyRemoval : Pass<"remove-extra-copy-operations", "ModuleOp"> {

@@ -17,6 +17,7 @@
 #include "mlir/Dialect/Bufferization/Transforms/Passes.h"
 #include "mlir/Dialect/Func/Transforms/Passes.h"
 #include "mlir/Dialect/Linalg/Passes.h"
+#include "mlir/Dialect/Linalg/Transforms/BufferizableOpInterfaceImpl.h"
 #include "mlir/Dialect/Tensor/Transforms/Passes.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
@@ -37,17 +38,25 @@ namespace {
 struct LinneaCompilerPipeline
     : public LinneaCompilerBase<LinneaCompilerPipeline> {
   void runOnOperation() override;
+
+  void getDependentDialects(DialectRegistry &registry) const override {
+    registry
+        .insert<bufferization::BufferizationDialect, memref::MemRefDialect,
+                tensor::TensorDialect, linalg::LinalgDialect, scf::SCFDialect,
+                arith::ArithmeticDialect, LLVM::LLVMDialect>();
+    linalg::registerBufferizableOpInterfaceExternalModels(registry);
+  }
 };
 
 void LinneaCompilerPipeline::runOnOperation() {
-  mlir::PassManager pm(getOperation().getContext());
-
+  // mlir::PassManager pm(getOperation().getContext());
+  OpPassManager pm("builtin.module");
   // optimize and propagate properties.
   pm.addPass(createLinneaPropertyPropagationPass());
   // type conversion at the function boundaries.
   pm.addPass(createLinneaFuncTypeConversion());
   // lower to linalg.
-  pm.addNestedPass<FuncOp>(createConvertLinneaToLinalgPass());
+  pm.addNestedPass<func::FuncOp>(createConvertLinneaToLinalgPass());
   // lowert to loops.
   pm.addPass(createConvertLinneaToLoopsPass());
   // finalize type conversion. From this point on
@@ -56,30 +65,30 @@ void LinneaCompilerPipeline::runOnOperation() {
   // --canonicalize
   pm.addPass(createCanonicalizerPass());
   //  --linalg-bufferize
-  pm.addNestedPass<FuncOp>(createLinalgBufferizePass());
+  pm.addNestedPass<func::FuncOp>(createLinalgBufferizePass());
   // --func-bufferize
   pm.addPass(mlir::func::createFuncBufferizePass());
   // --arith-bufferize
   pm.addPass(arith::createConstantBufferizePass());
   // --tensor-bufferize
-  pm.addNestedPass<FuncOp>(createTensorBufferizePass());
+  pm.addNestedPass<func::FuncOp>(createTensorBufferizePass());
   // --finalizing-bufferize
-  pm.addNestedPass<FuncOp>(
+  pm.addNestedPass<func::FuncOp>(
       mlir::bufferization::createFinalizingBufferizePass());
   // Remove extra copy operations introduced by bufferization.
   // We will remove this pass once bufferization is fixed.
   // --remove-extra-copy-operations.
   pm.addPass(createLinneaCopyRemoval());
   // --convert-linalg-to-loops
-  pm.addNestedPass<FuncOp>(createConvertLinalgToLoopsPass());
+  pm.addNestedPass<func::FuncOp>(createConvertLinalgToLoopsPass());
   // --convert-vector-to-scf
-  pm.addNestedPass<FuncOp>(createConvertVectorToSCFPass());
+  pm.addNestedPass<func::FuncOp>(createConvertVectorToSCFPass());
   // --convert-scf-to-cf
-  pm.addNestedPass<FuncOp>(createConvertSCFToCFPass());
+  pm.addNestedPass<func::FuncOp>(createConvertSCFToCFPass());
   // --convert-memref-to-llvm
   pm.addPass(createMemRefToLLVMPass());
   // --convert-artih-to-llvm
-  pm.addNestedPass<FuncOp>(createConvertMathToLLVMPass());
+  pm.addNestedPass<func::FuncOp>(createConvertMathToLLVMPass());
   // --convert-vector-to-llvm
   pm.addPass(createConvertVectorToLLVMPass());
   // --convert-std-to-llvm
@@ -87,7 +96,8 @@ void LinneaCompilerPipeline::runOnOperation() {
   // --reconcile-unrealized-casts
   pm.addPass(createReconcileUnrealizedCastsPass());
 
-  (void)pm.run(getOperation());
+  if (failed(runPipeline(pm, getOperation())))
+    signalPassFailure();
 
   return;
 }

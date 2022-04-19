@@ -18,6 +18,7 @@
 // see: ./lib/Dialect/TorchConversion/Transforms/BackendTypeConversion.cpp
 
 using namespace mlir;
+using namespace mlir::func;
 using namespace mlir::linnea;
 
 #define GEN_PASS_CLASSES
