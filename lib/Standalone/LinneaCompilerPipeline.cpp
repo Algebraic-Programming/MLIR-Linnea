@@ -49,7 +49,6 @@ struct LinneaCompilerPipeline
 };
 
 void LinneaCompilerPipeline::runOnOperation() {
-  // mlir::PassManager pm(getOperation().getContext());
   OpPassManager pm("builtin.module");
   // optimize and propagate properties.
   pm.addPass(createLinneaPropertyPropagationPass());
