@@ -10,11 +10,7 @@
 #ifndef MLIR_C_DIALECT_LINNEA_H
 #define MLIR_C_DIALECT_LINNEA_H
 
-#include <stdint.h>
-
-#include "mlir-c/IR.h"
 #include "mlir-c/Registration.h"
-#include "mlir-c/Support.h"
 
 #ifdef __cplusplus
 extern "C" {

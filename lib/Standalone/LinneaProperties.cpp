@@ -6,16 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <algorithm>
-#include <assert.h>
-#include <cstddef>
-#include <vector>
-
 #include "Standalone/LinneaExpr.h"
-#include "Standalone/LinneaExprImpl.h"
-#include "llvm/ADT/None.h"
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/Casting.h"
+#include <algorithm>
 
 using namespace mlir::linnea::expr;
 using namespace llvm;

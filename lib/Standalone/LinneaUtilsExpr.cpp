@@ -6,13 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <iostream>
-#include <stddef.h>
-#include <vector>
-
 #include "Standalone/LinneaExpr.h"
-#include "llvm/ADT/None.h"
 #include "llvm/Support/Casting.h"
+#include <iostream>
 
 using namespace mlir::linnea::expr;
 using namespace llvm;

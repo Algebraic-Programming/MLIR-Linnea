@@ -6,41 +6,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <algorithm>
-#include <assert.h>
-#include <memory>
-#include <stack>
-#include <utility>
-
 #include "Standalone/LinneaAttributes.h"
 #include "Standalone/LinneaExpr.h"
 #include "Standalone/LinneaOps.h"
 #include "Standalone/LinneaPasses.h"
-#include "Standalone/LinneaTypes.h"
+
 #include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/IR/Block.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/BuiltinTypes.h"
-#include "mlir/IR/Diagnostics.h"
-#include "mlir/IR/OpDefinition.h"
-#include "mlir/IR/Operation.h"
-#include "mlir/IR/OperationSupport.h"
-#include "mlir/IR/Region.h"
-#include "mlir/IR/TypeRange.h"
-#include "mlir/IR/Types.h"
-#include "mlir/IR/Value.h"
-#include "mlir/IR/Visitors.h"
 #include "mlir/Pass/Pass.h"
-#include "mlir/Support/LLVM.h"
-#include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/Optional.h"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/ADT/StringRef.h"
-#include "llvm/Support/Casting.h"
 #include "llvm/Support/Debug.h"
-#include "llvm/Support/raw_ostream.h"
+#include <queue>
+#include <stack>
 
 using namespace mlir;
 using namespace mlir::linnea;
