@@ -8,6 +8,7 @@
 
 #include "Standalone/LinneaAttributes.h"
 #include "Standalone/LinneaTypes.h"
+#include "mlir/IR/Attributes.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Types.h"
 

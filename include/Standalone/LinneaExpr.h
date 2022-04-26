@@ -9,11 +9,19 @@
 #ifndef MATRIX_CHAIN_UTILS_H
 #define MATRIX_CHAIN_UTILS_H
 
-#include "mlir/IR/Value.h"
-#include "llvm/ADT/SmallSet.h"
 #include <cassert>
+#include <cstdint>
+#include <functional>
 #include <memory>
+#include <string>
 #include <vector>
+
+#include "mlir/IR/Value.h"
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/DenseSet.h"
+#include "llvm/ADT/SmallSet.h"
+#include "llvm/ADT/SmallVector.h"
+#include "llvm/Support/Casting.h"
 
 namespace mlir {
 class OpBuilder;
@@ -22,6 +30,8 @@ class Region;
 } // namespace mlir
 
 namespace mlir {
+class Operation;
+
 namespace linnea {
 namespace expr {
 

@@ -7,13 +7,34 @@
 //===----------------------------------------------------------------------===//
 
 #include "Standalone/LinneaExpr.h"
-#include "Standalone/LinneaAttributes.h"
-#include "Standalone/LinneaOps.h"
-#include "Standalone/LinneaTypes.h"
-#include "llvm/Support/Casting.h"
+
 #include <algorithm>
+#include <ext/alloc_traits.h>
 #include <iostream>
 #include <limits>
+#include <stddef.h>
+#include <utility>
+
+#include "Standalone/LinneaAttributes.h"
+#include "Standalone/LinneaExprImpl.h"
+#include "Standalone/LinneaOps.h"
+#include "Standalone/LinneaTypes.h"
+#include "mlir/IR/Attributes.h"
+#include "mlir/IR/Block.h"
+#include "mlir/IR/Builders.h"
+#include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/Location.h"
+#include "mlir/IR/OpDefinition.h"
+#include "mlir/IR/Operation.h"
+#include "mlir/IR/OperationSupport.h"
+#include "mlir/IR/Types.h"
+#include "mlir/Support/LLVM.h"
+#include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/Twine.h"
+#include "llvm/Support/Casting.h"
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace mlir;
 using namespace mlir::linnea::expr;

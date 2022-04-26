@@ -12,7 +12,6 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Dialect.h"
 #include "llvm/ADT/TypeSwitch.h"
-
 #include "Standalone/LinneaOpsDialect.h.inc"
 
 #endif // LINNEA_LINNEADIALECT_H
