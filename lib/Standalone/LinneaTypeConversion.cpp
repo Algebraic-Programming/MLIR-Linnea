@@ -14,6 +14,9 @@
 #include "mlir/Dialect/Func/Transforms/FuncConversions.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
+#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
 
 // see: ./lib/Dialect/TorchConversion/Transforms/BackendTypeConversion.cpp
 
