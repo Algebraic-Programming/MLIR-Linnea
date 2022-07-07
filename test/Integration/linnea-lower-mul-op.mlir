@@ -6,7 +6,7 @@
 //
 
 module {
-  func @entry() {
+  func.func @entry() {
   
     %c5 = arith.constant 5 : index
 

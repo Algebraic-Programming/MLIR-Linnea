@@ -21,7 +21,7 @@
 // RUN: rm -rf %testdir/chain
 
 module {
-  func @entry() {
+  func.func @entry() {
   
     // A1.
     %fA1 = arith.constant 1 : i32

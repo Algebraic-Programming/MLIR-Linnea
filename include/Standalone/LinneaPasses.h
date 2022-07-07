@@ -9,13 +9,65 @@
 #ifndef LINNEA_PASSES_H
 #define LINNEA_PASSES_H
 
-#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
-#include "mlir/Dialect/Linalg/IR/Linalg.h"
-#include "mlir/Dialect/SCF/SCF.h"
-#include "mlir/Dialect/Vector/IR/VectorOps.h"
 #include "mlir/Pass/Pass.h"
+
+namespace mlir {
+class ModuleOp;
+} // namespace mlir
+
+namespace mlir {
+namespace func {
+class FuncOp;
+} // namespace func
+} // namespace mlir
+
+namespace mlir {
+namespace vector {
+class VectorDialect;
+} // namespace vector
+} // namespace mlir
+
+namespace mlir {
+namespace linalg {
+class LinalgDialect;
+} // namespace linalg
+} // namespace mlir
+
+namespace mlir {
+namespace scf {
+class SCFDialect;
+} // namespace scf
+} // namespace mlir
+
+namespace mlir {
+namespace memref {
+class MemRefDialect;
+} // namespace memref
+} // namespace mlir
+
+namespace mlir {
+namespace arith {
+class ArithmeticDialect;
+} // namespace arith
+} // namespace mlir
+
+namespace mlir {
+namespace bufferization {
+class BufferizationDialect;
+} // namespace bufferization
+} // namespace mlir
+
+namespace mlir {
+namespace tensor {
+class TensorDialect;
+} // namespace tensor
+} // namespace mlir
+
+namespace mlir {
+namespace LLVM {
+class LLVMDialect;
+} // namespace LLVM
+} // namespace mlir
 
 namespace mlir {
 namespace linnea {
