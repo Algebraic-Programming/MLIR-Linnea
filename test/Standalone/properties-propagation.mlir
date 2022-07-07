@@ -1,7 +1,7 @@
 // RUN: standalone-opt %s --split-input-file --properties-propagation | FileCheck %s
 module {
   // CHECK: entry
-  func @entry() {
+  func.func @entry() {
 
     %c5 = arith.constant 5 : index
     %fc = arith.constant 5.0 : f32
@@ -46,7 +46,7 @@ module {
 
 module {
   // CHECK: entry
-  func @entry() {
+  func.func @entry() {
 
     %c5 = arith.constant 5 : index
     %fc = arith.constant 5.0 : f32

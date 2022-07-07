@@ -2,7 +2,7 @@
 
 // CHECK-LABEL: @bar
 // CHECK-SAME: %[[arg0:[a-zA-Z0-9]+]]: !linnea.matrix<#linnea.property<["square"]>, [32, 32], f32>
-func @bar(%arg0 : !linnea.matrix<#linnea.property<["square"]>, [32,32], f32>) -> !linnea.term {
+func.func @bar(%arg0 : !linnea.matrix<#linnea.property<["square"]>, [32,32], f32>) -> !linnea.term {
   
   %0 = linnea.equation {
     %1 = linnea.inverse.high %arg0 : !linnea.matrix<#linnea.property<["square"]>, [32,32], f32> 
@@ -19,7 +19,7 @@ func @bar(%arg0 : !linnea.matrix<#linnea.property<["square"]>, [32,32], f32>) ->
 
 // CHECK-LABEL: @bar
 // CHECK-SAME: %[[arg0:[a-zA-Z0-9]+]]: !linnea.matrix<#linnea.property<["general"]>, [32, 32], f32>
-func @bar(%arg0: !linnea.matrix<#linnea.property<["general"]>, [32, 32], f32>,
+func.func @bar(%arg0: !linnea.matrix<#linnea.property<["general"]>, [32, 32], f32>,
           %arg1: !linnea.identity<[32, 32], f32>) -> !linnea.term {
 
   %0 = linnea.equation {
